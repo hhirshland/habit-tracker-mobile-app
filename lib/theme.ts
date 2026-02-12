@@ -27,6 +27,8 @@ export const theme = {
     lg: 24,
     xl: 32,
     xxl: 48,
+    /** Extra bottom padding so content clears the absolutely-positioned tab bar pill */
+    tabBarClearance: 100,
   },
   borderRadius: {
     sm: 8,

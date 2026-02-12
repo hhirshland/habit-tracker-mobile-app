@@ -9,28 +9,35 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { theme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  getHabits,
   getHabitsForDay,
-  getCompletionsForDate,
-  getCompletionsForWeek,
-  getCompletionsForDateRange,
-  getSnoozesForDate,
-  getSnoozesForDateRange,
-  toggleHabitCompletion,
-  snoozeHabit,
-  unsnoozeHabit,
   getTodayDate,
-  getCurrentWeekRange,
   formatDate,
   isHabitRequiredToday,
-  getStreak,
   checkAutoCompletions,
+  getCompletionsForDate,
+  getStreak,
+  getCompletionsForDateRange,
 } from '@/lib/habits';
 import { Habit, HabitCompletion, HabitSnooze, DayOfWeek } from '@/lib/types';
 import { useHealth } from '@/contexts/HealthContext';
+import {
+  useHabits,
+  useCompletionsForDate,
+  useCompletionsForWeek,
+  useCompletionsForRange,
+  useSnoozesForDate,
+  useSnoozesForRange,
+  useStreak,
+  useToggleCompletion,
+  useSnoozeHabit,
+  useUnsnoozeHabit,
+  useRefreshAllHabitData,
+} from '@/hooks/useHabitsQuery';
+import { queryKeys } from '@/lib/queryClient';
 import PriorityItem from '@/components/PriorityItemVariantA';
 import CalendarStrip from '@/components/CalendarStrip';
 import ThriveLogo from '@/components/ThriveLogo';
@@ -40,24 +47,11 @@ const CALENDAR_BUFFER = 30; // days in each direction
 export default function HomeScreen() {
   const { user } = useAuth();
   const { isAuthorized: healthAuthorized } = useHealth();
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [completions, setCompletions] = useState<HabitCompletion[]>([]);
-  const [weekCompletions, setWeekCompletions] = useState<HabitCompletion[]>([]);
-  const [snoozes, setSnoozes] = useState<HabitSnooze[]>([]);
-  const [streak, setStreak] = useState<{ streakCount: number; earnedToday: boolean }>({
-    streakCount: 0,
-    earnedToday: false,
-  });
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
   // Selected date state
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
-
-  // All completions for the calendar strip range
-  const [calendarCompletions, setCalendarCompletions] = useState<HabitCompletion[]>([]);
-  // All snoozes for the calendar strip range
-  const [calendarSnoozes, setCalendarSnoozes] = useState<HabitSnooze[]>([]);
 
   // Derive the selected date's dayOfWeek
   const selectedDayOfWeek = useMemo(() => {
@@ -93,106 +87,90 @@ export default function HomeScreen() {
     };
   }, [selectedDate]);
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
-    try {
-      const [allHabits, dateCompletions, weekComps, dateSnoozes, streakData, calComps, calSnoozes] =
-        await Promise.all([
-          getHabits(),
-          getCompletionsForDate(selectedDate),
-          getCompletionsForWeek(selectedWeekRange.start, selectedWeekRange.end),
-          getSnoozesForDate(selectedDate),
-          getStreak(),
-          getCompletionsForDateRange(calendarRange.start, calendarRange.end),
-          getSnoozesForDateRange(calendarRange.start, calendarRange.end),
-        ]);
-      setHabits(allHabits);
-      setCompletions(dateCompletions);
-      setWeekCompletions(weekComps);
-      setSnoozes(dateSnoozes);
-      setStreak(streakData);
-      setCalendarCompletions(calComps);
-      setCalendarSnoozes(calSnoozes);
-
-      // Auto-complete habits from health data (only for today)
-      if (healthAuthorized && selectedDate === getTodayDate()) {
-        const completedIds = new Set(dateCompletions.map((c) => c.habit_id));
-        const autoCompleted = await checkAutoCompletions(
-          user.id,
-          allHabits,
-          completedIds,
-          selectedDate
-        );
-        // Reload completions if any were auto-completed
-        if (autoCompleted.length > 0) {
-          const [updatedCompletions, updatedStreak, updatedCalComps] = await Promise.all([
-            getCompletionsForDate(selectedDate),
-            getStreak(),
-            getCompletionsForDateRange(calendarRange.start, calendarRange.end),
-          ]);
-          setCompletions(updatedCompletions);
-          setStreak(updatedStreak);
-          setCalendarCompletions(updatedCalComps);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [user, selectedDate, selectedWeekRange, calendarRange, healthAuthorized]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
+  // ── Queries (cached, stale-while-revalidate) ──
+  const { data: habits = [], isLoading: habitsLoading } = useHabits();
+  const { data: completions = [] } = useCompletionsForDate(selectedDate);
+  const { data: weekCompletions = [] } = useCompletionsForWeek(
+    selectedWeekRange.start,
+    selectedWeekRange.end
+  );
+  const { data: snoozes = [] } = useSnoozesForDate(selectedDate);
+  const { data: streak = { streakCount: 0, earnedToday: false } } = useStreak();
+  const { data: calendarCompletions = [] } = useCompletionsForRange(
+    calendarRange.start,
+    calendarRange.end
+  );
+  const { data: calendarSnoozes = [] } = useSnoozesForRange(
+    calendarRange.start,
+    calendarRange.end
   );
 
-  // Reload when selected date changes
-  useEffect(() => {
-    if (!loading) {
-      loadData();
-    }
-  }, [selectedDate]);
+  // ── Mutations ──
+  const toggleMutation = useToggleCompletion();
+  const snoozeMutation = useSnoozeHabit();
+  const unsnoozeMutation = useUnsnoozeHabit();
+  const refreshAll = useRefreshAllHabitData();
+
+  // ── Auto-complete from health data ──
+  useFocusEffect(
+    useCallback(() => {
+      if (!user || !healthAuthorized || selectedDate !== getTodayDate()) return;
+      if (habits.length === 0 || completions === undefined) return;
+
+      const completedIds = new Set(completions.map((c) => c.habit_id));
+      checkAutoCompletions(user.id, habits, completedIds, selectedDate).then(
+        (autoCompleted) => {
+          if (autoCompleted.length > 0) {
+            // Invalidate affected caches so the UI updates
+            queryClient.invalidateQueries({ queryKey: queryKeys.completions.forDate(selectedDate) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.streak });
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.completions.forRange(calendarRange.start, calendarRange.end),
+            });
+          }
+        }
+      );
+    }, [user, healthAuthorized, habits, completions, selectedDate, calendarRange])
+  );
 
   const handleToggle = async (habit: Habit) => {
     if (!user) return;
     const isCompleted = completions.some((c) => c.habit_id === habit.id);
-
-    try {
-      await toggleHabitCompletion(habit.id, user.id, selectedDate, isCompleted);
-      await loadData();
-    } catch (error) {
-      console.error('Error toggling habit:', error);
-    }
+    toggleMutation.mutate({
+      habitId: habit.id,
+      userId: user.id,
+      date: selectedDate,
+      isCompleted,
+    });
   };
 
   const handleSnooze = async (habit: Habit) => {
     if (!user) return;
-    try {
-      await snoozeHabit(habit.id, user.id, selectedDate);
-      await loadData();
-    } catch (error) {
-      console.error('Error snoozing habit:', error);
-    }
+    snoozeMutation.mutate({
+      habitId: habit.id,
+      userId: user.id,
+      date: selectedDate,
+    });
   };
 
   const handleUnsnooze = async (habit: Habit) => {
-    try {
-      await unsnoozeHabit(habit.id, selectedDate);
-      await loadData();
-    } catch (error) {
-      console.error('Error unsnoozing habit:', error);
-    }
+    unsnoozeMutation.mutate({
+      habitId: habit.id,
+      date: selectedDate,
+    });
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    refreshAll();
+    // Wait a tick for queries to start, then let RefreshControl handle the spinner
+    setTimeout(() => setRefreshing(false), 600);
   };
 
   // Calculate day progress for the calendar strip
   const dayProgress = useMemo(() => {
     const progress: Record<string, { completed: number; total: number }> = {};
 
-    // For each day in the calendar range, figure out how many habits were scheduled
-    // and how many were completed (excluding snoozed habits from the count)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -264,8 +242,8 @@ export default function HomeScreen() {
     };
   };
 
-
-  if (loading) {
+  // Only show full-screen spinner on very first load (no cached data)
+  if (habitsLoading && habits.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -406,10 +384,7 @@ export default function HomeScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                loadData();
-              }}
+              onRefresh={handleRefresh}
               tintColor={theme.colors.primary}
             />
           }
@@ -489,7 +464,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: theme.spacing.tabBarClearance,
   },
   sectionLabel: {
     fontSize: theme.fontSize.xs,
@@ -508,7 +483,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.xl,
-    paddingBottom: 100,
   },
   emptyEmoji: {
     fontSize: 56,

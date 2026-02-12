@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     marginVertical: theme.spacing.xl,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: theme.spacing.tabBarClearance,
   },
   signOutButton: {
     flexDirection: 'row',

@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
-    width: '48.5%' as any,
+    width: '100%' as any,
     ...theme.shadow.sm,
   },
   header: {

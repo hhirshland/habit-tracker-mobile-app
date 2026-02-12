@@ -705,10 +705,12 @@ export async function getWeightHistory(days: number = 90): Promise<MetricDataPoi
       }
     );
 
-    return samples.map((s: any) => ({
-      date: formatDateLocal(new Date(s.startDate)),
-      value: Math.round(s.quantity * 10) / 10,
-    }));
+    return samples
+      .map((s: any) => ({
+        date: formatDateLocal(new Date(s.startDate)),
+        value: Math.round(s.quantity * 10) / 10,
+      }))
+      .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
   } catch (error: any) {
     if (!isAuthError(error)) {
       console.error('Error fetching weight history:', error);
@@ -740,10 +742,12 @@ export async function getRHRHistory(days: number = 30): Promise<MetricDataPoint[
       }
     );
 
-    return samples.map((s: any) => ({
-      date: formatDateLocal(new Date(s.startDate)),
-      value: Math.round(s.quantity),
-    }));
+    return samples
+      .map((s: any) => ({
+        date: formatDateLocal(new Date(s.startDate)),
+        value: Math.round(s.quantity),
+      }))
+      .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
   } catch (error: any) {
     if (!isAuthError(error)) {
       console.error('Error fetching RHR history:', error);
@@ -774,13 +778,15 @@ export async function getBodyFatHistory(days: number = 90): Promise<MetricDataPo
       }
     );
 
-    return samples.map((s: any) => {
-      const raw = s.quantity;
-      return {
-        date: formatDateLocal(new Date(s.startDate)),
-        value: Math.round((raw <= 1 ? raw * 100 : raw) * 10) / 10,
-      };
-    });
+    return samples
+      .map((s: any) => {
+        const raw = s.quantity;
+        return {
+          date: formatDateLocal(new Date(s.startDate)),
+          value: Math.round((raw <= 1 ? raw * 100 : raw) * 10) / 10,
+        };
+      })
+      .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
   } catch (error: any) {
     if (!isAuthError(error)) console.error('Error fetching body fat history:', error);
     return [];
@@ -809,10 +815,12 @@ export async function getHRVHistory(days: number = 30): Promise<MetricDataPoint[
       }
     );
 
-    return samples.map((s: any) => ({
-      date: formatDateLocal(new Date(s.startDate)),
-      value: Math.round(s.quantity),
-    }));
+    return samples
+      .map((s: any) => ({
+        date: formatDateLocal(new Date(s.startDate)),
+        value: Math.round(s.quantity),
+      }))
+      .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
   } catch (error: any) {
     if (!isAuthError(error)) console.error('Error fetching HRV history:', error);
     return [];
@@ -842,6 +850,201 @@ export const HEALTH_METRIC_DISPLAY_NAMES: Record<string, string> = {
  */
 export function detectMissingMetrics(_m: HealthMetrics): string[] {
   return Array.from(_deniedMetrics);
+}
+
+// ──────────────────────────────────────────────
+// Additional history functions (for metric detail)
+// ──────────────────────────────────────────────
+
+/**
+ * Get exercise minutes history (daily cumulative)
+ */
+export async function getExerciseHistory(days: number = 30): Promise<MetricDataPoint[]> {
+  const mod = getModule();
+  if (!mod) return [];
+
+  try {
+    const points: MetricDataPoint[] = [];
+    const today = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+
+      try {
+        const result = await mod.queryStatisticsForQuantity(
+          QTI.appleExerciseTime,
+          ['cumulativeSum'],
+          { filter: { date: { startDate: start, endDate: end } } }
+        );
+        const value = result?.sumQuantity?.quantity;
+        if (value != null) {
+          points.push({ date: formatDateLocal(date), value: Math.round(value) });
+        }
+      } catch {
+        // skip days with no data
+      }
+    }
+
+    return points;
+  } catch (error) {
+    console.error('Error fetching exercise history:', error);
+    return [];
+  }
+}
+
+/**
+ * Get lean body mass history
+ */
+export async function getLeanMassHistory(days: number = 90): Promise<MetricDataPoint[]> {
+  const mod = getModule();
+  if (!mod) return [];
+
+  try {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    start.setHours(0, 0, 0, 0);
+
+    const samples = await mod.queryQuantitySamples(QTI.leanBodyMass, {
+      unit: 'lb',
+      limit: 0,
+      filter: { date: { startDate: start, endDate: end } },
+    });
+
+    return samples
+      .map((s: any) => ({
+        date: formatDateLocal(new Date(s.startDate)),
+        value: Math.round(s.quantity * 10) / 10,
+      }))
+      .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
+  } catch (error: any) {
+    if (!isBenignHealthKitError(error)) console.error('Error fetching lean mass history:', error);
+    return [];
+  }
+}
+
+/**
+ * Get BMI history
+ */
+export async function getBMIHistory(days: number = 90): Promise<MetricDataPoint[]> {
+  const mod = getModule();
+  if (!mod) return [];
+
+  try {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    start.setHours(0, 0, 0, 0);
+
+    const samples = await mod.queryQuantitySamples(QTI.bodyMassIndex, {
+      limit: 0,
+      filter: { date: { startDate: start, endDate: end } },
+    });
+
+    return samples
+      .map((s: any) => ({
+        date: formatDateLocal(new Date(s.startDate)),
+        value: Math.round(s.quantity * 10) / 10,
+      }))
+      .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
+  } catch (error: any) {
+    if (!isBenignHealthKitError(error)) console.error('Error fetching BMI history:', error);
+    return [];
+  }
+}
+
+/**
+ * Get daylight exposure history (daily cumulative)
+ */
+export async function getDaylightHistory(days: number = 30): Promise<MetricDataPoint[]> {
+  const mod = getModule();
+  if (!mod) return [];
+
+  try {
+    const points: MetricDataPoint[] = [];
+    const today = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+
+      try {
+        const result = await mod.queryStatisticsForQuantity(
+          QTI.timeInDaylight,
+          ['cumulativeSum'],
+          { filter: { date: { startDate: start, endDate: end } } }
+        );
+        const value = result?.sumQuantity?.quantity;
+        if (value != null) {
+          points.push({ date: formatDateLocal(date), value: Math.round(value) });
+        }
+      } catch {
+        // skip days with no data
+      }
+    }
+
+    return points;
+  } catch (error) {
+    console.error('Error fetching daylight history:', error);
+    return [];
+  }
+}
+
+/**
+ * Get workout count per day history
+ */
+export async function getWorkoutCountHistory(days: number = 30): Promise<MetricDataPoint[]> {
+  try {
+    const workouts = await getRecentWorkouts(days);
+    const countByDay: Record<string, number> = {};
+
+    for (const w of workouts) {
+      const date = formatDateLocal(new Date(w.date));
+      countByDay[date] = (countByDay[date] || 0) + 1;
+    }
+
+    const points: MetricDataPoint[] = [];
+    const today = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const key = formatDateLocal(date);
+      points.push({ date: key, value: countByDay[key] || 0 });
+    }
+
+    return points;
+  } catch (error) {
+    console.error('Error fetching workout count history:', error);
+    return [];
+  }
+}
+
+/**
+ * Universal metric history dispatcher — fetches history for any metric by key.
+ */
+export async function getMetricHistory(metricKey: string, days: number): Promise<MetricDataPoint[]> {
+  switch (metricKey) {
+    case 'steps': return getStepHistory(days);
+    case 'exercise': return getExerciseHistory(days);
+    case 'weight': return getWeightHistory(days);
+    case 'bodyFat': return getBodyFatHistory(days);
+    case 'leanMass': return getLeanMassHistory(days);
+    case 'bmi': return getBMIHistory(days);
+    case 'restingHR': return getRHRHistory(days);
+    case 'hrv': return getHRVHistory(days);
+    case 'daylight': return getDaylightHistory(days);
+    case 'workouts': return getWorkoutCountHistory(days);
+    default: return [];
+  }
 }
 
 // ──────────────────────────────────────────────

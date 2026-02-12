@@ -19,13 +19,13 @@ import { Goal, GOAL_TYPE_COLORS, GOAL_TYPE_ICONS } from '@/lib/types';
 import { MetricDataPoint } from '@/lib/health';
 import { getGoalHistoryData, getGoalCurrentValue } from '@/lib/goals';
 import {
-  linearRegression,
   computeGoalTrajectory,
-  computeProjection,
   computeRateBasedProjection,
   computeProgressPercent,
-  estimateCompletionDate,
-  daysToTarget,
+  weightedLinearRegression,
+  computeWeightedProjection,
+  weightedEstimateCompletionDate,
+  weightedDaysToTarget,
   TrajectoryPoint,
   ProjectionPoint,
 } from '@/lib/goalMath';
@@ -86,14 +86,14 @@ export default function GoalDetailModal({
       let projectionComputed = false;
 
       if (filteredHistory.length >= 2) {
-        const reg = linearRegression(filteredHistory);
+        const reg = weightedLinearRegression(filteredHistory);
         if (reg) {
           const today = new Date();
 
           // Calculate how many future days from today until the target is hit.
-          // If daysToTarget returns null (slope going the wrong direction),
+          // If weightedDaysToTarget returns null (slope going the wrong direction),
           // fall back to the trajectory duration so we still show the projection area.
-          let futureDays = daysToTarget(filteredHistory, reg, goal.target_value, today);
+          let futureDays = weightedDaysToTarget(filteredHistory, reg, goal.target_value, today);
           if (futureDays === null && traj.length > 0) {
             // Use trajectory span as fallback duration
             const trajStart = new Date(traj[0].date).getTime();
@@ -103,11 +103,11 @@ export default function GoalDetailModal({
           futureDays = futureDays ?? 90;
 
           // Projection starts from today, not from the last data point
-          const proj = computeProjection(filteredHistory, reg, futureDays, 1.96, today);
+          const proj = computeWeightedProjection(filteredHistory, reg, futureDays, 1.96, today);
           setProjection(proj);
           projectionComputed = proj.length >= 2;
 
-          const estDate = estimateCompletionDate(filteredHistory, reg, goal.target_value);
+          const estDate = weightedEstimateCompletionDate(filteredHistory, reg, goal.target_value);
           setEstimatedDate(estDate);
           endDate = estDate;
 

@@ -7,13 +7,14 @@
 - [ ] Integrate with apple health data
 - [ ] Reminders
 - [ ] Weekly reviews (& notification)
-- [x] Logo
+- [X] Logo
 
 
 ## Bugs
 - [ ] 
 
 ## Improvements
+- [X] Fast loading -- TanStack React Query added for stale-while-revalidate caching across all tabs
 - [ ] Make the streak relate to how many days in a row you have logged a habit (triggered the event) not how many days have a habit filled out.  This should be similar, but basically if you backlog a bunch of habits that shouldn't increase your streak.
 - [ ] Add event tracking with Posthog.  Create a rule to define how to implement event tracking.
 - [ ] Dark mode

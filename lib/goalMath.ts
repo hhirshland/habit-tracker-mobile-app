@@ -336,6 +336,214 @@ export function computeProgressPercent(
 }
 
 // ──────────────────────────────────────────────
+// Exponential Weighted Least Squares (recency-biased)
+// ──────────────────────────────────────────────
+
+export interface WeightedRegressionResult {
+  slope: number; // change per day (recency-weighted)
+  intercept: number; // weighted intercept (relative to first data point's date)
+  standardError: number; // weighted standard error
+  nEffective: number; // effective sample size  =  (Σw)² / Σ(w²)
+  xMeanWeighted: number; // weighted mean of x
+  sumWeightedSquaredX: number; // Σ w_i (x_i − x̄_w)²
+}
+
+const DEFAULT_HALF_LIFE_DAYS = 14;
+
+/**
+ * Weighted linear regression with exponential decay.
+ * Each data point is weighted by  w_i = exp(-λ · age_i)
+ * where age_i is the number of days before the most recent data point,
+ * and λ = ln(2) / halfLifeDays.
+ *
+ * Default half-life is 14 days: a point 14 days old carries half the weight
+ * of the most recent point.
+ */
+export function weightedLinearRegression(
+  data: MetricDataPoint[],
+  halfLifeDays: number = DEFAULT_HALF_LIFE_DAYS
+): WeightedRegressionResult | null {
+  if (data.length < 2) return null;
+
+  const baseDate = new Date(data[0].date).getTime();
+  const msPerDay = 86400000;
+  const lambda = Math.LN2 / halfLifeDays;
+  const lastDate = new Date(data[data.length - 1].date).getTime();
+
+  const points = data.map((d) => {
+    const dateMs = new Date(d.date).getTime();
+    const x = (dateMs - baseDate) / msPerDay;
+    const age = (lastDate - dateMs) / msPerDay; // days before most recent
+    const w = Math.exp(-lambda * age);
+    return { x, y: d.value, w };
+  });
+
+  // Total weight & effective sample size
+  const W = points.reduce((s, p) => s + p.w, 0);
+  const W2 = points.reduce((s, p) => s + p.w * p.w, 0);
+  const nEff = (W * W) / W2;
+  if (nEff < 2) return null;
+
+  // Weighted means
+  const xMeanW = points.reduce((s, p) => s + p.w * p.x, 0) / W;
+  const yMeanW = points.reduce((s, p) => s + p.w * p.y, 0) / W;
+
+  // Weighted covariances
+  const sumWXX = points.reduce((s, p) => s + p.w * (p.x - xMeanW) ** 2, 0);
+  if (sumWXX === 0) return null;
+
+  const sumWXY = points.reduce(
+    (s, p) => s + p.w * (p.x - xMeanW) * (p.y - yMeanW),
+    0
+  );
+
+  const slope = sumWXY / sumWXX;
+  const intercept = yMeanW - slope * xMeanW;
+
+  // Weighted residual sum of squares → standard error
+  const ssRes = points.reduce((s, p) => {
+    const predicted = slope * p.x + intercept;
+    return s + p.w * (p.y - predicted) ** 2;
+  }, 0);
+  const se = nEff > 2 ? Math.sqrt(ssRes / (nEff - 2)) : 0;
+
+  return {
+    slope,
+    intercept,
+    standardError: se,
+    nEffective: nEff,
+    xMeanWeighted: xMeanW,
+    sumWeightedSquaredX: sumWXX,
+  };
+}
+
+/**
+ * Project forward using weighted regression with a widening prediction interval.
+ * Analogous to computeProjection but uses weighted statistics.
+ */
+export function computeWeightedProjection(
+  data: MetricDataPoint[],
+  regression: WeightedRegressionResult,
+  futureDays: number = 60,
+  confidenceMultiplier: number = 1.96,
+  projectionStartDate?: Date
+): ProjectionPoint[] {
+  if (data.length < 2) return [];
+
+  const baseDate = new Date(data[0].date).getTime();
+  const msPerDay = 86400000;
+  const lastDate = new Date(data[data.length - 1].date).getTime();
+
+  const startMs = projectionStartDate
+    ? projectionStartDate.getTime()
+    : lastDate;
+  const startDayX = (startMs - baseDate) / msPerDay;
+
+  const {
+    slope,
+    intercept,
+    standardError,
+    nEffective,
+    xMeanWeighted,
+    sumWeightedSquaredX,
+  } = regression;
+
+  // Minimum spread so the band is always visible
+  const values = data.map((d) => d.value);
+  const valRange = Math.max(...values) - Math.min(...values);
+  const meanVal = values.reduce((s, v) => s + v, 0) / values.length;
+  const minSE = Math.max(valRange * 0.15, Math.abs(meanVal) * 0.02, 0.5);
+  const effectiveSE = Math.max(standardError, minSE);
+
+  const points: ProjectionPoint[] = [];
+  const numPoints = Math.min(futureDays, 120);
+
+  for (let i = 0; i <= numPoints; i++) {
+    const dayOffset = startDayX + (i / numPoints) * futureDays;
+    const date = new Date(baseDate + dayOffset * msPerDay);
+    const predicted = slope * dayOffset + intercept;
+
+    // Prediction interval widens away from the weighted data center
+    const h =
+      1 +
+      1 / nEffective +
+      (sumWeightedSquaredX > 0
+        ? (dayOffset - xMeanWeighted) ** 2 / sumWeightedSquaredX
+        : 0);
+    const interval = confidenceMultiplier * effectiveSE * Math.sqrt(h);
+
+    points.push({
+      date: formatDateLocal(date),
+      predicted: Math.round(predicted * 10) / 10,
+      upper: Math.round((predicted + interval) * 10) / 10,
+      lower: Math.round((predicted - interval) * 10) / 10,
+    });
+  }
+
+  return points;
+}
+
+/**
+ * Estimate when the weighted trend line will reach the target value.
+ * Returns a date string or null if unreachable / moving away.
+ */
+export function weightedEstimateCompletionDate(
+  data: MetricDataPoint[],
+  regression: WeightedRegressionResult,
+  targetValue: number
+): string | null {
+  if (data.length < 2) return null;
+
+  const { slope, intercept } = regression;
+  if (slope === 0) return null;
+
+  const baseDate = new Date(data[0].date).getTime();
+  const msPerDay = 86400000;
+
+  const dayX = (targetValue - intercept) / slope;
+  const lastDayX =
+    (new Date(data[data.length - 1].date).getTime() - baseDate) / msPerDay;
+
+  if (dayX <= lastDayX) return null;
+  if (dayX - lastDayX > 730) return null;
+
+  const estimatedDate = new Date(baseDate + dayX * msPerDay);
+  return formatDateLocal(estimatedDate);
+}
+
+/**
+ * Compute future days until the weighted trend reaches the target.
+ * Analogous to daysToTarget but uses WeightedRegressionResult.
+ */
+export function weightedDaysToTarget(
+  data: MetricDataPoint[],
+  regression: WeightedRegressionResult,
+  targetValue: number,
+  fromDate?: Date
+): number | null {
+  if (data.length < 2) return null;
+
+  const { slope, intercept } = regression;
+  if (slope === 0) return null;
+
+  const baseDate = new Date(data[0].date).getTime();
+  const msPerDay = 86400000;
+
+  const refMs = fromDate
+    ? fromDate.getTime()
+    : new Date(data[data.length - 1].date).getTime();
+  const refDayX = (refMs - baseDate) / msPerDay;
+
+  const targetDayX = (targetValue - intercept) / slope;
+  if (targetDayX <= refDayX) return null;
+
+  const futureDays = targetDayX - refDayX;
+  if (futureDays > 730) return null;
+
+  return Math.ceil(futureDays);
+}
+
+// ──────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────
 

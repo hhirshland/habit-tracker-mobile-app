@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,33 +7,55 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Platform,
+  Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
-import { useHealth } from '@/contexts/HealthContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHealth } from '@/contexts/HealthContext';
 import {
-  getStepHistory,
-  getWeightHistory,
-  getRHRHistory,
-  getBodyFatHistory,
-  getHRVHistory,
-  MetricDataPoint,
   WorkoutSummary,
   HEALTH_METRIC_DISPLAY_NAMES,
 } from '@/lib/health';
-import { Goal, GoalType } from '@/lib/types';
-import { getGoals, createGoal, deleteGoal, getGoalCurrentValue, addGoalEntry } from '@/lib/goals';
-import Sparkline from '@/components/Sparkline';
+import { getGoalCurrentValue } from '@/lib/goals';
+import { Goal } from '@/lib/types';
+import {
+  ALL_METRICS,
+  DEFAULT_VISIBLE_KEYS,
+  getMetricByKey,
+  MetricDefinition,
+} from '@/lib/metricsConfig';
+import {
+  useStepHistory,
+  useWeightHistory,
+  useRHRHistory,
+  useBodyFatHistory,
+  useHRVHistory,
+  useRefreshHealthHistory,
+} from '@/hooks/useHealthQuery';
+import {
+  useGoals,
+  useCreateGoal,
+  useDeleteGoal,
+  useAddGoalEntry,
+  useRefreshGoals,
+} from '@/hooks/useGoalsQuery';
 import GoalCard from '@/components/GoalCard';
-import AddGoalSheet from '@/components/AddGoalSheet';
 import GoalDetailModal from '@/components/GoalDetailModal';
+import AddGoalSheet from '@/components/AddGoalSheet';
+import Sparkline from '@/components/Sparkline';
+import MetricDetailModal from '@/components/MetricDetailModal';
+import EditMetricsSheet from '@/components/EditMetricsSheet';
 
-// ─────────────────────────────────────────────────────
+const METRIC_PREFS_KEY = '@metric_preferences';
+
+// ─────────────────────────────────────────────────
 // Metric Card Component
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 
 interface MetricCardProps {
   title: string;
@@ -42,11 +64,15 @@ interface MetricCardProps {
   icon: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
   sparklineData?: number[];
+  onPress?: () => void;
 }
 
-function MetricCard({ title, value, subtitle, icon, color, sparklineData }: MetricCardProps) {
+function MetricCard({ title, value, subtitle, icon, color, sparklineData, onPress }: MetricCardProps) {
+  const Wrapper = onPress ? TouchableOpacity : View;
+  const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
+
   return (
-    <View style={styles.metricCard}>
+    <Wrapper style={styles.metricCard} {...(wrapperProps as any)}>
       <View style={styles.metricCardHeader}>
         <View style={[styles.metricIconContainer, { backgroundColor: color + '18' }]}>
           <FontAwesome name={icon} size={16} color={color} />
@@ -58,13 +84,13 @@ function MetricCard({ title, value, subtitle, icon, color, sparklineData }: Metr
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricTitle}>{title}</Text>
       {subtitle && <Text style={styles.metricSubtitle}>{subtitle}</Text>}
-    </View>
+    </Wrapper>
   );
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 // Workout Row Component
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 
 function WorkoutRow({ workout }: { workout: WorkoutSummary }) {
   const date = new Date(workout.date);
@@ -85,9 +111,9 @@ function WorkoutRow({ workout }: { workout: WorkoutSummary }) {
   );
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 // Connect Apple Health CTA
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 
 function ConnectHealthCTA({
   onConnect,
@@ -136,9 +162,9 @@ function ConnectHealthCTA({
   );
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 // Not Available on Android
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 
 function NotAvailable() {
   return (
@@ -154,56 +180,93 @@ function NotAvailable() {
   );
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 // Main Progress Screen
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { isAvailable, isAuthorized, loading, metrics, connect, refresh, authFailed, missingMetrics, requestMorePermissions } = useHealth();
   const { user } = useAuth();
-  const [requestingMore, setRequestingMore] = useState(false);
+  const { isAvailable, isAuthorized, loading, metrics, connect, refresh, authFailed, missingMetrics } = useHealth();
   const [refreshing, setRefreshing] = useState(false);
-  const [stepHistory, setStepHistory] = useState<MetricDataPoint[]>([]);
-  const [weightHistory, setWeightHistory] = useState<MetricDataPoint[]>([]);
-  const [rhrHistory, setRhrHistory] = useState<MetricDataPoint[]>([]);
-  const [bodyFatHistory, setBodyFatHistory] = useState<MetricDataPoint[]>([]);
-  const [hrvHistory, setHrvHistory] = useState<MetricDataPoint[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Goals state
-  const [goals, setGoals] = useState<Goal[]>([]);
+  // ── Health history queries (last 7 days for sparklines) ──
+  const { data: stepHistory = [] } = useStepHistory(7, isAuthorized);
+  const { data: weightHistory = [] } = useWeightHistory(7, isAuthorized);
+  const { data: rhrHistory = [] } = useRHRHistory(7, isAuthorized);
+  const { data: bodyFatHistory = [] } = useBodyFatHistory(7, isAuthorized);
+  const { data: hrvHistory = [] } = useHRVHistory(7, isAuthorized);
+  const refreshHealthHistory = useRefreshHealthHistory();
+
+  // ── Goals (cached) ──
+  const { data: goals = [] } = useGoals();
+  const createGoalMutation = useCreateGoal();
+  const deleteGoalMutation = useDeleteGoal();
+  const addGoalEntryMutation = useAddGoalEntry();
+  const refreshGoals = useRefreshGoals();
+
+  // Current values for each goal (loaded in parallel)
   const [goalCurrentValues, setGoalCurrentValues] = useState<Record<string, number | null>>({});
-  const [showAddGoal, setShowAddGoal] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
-  const [loadingGoals, setLoadingGoals] = useState(false);
+  const [showAddGoal, setShowAddGoal] = useState(false);
 
-  const loadGoals = useCallback(async () => {
-    try {
-      setLoadingGoals(true);
-      const fetchedGoals = await getGoals();
-      setGoals(fetchedGoals);
+  // ── Metric preferences ──
+  const [visibleMetricKeys, setVisibleMetricKeys] = useState<string[]>(DEFAULT_VISIBLE_KEYS);
+  const [selectedMetric, setSelectedMetric] = useState<MetricDefinition | null>(null);
+  const [showEditMetrics, setShowEditMetrics] = useState(false);
 
-      // Fetch current values for each goal
-      const values: Record<string, number | null> = {};
-      await Promise.all(
-        fetchedGoals.map(async (g) => {
-          try {
-            values[g.id] = await getGoalCurrentValue(g);
-          } catch {
-            values[g.id] = null;
+  // Load saved metric preferences on mount
+  useEffect(() => {
+    AsyncStorage.getItem(METRIC_PREFS_KEY).then((saved) => {
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setVisibleMetricKeys(parsed);
           }
-        })
-      );
-      setGoalCurrentValues(values);
-    } catch (error) {
-      console.error('Error loading goals:', error);
-    } finally {
-      setLoadingGoals(false);
-    }
+        } catch {}
+      }
+    });
   }, []);
 
+  const handleSaveMetricPrefs = useCallback((newKeys: string[]) => {
+    setVisibleMetricKeys(newKeys);
+    AsyncStorage.setItem(METRIC_PREFS_KEY, JSON.stringify(newKeys));
+  }, []);
+
+  // Load current values for all goals
+  useEffect(() => {
+    if (goals.length === 0) return;
+    const loadValues = async () => {
+      const entries = await Promise.all(
+        goals.map(async (g) => {
+          const val = await getGoalCurrentValue(g);
+          return [g.id, val] as [string, number | null];
+        })
+      );
+      setGoalCurrentValues(Object.fromEntries(entries));
+    };
+    loadValues();
+  }, [goals]);
+
+  // Refresh HealthContext metrics on focus (lightweight – just today's data)
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthorized) {
+        refresh();
+      }
+    }, [isAuthorized, refresh])
+  );
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    refreshHealthHistory(); // Invalidate cached history so queries refetch
+    refreshGoals(); // Invalidate cached goals
+    await refresh(); // Refresh today's metrics from HealthContext
+    setRefreshing(false);
+  };
+
   const handleCreateGoal = async (goalData: {
-    goal_type: GoalType;
+    goal_type: any;
     title: string;
     target_value: number;
     unit: string;
@@ -215,8 +278,7 @@ export default function ProgressScreen() {
   }) => {
     if (!user) return;
     try {
-      await createGoal(user.id, goalData);
-      loadGoals();
+      await createGoalMutation.mutateAsync({ userId: user.id, goal: goalData });
     } catch (error) {
       console.error('Error creating goal:', error);
     }
@@ -224,60 +286,20 @@ export default function ProgressScreen() {
 
   const handleDeleteGoal = async (goalId: string) => {
     try {
-      await deleteGoal(goalId);
-      loadGoals();
+      await deleteGoalMutation.mutateAsync(goalId);
+      setSelectedGoal(null);
     } catch (error) {
       console.error('Error deleting goal:', error);
     }
   };
 
-  const handleLogEntry = async (goalId: string, value: number, date: string) => {
+  const handleLogGoalEntry = async (goalId: string, value: number, date: string) => {
     if (!user) return;
     try {
-      await addGoalEntry(goalId, user.id, value, date);
-      loadGoals();
+      await addGoalEntryMutation.mutateAsync({ goalId, userId: user.id, value, date });
     } catch (error) {
       console.error('Error logging goal entry:', error);
     }
-  };
-
-  const loadHistory = useCallback(async () => {
-    if (!isAuthorized) return;
-    setLoadingHistory(true);
-    try {
-      const [steps, weight, rhr, bodyFat, hrv] = await Promise.all([
-        getStepHistory(14),
-        getWeightHistory(90),
-        getRHRHistory(14),
-        getBodyFatHistory(90),
-        getHRVHistory(14),
-      ]);
-      setStepHistory(steps);
-      setWeightHistory(weight);
-      setRhrHistory(rhr);
-      setBodyFatHistory(bodyFat);
-      setHrvHistory(hrv);
-    } catch (error) {
-      console.error('Error loading history:', error);
-    } finally {
-      setLoadingHistory(false);
-    }
-  }, [isAuthorized]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadGoals();
-      if (isAuthorized) {
-        refresh();
-        loadHistory();
-      }
-    }, [isAuthorized, refresh, loadHistory, loadGoals])
-  );
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([refresh(), loadHistory(), loadGoals()]);
-    setRefreshing(false);
   };
 
   const [connecting, setConnecting] = useState(false);
@@ -285,59 +307,22 @@ export default function ProgressScreen() {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const success = await connect();
-      if (success) {
-        loadHistory();
-      }
+      await connect();
     } finally {
       setConnecting(false);
     }
   };
 
-  // Format helpers
-  const formatSteps = (steps: number | null) => {
-    if (steps === null) return '—';
-    if (steps >= 1000) return `${(steps / 1000).toFixed(1)}k`;
-    return steps.toString();
-  };
+  // (Format helpers are now centralized in lib/metricsConfig.ts)
 
-  const formatWeight = (weight: number | null) => {
-    if (weight === null) return '—';
-    return `${weight} lbs`;
+  // Map of sparkline data per metric key (for cards that support sparklines)
+  const sparklineDataMap: Record<string, number[] | undefined> = {
+    steps: stepHistory.map((p) => p.value),
+    weight: weightHistory.map((p) => p.value),
+    bodyFat: bodyFatHistory.map((p) => p.value),
+    restingHR: rhrHistory.map((p) => p.value),
+    hrv: hrvHistory.map((p) => p.value),
   };
-
-  const formatRHR = (rhr: number | null) => {
-    if (rhr === null) return '—';
-    return `${rhr} bpm`;
-  };
-
-  const formatBodyFat = (bf: number | null) => {
-    if (bf === null) return '—';
-    return `${bf}%`;
-  };
-
-  const formatLeanMass = (lm: number | null) => {
-    if (lm === null) return '—';
-    return `${lm} lbs`;
-  };
-
-  const formatBMI = (bmi: number | null) => {
-    if (bmi === null) return '—';
-    return `${bmi}`;
-  };
-
-  const formatMinutes = (min: number | null) => {
-    if (min === null) return '—';
-    return `${min} min`;
-  };
-
-  const formatHRV = (hrv: number | null) => {
-    if (hrv === null) return '—';
-    return `${hrv} ms`;
-  };
-
-  const workoutCountThisWeek = metrics.workoutsThisWeek.length;
-  const totalWorkoutMinutes = metrics.workoutsThisWeek.reduce((sum, w) => sum + w.duration, 0);
 
   // Show non-iOS message
   if (!isAvailable) {
@@ -363,7 +348,7 @@ export default function ProgressScreen() {
     );
   }
 
-  // Show loading state
+  // Show loading state only on very first load (no cached data)
   if (loading && !metrics.steps && !refreshing) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -397,42 +382,28 @@ export default function ProgressScreen() {
       >
         {/* Missing Permissions Banner */}
         {missingMetrics.length > 0 && (
-          <View style={styles.missingBanner}>
+          <TouchableOpacity
+            style={styles.missingBanner}
+            activeOpacity={0.8}
+            onPress={() => Linking.openURL('x-apple-health://')}
+          >
             <View style={styles.missingBannerLeft}>
               <FontAwesome name="exclamation-circle" size={16} color="#E65100" />
               <View style={styles.missingBannerText}>
                 <Text style={styles.missingBannerTitle}>Some health data is unavailable</Text>
                 <Text style={styles.missingBannerBody}>
-                  Missing: {missingMetrics.map((k) => HEALTH_METRIC_DISPLAY_NAMES[k] ?? k).join(', ')}
+                  Missing: {missingMetrics.map((k) => HEALTH_METRIC_DISPLAY_NAMES[k] ?? k).join(', ')}.{' '}
+                  Tap to open Health and grant permissions.
                 </Text>
               </View>
             </View>
-            <TouchableOpacity
-              style={[styles.missingBannerButton, requestingMore && { opacity: 0.6 }]}
-              activeOpacity={0.8}
-              disabled={requestingMore}
-              onPress={async () => {
-                setRequestingMore(true);
-                try {
-                  await requestMorePermissions();
-                  loadHistory();
-                } finally {
-                  setRequestingMore(false);
-                }
-              }}
-            >
-              {requestingMore ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.missingBannerButtonText}>Grant Access</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+            <FontAwesome name="chevron-right" size={12} color="#E65100" />
+          </TouchableOpacity>
         )}
 
-        {/* My Goals Section */}
+        {/* Goals Section */}
         <View style={styles.goalsSectionHeader}>
-          <Text style={styles.goalsSectionLabel}>MY GOALS</Text>
+          <Text style={[styles.sectionLabel, { marginTop: 0, marginBottom: 0 }]}>Goals</Text>
           <TouchableOpacity
             style={styles.addGoalButton}
             onPress={() => setShowAddGoal(true)}
@@ -444,7 +415,7 @@ export default function ProgressScreen() {
         </View>
 
         {goals.length > 0 ? (
-          <View style={styles.goalsGrid}>
+          <View style={styles.metricsGrid}>
             {goals.map((goal) => (
               <GoalCard
                 key={goal.id}
@@ -456,89 +427,50 @@ export default function ProgressScreen() {
           </View>
         ) : (
           <TouchableOpacity
-            style={styles.emptyGoalsCta}
+            style={styles.emptyGoalsCard}
             onPress={() => setShowAddGoal(true)}
             activeOpacity={0.7}
           >
-            <View style={styles.emptyGoalsIcon}>
-              <FontAwesome name="bullseye" size={24} color={theme.colors.primary} />
-            </View>
-            <Text style={styles.emptyGoalsTitle}>Set Your First Goal</Text>
-            <Text style={styles.emptyGoalsDesc}>
-              Track weight, running PRs, body composition, and more
+            <FontAwesome name="bullseye" size={24} color={theme.colors.textMuted} />
+            <Text style={styles.emptyGoalsText}>
+              Set goals to track your progress toward what matters most
             </Text>
+            <View style={styles.emptyGoalsButton}>
+              <FontAwesome name="plus" size={12} color={theme.colors.primary} />
+              <Text style={styles.emptyGoalsButtonText}>Add Goal</Text>
+            </View>
           </TouchableOpacity>
         )}
 
-        {/* Metric Cards Grid */}
-        <Text style={styles.sectionLabel}>Today</Text>
+        {/* Metrics Section */}
+        <View style={styles.metricsSectionHeader}>
+          <Text style={[styles.sectionLabel, { marginTop: 0, marginBottom: 0 }]}>Metrics</Text>
+          <TouchableOpacity
+            style={styles.editMetricsButton}
+            onPress={() => setShowEditMetrics(true)}
+            activeOpacity={0.7}
+          >
+            <FontAwesome name="pencil" size={12} color={theme.colors.primary} />
+            <Text style={styles.editMetricsButtonText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.metricsGrid}>
-          <MetricCard
-            title="Steps"
-            value={formatSteps(metrics.steps)}
-            icon="road"
-            color="#4CAF50"
-            sparklineData={stepHistory.map((p) => p.value)}
-          />
-          <MetricCard
-            title="Exercise"
-            value={formatMinutes(metrics.exerciseMinutes)}
-            icon="clock-o"
-            color="#FF5722"
-          />
-          <MetricCard
-            title="Weight"
-            value={formatWeight(metrics.weight)}
-            icon="balance-scale"
-            color="#2196F3"
-            sparklineData={weightHistory.map((p) => p.value)}
-          />
-          <MetricCard
-            title="Body Fat"
-            value={formatBodyFat(metrics.bodyFatPercentage)}
-            icon="pie-chart"
-            color="#9C27B0"
-            sparklineData={bodyFatHistory.map((p) => p.value)}
-          />
-          <MetricCard
-            title="Lean Mass"
-            value={formatLeanMass(metrics.leanBodyMass)}
-            icon="child"
-            color="#00BCD4"
-          />
-          <MetricCard
-            title="BMI"
-            value={formatBMI(metrics.bodyMassIndex)}
-            icon="calculator"
-            color="#607D8B"
-          />
-          <MetricCard
-            title="Resting HR"
-            value={formatRHR(metrics.restingHeartRate)}
-            icon="heartbeat"
-            color="#E91E63"
-            sparklineData={rhrHistory.map((p) => p.value)}
-          />
-          <MetricCard
-            title="HRV"
-            value={formatHRV(metrics.hrv)}
-            icon="signal"
-            color="#3F51B5"
-            sparklineData={hrvHistory.map((p) => p.value)}
-          />
-          <MetricCard
-            title="Daylight"
-            value={formatMinutes(metrics.timeInDaylight)}
-            icon="sun-o"
-            color="#FFC107"
-          />
-          <MetricCard
-            title="Workouts"
-            value={`${workoutCountThisWeek}`}
-            subtitle={totalWorkoutMinutes > 0 ? `${totalWorkoutMinutes} min this week` : 'This week'}
-            icon="bolt"
-            color={theme.colors.warning}
-          />
+          {visibleMetricKeys.map((key) => {
+            const metric = getMetricByKey(key);
+            if (!metric) return null;
+            return (
+              <MetricCard
+                key={key}
+                title={metric.title}
+                value={metric.formatValue(metric.getValue(metrics))}
+                subtitle={metric.getSubtitle?.(metrics)}
+                icon={metric.icon}
+                color={metric.color}
+                sparklineData={sparklineDataMap[key]}
+                onPress={() => setSelectedMetric(metric)}
+              />
+            );
+          })}
         </View>
 
         {/* Recent Workouts */}
@@ -563,6 +495,15 @@ export default function ProgressScreen() {
         </View>
       </ScrollView>
 
+      {/* Goal Detail Modal */}
+      <GoalDetailModal
+        visible={selectedGoal !== null}
+        goal={selectedGoal}
+        onClose={() => setSelectedGoal(null)}
+        onDelete={handleDeleteGoal}
+        onLogEntry={handleLogGoalEntry}
+      />
+
       {/* Add Goal Sheet */}
       <AddGoalSheet
         visible={showAddGoal}
@@ -575,21 +516,28 @@ export default function ProgressScreen() {
         currentRHR={metrics.restingHeartRate}
       />
 
-      {/* Goal Detail Modal */}
-      <GoalDetailModal
-        visible={!!selectedGoal}
-        goal={selectedGoal}
-        onClose={() => setSelectedGoal(null)}
-        onDelete={handleDeleteGoal}
-        onLogEntry={handleLogEntry}
+      {/* Metric Detail Modal */}
+      <MetricDetailModal
+        visible={selectedMetric !== null}
+        metric={selectedMetric}
+        metrics={metrics}
+        onClose={() => setSelectedMetric(null)}
+      />
+
+      {/* Edit Metrics Sheet */}
+      <EditMetricsSheet
+        visible={showEditMetrics}
+        visibleKeys={visibleMetricKeys}
+        onClose={() => setShowEditMetrics(false)}
+        onSave={handleSaveMetricPrefs}
       />
     </SafeAreaView>
   );
 }
 
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 // Styles
-// ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -616,7 +564,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: theme.spacing.tabBarClearance,
   },
   sectionLabel: {
     fontSize: theme.fontSize.xs,
@@ -790,18 +738,26 @@ const styles = StyleSheet.create({
     color: '#BF360C',
     lineHeight: 18,
   },
-  missingBannerButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.sm,
-    paddingVertical: 6,
-    paddingHorizontal: theme.spacing.sm,
-    marginLeft: theme.spacing.sm,
-    alignSelf: 'center',
+
+  // Metrics section header
+  metricsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
-  missingBannerButtonText: {
-    color: '#fff',
-    fontSize: theme.fontSize.xs,
+  editMetricsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+  },
+  editMetricsButtonText: {
+    fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.primary,
   },
 
   // Goals
@@ -812,60 +768,42 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
-  goalsSectionLabel: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textMuted,
-    letterSpacing: 0.5,
-  },
   addGoalButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 4,
     paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.primary + '12',
+    paddingVertical: 4,
   },
   addGoalButtonText: {
-    fontSize: theme.fontSize.xs,
+    fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.primary,
   },
-  goalsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  emptyGoalsCta: {
-    alignItems: 'center',
+  emptyGoalsCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.primary + '25',
-    borderStyle: 'dashed',
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
-  },
-  emptyGoalsIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.primary + '12',
+    padding: theme.spacing.lg,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    ...theme.shadow.sm,
   },
-  emptyGoalsTitle: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
-    marginBottom: 4,
-  },
-  emptyGoalsDesc: {
+  emptyGoalsText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyGoalsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: theme.spacing.xs,
+  },
+  emptyGoalsButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.primary,
   },
 
   // Hint

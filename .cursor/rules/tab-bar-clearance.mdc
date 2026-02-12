@@ -1,0 +1,38 @@
+---
+description: Ensure tab screen content is not hidden behind the floating tab bar pill
+globs: app/(tabs)/*.tsx
+alwaysApply: false
+---
+
+# Tab Bar Bottom Clearance
+
+The app uses a custom floating tab bar (`CustomTabBar` in `app/(tabs)/_layout.tsx`) that is `position: 'absolute'` at the bottom of the screen. It is approximately 90-100px tall including safe area insets.
+
+**Every scrollable content area inside a tab screen must use `theme.spacing.tabBarClearance` (100px) as its bottom padding** so content is never hidden behind the tab bar.
+
+## How to apply
+
+For `FlatList`, set it on `contentContainerStyle`:
+
+```tsx
+<FlatList
+  contentContainerStyle={{ paddingBottom: theme.spacing.tabBarClearance }}
+  ...
+/>
+```
+
+For `ScrollView`, set it on `contentContainerStyle`:
+
+```tsx
+<ScrollView
+  contentContainerStyle={{ paddingBottom: theme.spacing.tabBarClearance }}
+  ...
+/>
+```
+
+## Common mistakes
+
+- Using `theme.spacing.xxl` (48px) -- this is NOT enough clearance
+- Using a magic number like `paddingBottom: 100` instead of the token
+- Forgetting bottom padding entirely on a new tab screen
+- Adding `marginBottom` to the last item instead of `paddingBottom` on the scroll container

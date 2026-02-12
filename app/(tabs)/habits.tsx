@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,40 +11,36 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { getHabits, createHabit, updateHabit, deleteHabit } from '@/lib/habits';
 import { Habit, HealthMetricType } from '@/lib/types';
+import {
+  useHabits,
+  useCreateHabit,
+  useUpdateHabit,
+  useDeleteHabit,
+} from '@/hooks/useHabitsQuery';
 import HabitItem from '@/components/HabitItem';
 import HabitForm from '@/components/HabitForm';
 
 export default function HabitsScreen() {
   const { user } = useAuth();
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
-  const loadHabits = useCallback(async () => {
-    try {
-      const data = await getHabits();
-      setHabits(data);
-    } catch (error) {
-      console.error('Error loading habits:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  // ── Queries & mutations (cached) ──
+  const { data: habits = [], isLoading: loading, refetch } = useHabits();
+  const createMutation = useCreateHabit();
+  const updateMutation = useUpdateHabit();
+  const deleteMutation = useDeleteHabit();
 
-  useFocusEffect(
-    useCallback(() => {
-      loadHabits();
-    }, [loadHabits])
-  );
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
 
   const handleCreate = async (data: {
     name: string;
@@ -57,17 +53,19 @@ export default function HabitsScreen() {
   }) => {
     if (!user) return;
     try {
-      await createHabit(user.id, {
-        name: data.name,
-        description: data.description || undefined,
-        frequency_per_week: data.frequency_per_week,
-        specific_days: data.specific_days,
-        metric_type: data.metric_type,
-        metric_threshold: data.metric_threshold,
-        auto_complete: data.auto_complete,
+      await createMutation.mutateAsync({
+        userId: user.id,
+        habit: {
+          name: data.name,
+          description: data.description || undefined,
+          frequency_per_week: data.frequency_per_week,
+          specific_days: data.specific_days,
+          metric_type: data.metric_type,
+          metric_threshold: data.metric_threshold,
+          auto_complete: data.auto_complete,
+        },
       });
       setShowForm(false);
-      await loadHabits();
     } catch (error) {
       console.error('Error creating habit:', error);
       Alert.alert('Error', 'Failed to create habit');
@@ -85,17 +83,19 @@ export default function HabitsScreen() {
   }) => {
     if (!editingHabit) return;
     try {
-      await updateHabit(editingHabit.id, {
-        name: data.name,
-        description: data.description || null,
-        frequency_per_week: data.frequency_per_week,
-        specific_days: data.specific_days,
-        metric_type: data.metric_type,
-        metric_threshold: data.metric_threshold,
-        auto_complete: data.auto_complete,
+      await updateMutation.mutateAsync({
+        habitId: editingHabit.id,
+        updates: {
+          name: data.name,
+          description: data.description || null,
+          frequency_per_week: data.frequency_per_week,
+          specific_days: data.specific_days,
+          metric_type: data.metric_type,
+          metric_threshold: data.metric_threshold,
+          auto_complete: data.auto_complete,
+        },
       });
       setEditingHabit(null);
-      await loadHabits();
     } catch (error) {
       console.error('Error updating habit:', error);
       Alert.alert('Error', 'Failed to update habit');
@@ -110,8 +110,7 @@ export default function HabitsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteHabit(habit.id);
-            await loadHabits();
+            await deleteMutation.mutateAsync(habit.id);
           } catch (error) {
             console.error('Error deleting habit:', error);
             Alert.alert('Error', 'Failed to delete habit');
@@ -121,7 +120,8 @@ export default function HabitsScreen() {
     ]);
   };
 
-  if (loading) {
+  // Only show full-screen spinner on very first load (no cached data)
+  if (loading && habits.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -186,10 +186,7 @@ export default function HabitsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                loadHabits();
-              }}
+              onRefresh={handleRefresh}
               tintColor={theme.colors.primary}
             />
           }
@@ -293,7 +290,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: theme.spacing.tabBarClearance,
   },
   itemWrapper: {
     marginBottom: theme.spacing.sm,
@@ -303,7 +300,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.xl,
-    paddingBottom: 100,
   },
   emptyEmoji: {
     fontSize: 56,
