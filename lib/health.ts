@@ -1,10 +1,17 @@
 import { Platform } from 'react-native';
+import type { HealthMetricType } from './types';
 
 // Types for health data used throughout the app
 export interface HealthMetrics {
   steps: number | null;
   weight: number | null; // in lbs
   restingHeartRate: number | null; // bpm
+  bodyFatPercentage: number | null; // 0-100%
+  leanBodyMass: number | null; // in lbs
+  bodyMassIndex: number | null; // scalar
+  exerciseMinutes: number | null; // minutes today
+  timeInDaylight: number | null; // minutes today
+  hrv: number | null; // ms (SDNN)
   workoutsThisWeek: WorkoutSummary[];
 }
 
@@ -22,8 +29,8 @@ export interface MetricDataPoint {
   value: number;
 }
 
-// The metric types that habits can be linked to
-export type HealthMetricType = 'steps' | 'weight' | 'resting_heart_rate' | 'workout_minutes';
+// Re-export so consumers that import from health.ts still work
+export type { HealthMetricType } from './types';
 
 const isIOS = Platform.OS === 'ios';
 
@@ -53,12 +60,24 @@ const QTI = {
   stepCount: 'HKQuantityTypeIdentifierStepCount',
   bodyMass: 'HKQuantityTypeIdentifierBodyMass',
   restingHeartRate: 'HKQuantityTypeIdentifierRestingHeartRate',
+  bodyFatPercentage: 'HKQuantityTypeIdentifierBodyFatPercentage',
+  leanBodyMass: 'HKQuantityTypeIdentifierLeanBodyMass',
+  bodyMassIndex: 'HKQuantityTypeIdentifierBodyMassIndex',
+  appleExerciseTime: 'HKQuantityTypeIdentifierAppleExerciseTime',
+  timeInDaylight: 'HKQuantityTypeIdentifierTimeInDaylight',
+  heartRateVariabilitySDNN: 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
 } as const;
 
 const READ_PERMISSIONS = [
   QTI.stepCount,
   QTI.bodyMass,
   QTI.restingHeartRate,
+  QTI.bodyFatPercentage,
+  QTI.leanBodyMass,
+  QTI.bodyMassIndex,
+  QTI.appleExerciseTime,
+  QTI.timeInDaylight,
+  QTI.heartRateVariabilitySDNN,
   'HKWorkoutTypeIdentifier',
 ];
 
@@ -148,10 +167,43 @@ export async function checkHealthAuthorization(): Promise<boolean> {
 // Metric Fetchers (all silently return null / empty on auth errors)
 // ──────────────────────────────────────────────
 
-/** Returns true if the error is an authorization error (code 5) */
-function isAuthError(error: any): boolean {
+/** Returns true if the error is benign (auth denial or no data) and should be silently ignored */
+function isBenignHealthKitError(error: any): boolean {
+  const msg = error?.message ?? '';
+  return (
+    msg.includes('Code=5') ||           // Authorization not determined / denied
+    msg.includes('Code=11') ||           // No data available for the predicate
+    msg.includes('not determined') ||
+    msg.includes('Authorization') ||
+    msg.includes('No data available')
+  );
+}
+
+/** Returns true if the error is specifically an authorization denial (Code=5) */
+function isPermissionDeniedError(error: any): boolean {
   const msg = error?.message ?? '';
   return msg.includes('Code=5') || msg.includes('not determined') || msg.includes('Authorization');
+}
+
+/** @deprecated Use isBenignHealthKitError instead — kept as alias for existing call sites */
+const isAuthError = isBenignHealthKitError;
+
+/**
+ * Tracks metrics that failed specifically due to permission denial (Code=5).
+ * Reset on each full metrics load; used by detectMissingMetrics.
+ */
+const _deniedMetrics = new Set<string>();
+
+/** Call before a full metrics load to reset tracking */
+export function resetDeniedMetrics() {
+  _deniedMetrics.clear();
+}
+
+/** Record a metric as denied (called from catch blocks) */
+function trackIfDenied(metricKey: string, error: any) {
+  if (isPermissionDeniedError(error)) {
+    _deniedMetrics.add(metricKey);
+  }
 }
 
 /**
@@ -179,6 +231,7 @@ export async function getStepsForDate(date: Date): Promise<number | null> {
 
     return result?.sumQuantity?.quantity ?? null;
   } catch (error: any) {
+    trackIfDenied('steps', error);
     if (!isAuthError(error)) {
       console.error('Error fetching steps:', error);
     }
@@ -205,6 +258,7 @@ export async function getLatestWeight(): Promise<number | null> {
     if (!sample) return null;
     return Math.round(sample.quantity * 10) / 10;
   } catch (error: any) {
+    trackIfDenied('weight', error);
     if (!isAuthError(error)) {
       console.error('Error fetching weight:', error);
     }
@@ -224,8 +278,159 @@ export async function getTodayRestingHeartRate(): Promise<number | null> {
     if (!sample) return null;
     return Math.round(sample.quantity);
   } catch (error: any) {
+    trackIfDenied('restingHeartRate', error);
     if (!isAuthError(error)) {
       console.error('Error fetching resting heart rate:', error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Get the most recent body fat percentage
+ */
+export async function getLatestBodyFatPercentage(): Promise<number | null> {
+  const mod = getModule();
+  if (!mod) return null;
+
+  try {
+    const sample = await mod.getMostRecentQuantitySample(QTI.bodyFatPercentage, '%');
+    if (!sample) return null;
+    // HealthKit stores body fat as a decimal (0.0–1.0); convert to percentage
+    const raw = sample.quantity;
+    return Math.round((raw <= 1 ? raw * 100 : raw) * 10) / 10;
+  } catch (error: any) {
+    trackIfDenied('bodyFatPercentage', error);
+    if (!isAuthError(error)) {
+      console.error('Error fetching body fat percentage:', error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Get the most recent lean body mass
+ */
+export async function getLatestLeanBodyMass(): Promise<number | null> {
+  const mod = getModule();
+  if (!mod) return null;
+
+  try {
+    const sample = await mod.getMostRecentQuantitySample(QTI.leanBodyMass, 'lb');
+    if (!sample) return null;
+    return Math.round(sample.quantity * 10) / 10;
+  } catch (error: any) {
+    trackIfDenied('leanBodyMass', error);
+    if (!isAuthError(error)) {
+      console.error('Error fetching lean body mass:', error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Get the most recent body mass index
+ */
+export async function getLatestBMI(): Promise<number | null> {
+  const mod = getModule();
+  if (!mod) return null;
+
+  try {
+    const sample = await mod.getMostRecentQuantitySample(QTI.bodyMassIndex);
+    if (!sample) return null;
+    return Math.round(sample.quantity * 10) / 10;
+  } catch (error: any) {
+    trackIfDenied('bodyMassIndex', error);
+    if (!isAuthError(error)) {
+      console.error('Error fetching BMI:', error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Get today's exercise minutes (Apple Exercise Time ring)
+ */
+export async function getTodayExerciseMinutes(): Promise<number | null> {
+  const mod = getModule();
+  if (!mod) return null;
+
+  try {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+
+    const result = await mod.queryStatisticsForQuantity(
+      QTI.appleExerciseTime,
+      ['cumulativeSum'],
+      {
+        filter: {
+          date: { startDate: start, endDate: end },
+        },
+      }
+    );
+
+    return result?.sumQuantity?.quantity != null
+      ? Math.round(result.sumQuantity.quantity)
+      : null;
+  } catch (error: any) {
+    trackIfDenied('exerciseMinutes', error);
+    if (!isAuthError(error)) {
+      console.error('Error fetching exercise minutes:', error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Get today's time in daylight (minutes)
+ */
+export async function getTodayTimeInDaylight(): Promise<number | null> {
+  const mod = getModule();
+  if (!mod) return null;
+
+  try {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+
+    const result = await mod.queryStatisticsForQuantity(
+      QTI.timeInDaylight,
+      ['cumulativeSum'],
+      {
+        filter: {
+          date: { startDate: start, endDate: end },
+        },
+      }
+    );
+
+    return result?.sumQuantity?.quantity != null
+      ? Math.round(result.sumQuantity.quantity)
+      : null;
+  } catch (error: any) {
+    trackIfDenied('timeInDaylight', error);
+    if (!isAuthError(error)) {
+      console.error('Error fetching time in daylight:', error);
+    }
+    return null;
+  }
+}
+
+/**
+ * Get the most recent HRV (SDNN) reading
+ */
+export async function getLatestHRV(): Promise<number | null> {
+  const mod = getModule();
+  if (!mod) return null;
+
+  try {
+    const sample = await mod.getMostRecentQuantitySample(QTI.heartRateVariabilitySDNN, 'ms');
+    if (!sample) return null;
+    return Math.round(sample.quantity);
+  } catch (error: any) {
+    trackIfDenied('hrv', error);
+    if (!isAuthError(error)) {
+      console.error('Error fetching HRV:', error);
     }
     return null;
   }
@@ -405,17 +610,41 @@ export async function getTodayWorkoutMinutes(): Promise<number> {
  */
 export async function getTodayMetrics(): Promise<HealthMetrics> {
   if (!getModule()) {
-    return { steps: null, weight: null, restingHeartRate: null, workoutsThisWeek: [] };
+    return {
+      steps: null, weight: null, restingHeartRate: null,
+      bodyFatPercentage: null, leanBodyMass: null, bodyMassIndex: null,
+      exerciseMinutes: null, timeInDaylight: null, hrv: null,
+      workoutsThisWeek: [],
+    };
   }
 
-  const [steps, weight, restingHeartRate, workoutsThisWeek] = await Promise.all([
+  // Reset denied tracking so we only capture fresh permission denials
+  resetDeniedMetrics();
+
+  const [
+    steps, weight, restingHeartRate,
+    bodyFatPercentage, leanBodyMass, bodyMassIndex,
+    exerciseMinutes, timeInDaylight, hrv,
+    workoutsThisWeek,
+  ] = await Promise.all([
     getTodaySteps(),
     getLatestWeight(),
     getTodayRestingHeartRate(),
+    getLatestBodyFatPercentage(),
+    getLatestLeanBodyMass(),
+    getLatestBMI(),
+    getTodayExerciseMinutes(),
+    getTodayTimeInDaylight(),
+    getLatestHRV(),
     getRecentWorkouts(7),
   ]);
 
-  return { steps, weight, restingHeartRate, workoutsThisWeek };
+  return {
+    steps, weight, restingHeartRate,
+    bodyFatPercentage, leanBodyMass, bodyMassIndex,
+    exerciseMinutes, timeInDaylight, hrv,
+    workoutsThisWeek,
+  };
 }
 
 // ──────────────────────────────────────────────
@@ -523,6 +752,98 @@ export async function getRHRHistory(days: number = 30): Promise<MetricDataPoint[
   }
 }
 
+/**
+ * Get body fat percentage history
+ */
+export async function getBodyFatHistory(days: number = 90): Promise<MetricDataPoint[]> {
+  const mod = getModule();
+  if (!mod) return [];
+
+  try {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    start.setHours(0, 0, 0, 0);
+
+    const samples = await mod.queryQuantitySamples(
+      QTI.bodyFatPercentage,
+      {
+        unit: '%',
+        limit: 0,
+        filter: { date: { startDate: start, endDate: end } },
+      }
+    );
+
+    return samples.map((s: any) => {
+      const raw = s.quantity;
+      return {
+        date: formatDateLocal(new Date(s.startDate)),
+        value: Math.round((raw <= 1 ? raw * 100 : raw) * 10) / 10,
+      };
+    });
+  } catch (error: any) {
+    if (!isAuthError(error)) console.error('Error fetching body fat history:', error);
+    return [];
+  }
+}
+
+/**
+ * Get HRV (SDNN) history
+ */
+export async function getHRVHistory(days: number = 30): Promise<MetricDataPoint[]> {
+  const mod = getModule();
+  if (!mod) return [];
+
+  try {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    start.setHours(0, 0, 0, 0);
+
+    const samples = await mod.queryQuantitySamples(
+      QTI.heartRateVariabilitySDNN,
+      {
+        unit: 'ms',
+        limit: 0,
+        filter: { date: { startDate: start, endDate: end } },
+      }
+    );
+
+    return samples.map((s: any) => ({
+      date: formatDateLocal(new Date(s.startDate)),
+      value: Math.round(s.quantity),
+    }));
+  } catch (error: any) {
+    if (!isAuthError(error)) console.error('Error fetching HRV history:', error);
+    return [];
+  }
+}
+
+// ──────────────────────────────────────────────
+// Missing-permissions detection
+// ──────────────────────────────────────────────
+
+/** Human-readable labels for each metric (used in the "missing" prompt) */
+export const HEALTH_METRIC_DISPLAY_NAMES: Record<string, string> = {
+  steps: 'Steps',
+  weight: 'Weight',
+  restingHeartRate: 'Resting Heart Rate',
+  bodyFatPercentage: 'Body Fat Percentage',
+  leanBodyMass: 'Lean Body Mass',
+  bodyMassIndex: 'Body Mass Index',
+  exerciseMinutes: 'Exercise Minutes',
+  timeInDaylight: 'Time in Daylight',
+  hrv: 'Heart Rate Variability',
+};
+
+/**
+ * Return only the metrics that failed due to a permission denial (Code=5).
+ * Metrics that simply have no data (Code=11 / null) are NOT included.
+ */
+export function detectMissingMetrics(_m: HealthMetrics): string[] {
+  return Array.from(_deniedMetrics);
+}
+
 // ──────────────────────────────────────────────
 // Auto-completion helpers
 // ──────────────────────────────────────────────
@@ -540,6 +861,18 @@ export async function getCurrentMetricValue(metricType: HealthMetricType): Promi
       return getTodayRestingHeartRate();
     case 'workout_minutes':
       return getTodayWorkoutMinutes();
+    case 'body_fat_percentage':
+      return getLatestBodyFatPercentage();
+    case 'lean_body_mass':
+      return getLatestLeanBodyMass();
+    case 'bmi':
+      return getLatestBMI();
+    case 'exercise_minutes':
+      return getTodayExerciseMinutes();
+    case 'time_in_daylight':
+      return getTodayTimeInDaylight();
+    case 'hrv':
+      return getLatestHRV();
     default:
       return null;
   }

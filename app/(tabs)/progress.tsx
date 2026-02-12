@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,21 +7,29 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useHealth } from '@/contexts/HealthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   getStepHistory,
   getWeightHistory,
   getRHRHistory,
+  getBodyFatHistory,
+  getHRVHistory,
   MetricDataPoint,
   WorkoutSummary,
+  HEALTH_METRIC_DISPLAY_NAMES,
 } from '@/lib/health';
+import { Goal, GoalType } from '@/lib/types';
+import { getGoals, createGoal, deleteGoal, getGoalCurrentValue, addGoalEntry } from '@/lib/goals';
 import Sparkline from '@/components/Sparkline';
+import GoalCard from '@/components/GoalCard';
+import AddGoalSheet from '@/components/AddGoalSheet';
+import GoalDetailModal from '@/components/GoalDetailModal';
 
 // ─────────────────────────────────────────────────────
 // Metric Card Component
@@ -151,25 +159,104 @@ function NotAvailable() {
 // ─────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { isAvailable, isAuthorized, loading, metrics, connect, refresh, authFailed } = useHealth();
+  const { isAvailable, isAuthorized, loading, metrics, connect, refresh, authFailed, missingMetrics, requestMorePermissions } = useHealth();
+  const { user } = useAuth();
+  const [requestingMore, setRequestingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stepHistory, setStepHistory] = useState<MetricDataPoint[]>([]);
   const [weightHistory, setWeightHistory] = useState<MetricDataPoint[]>([]);
   const [rhrHistory, setRhrHistory] = useState<MetricDataPoint[]>([]);
+  const [bodyFatHistory, setBodyFatHistory] = useState<MetricDataPoint[]>([]);
+  const [hrvHistory, setHrvHistory] = useState<MetricDataPoint[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Goals state
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalCurrentValues, setGoalCurrentValues] = useState<Record<string, number | null>>({});
+  const [showAddGoal, setShowAddGoal] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [loadingGoals, setLoadingGoals] = useState(false);
+
+  const loadGoals = useCallback(async () => {
+    try {
+      setLoadingGoals(true);
+      const fetchedGoals = await getGoals();
+      setGoals(fetchedGoals);
+
+      // Fetch current values for each goal
+      const values: Record<string, number | null> = {};
+      await Promise.all(
+        fetchedGoals.map(async (g) => {
+          try {
+            values[g.id] = await getGoalCurrentValue(g);
+          } catch {
+            values[g.id] = null;
+          }
+        })
+      );
+      setGoalCurrentValues(values);
+    } catch (error) {
+      console.error('Error loading goals:', error);
+    } finally {
+      setLoadingGoals(false);
+    }
+  }, []);
+
+  const handleCreateGoal = async (goalData: {
+    goal_type: GoalType;
+    title: string;
+    target_value: number;
+    unit: string;
+    start_value?: number | null;
+    start_date?: string | null;
+    rate?: number | null;
+    rate_unit?: string | null;
+    data_source: 'apple_health' | 'manual';
+  }) => {
+    if (!user) return;
+    try {
+      await createGoal(user.id, goalData);
+      loadGoals();
+    } catch (error) {
+      console.error('Error creating goal:', error);
+    }
+  };
+
+  const handleDeleteGoal = async (goalId: string) => {
+    try {
+      await deleteGoal(goalId);
+      loadGoals();
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+    }
+  };
+
+  const handleLogEntry = async (goalId: string, value: number, date: string) => {
+    if (!user) return;
+    try {
+      await addGoalEntry(goalId, user.id, value, date);
+      loadGoals();
+    } catch (error) {
+      console.error('Error logging goal entry:', error);
+    }
+  };
 
   const loadHistory = useCallback(async () => {
     if (!isAuthorized) return;
     setLoadingHistory(true);
     try {
-      const [steps, weight, rhr] = await Promise.all([
+      const [steps, weight, rhr, bodyFat, hrv] = await Promise.all([
         getStepHistory(14),
         getWeightHistory(90),
         getRHRHistory(14),
+        getBodyFatHistory(90),
+        getHRVHistory(14),
       ]);
       setStepHistory(steps);
       setWeightHistory(weight);
       setRhrHistory(rhr);
+      setBodyFatHistory(bodyFat);
+      setHrvHistory(hrv);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
@@ -179,16 +266,17 @@ export default function ProgressScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      loadGoals();
       if (isAuthorized) {
         refresh();
         loadHistory();
       }
-    }, [isAuthorized, refresh, loadHistory])
+    }, [isAuthorized, refresh, loadHistory, loadGoals])
   );
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), loadHistory()]);
+    await Promise.all([refresh(), loadHistory(), loadGoals()]);
     setRefreshing(false);
   };
 
@@ -221,6 +309,31 @@ export default function ProgressScreen() {
   const formatRHR = (rhr: number | null) => {
     if (rhr === null) return '—';
     return `${rhr} bpm`;
+  };
+
+  const formatBodyFat = (bf: number | null) => {
+    if (bf === null) return '—';
+    return `${bf}%`;
+  };
+
+  const formatLeanMass = (lm: number | null) => {
+    if (lm === null) return '—';
+    return `${lm} lbs`;
+  };
+
+  const formatBMI = (bmi: number | null) => {
+    if (bmi === null) return '—';
+    return `${bmi}`;
+  };
+
+  const formatMinutes = (min: number | null) => {
+    if (min === null) return '—';
+    return `${min} min`;
+  };
+
+  const formatHRV = (hrv: number | null) => {
+    if (hrv === null) return '—';
+    return `${hrv} ms`;
   };
 
   const workoutCountThisWeek = metrics.workoutsThisWeek.length;
@@ -282,6 +395,81 @@ export default function ProgressScreen() {
           />
         }
       >
+        {/* Missing Permissions Banner */}
+        {missingMetrics.length > 0 && (
+          <View style={styles.missingBanner}>
+            <View style={styles.missingBannerLeft}>
+              <FontAwesome name="exclamation-circle" size={16} color="#E65100" />
+              <View style={styles.missingBannerText}>
+                <Text style={styles.missingBannerTitle}>Some health data is unavailable</Text>
+                <Text style={styles.missingBannerBody}>
+                  Missing: {missingMetrics.map((k) => HEALTH_METRIC_DISPLAY_NAMES[k] ?? k).join(', ')}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.missingBannerButton, requestingMore && { opacity: 0.6 }]}
+              activeOpacity={0.8}
+              disabled={requestingMore}
+              onPress={async () => {
+                setRequestingMore(true);
+                try {
+                  await requestMorePermissions();
+                  loadHistory();
+                } finally {
+                  setRequestingMore(false);
+                }
+              }}
+            >
+              {requestingMore ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.missingBannerButtonText}>Grant Access</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* My Goals Section */}
+        <View style={styles.goalsSectionHeader}>
+          <Text style={styles.goalsSectionLabel}>MY GOALS</Text>
+          <TouchableOpacity
+            style={styles.addGoalButton}
+            onPress={() => setShowAddGoal(true)}
+            activeOpacity={0.7}
+          >
+            <FontAwesome name="plus" size={12} color={theme.colors.primary} />
+            <Text style={styles.addGoalButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+
+        {goals.length > 0 ? (
+          <View style={styles.goalsGrid}>
+            {goals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                currentValue={goalCurrentValues[goal.id] ?? null}
+                onPress={() => setSelectedGoal(goal)}
+              />
+            ))}
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.emptyGoalsCta}
+            onPress={() => setShowAddGoal(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.emptyGoalsIcon}>
+              <FontAwesome name="bullseye" size={24} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.emptyGoalsTitle}>Set Your First Goal</Text>
+            <Text style={styles.emptyGoalsDesc}>
+              Track weight, running PRs, body composition, and more
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Metric Cards Grid */}
         <Text style={styles.sectionLabel}>Today</Text>
         <View style={styles.metricsGrid}>
@@ -293,6 +481,12 @@ export default function ProgressScreen() {
             sparklineData={stepHistory.map((p) => p.value)}
           />
           <MetricCard
+            title="Exercise"
+            value={formatMinutes(metrics.exerciseMinutes)}
+            icon="clock-o"
+            color="#FF5722"
+          />
+          <MetricCard
             title="Weight"
             value={formatWeight(metrics.weight)}
             icon="balance-scale"
@@ -300,11 +494,43 @@ export default function ProgressScreen() {
             sparklineData={weightHistory.map((p) => p.value)}
           />
           <MetricCard
+            title="Body Fat"
+            value={formatBodyFat(metrics.bodyFatPercentage)}
+            icon="pie-chart"
+            color="#9C27B0"
+            sparklineData={bodyFatHistory.map((p) => p.value)}
+          />
+          <MetricCard
+            title="Lean Mass"
+            value={formatLeanMass(metrics.leanBodyMass)}
+            icon="child"
+            color="#00BCD4"
+          />
+          <MetricCard
+            title="BMI"
+            value={formatBMI(metrics.bodyMassIndex)}
+            icon="calculator"
+            color="#607D8B"
+          />
+          <MetricCard
             title="Resting HR"
             value={formatRHR(metrics.restingHeartRate)}
             icon="heartbeat"
             color="#E91E63"
             sparklineData={rhrHistory.map((p) => p.value)}
+          />
+          <MetricCard
+            title="HRV"
+            value={formatHRV(metrics.hrv)}
+            icon="signal"
+            color="#3F51B5"
+            sparklineData={hrvHistory.map((p) => p.value)}
+          />
+          <MetricCard
+            title="Daylight"
+            value={formatMinutes(metrics.timeInDaylight)}
+            icon="sun-o"
+            color="#FFC107"
           />
           <MetricCard
             title="Workouts"
@@ -336,6 +562,27 @@ export default function ProgressScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Add Goal Sheet */}
+      <AddGoalSheet
+        visible={showAddGoal}
+        onClose={() => setShowAddGoal(false)}
+        onSubmit={handleCreateGoal}
+        currentWeight={metrics.weight}
+        currentBodyFat={metrics.bodyFatPercentage}
+        currentBMI={metrics.bodyMassIndex}
+        currentLeanMass={metrics.leanBodyMass}
+        currentRHR={metrics.restingHeartRate}
+      />
+
+      {/* Goal Detail Modal */}
+      <GoalDetailModal
+        visible={!!selectedGoal}
+        goal={selectedGoal}
+        onClose={() => setSelectedGoal(null)}
+        onDelete={handleDeleteGoal}
+        onLogEntry={handleLogEntry}
+      />
     </SafeAreaView>
   );
 }
@@ -369,7 +616,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
+    paddingBottom: 100,
   },
   sectionLabel: {
     fontSize: theme.fontSize.xs,
@@ -510,6 +757,115 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.semibold,
+  },
+
+  // Missing permissions banner
+  missingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF3E0',
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
+  },
+  missingBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    gap: theme.spacing.sm,
+  },
+  missingBannerText: {
+    flex: 1,
+  },
+  missingBannerTitle: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: '#E65100',
+    marginBottom: 2,
+  },
+  missingBannerBody: {
+    fontSize: theme.fontSize.xs,
+    color: '#BF360C',
+    lineHeight: 18,
+  },
+  missingBannerButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.sm,
+    paddingVertical: 6,
+    paddingHorizontal: theme.spacing.sm,
+    marginLeft: theme.spacing.sm,
+    alignSelf: 'center',
+  },
+  missingBannerButtonText: {
+    color: '#fff',
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold,
+  },
+
+  // Goals
+  goalsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  goalsSectionLabel: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textMuted,
+    letterSpacing: 0.5,
+  },
+  addGoalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.primary + '12',
+  },
+  addGoalButtonText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.primary,
+  },
+  goalsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  emptyGoalsCta: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '25',
+    borderStyle: 'dashed',
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+  },
+  emptyGoalsIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  emptyGoalsTitle: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  emptyGoalsDesc: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
 
   // Hint

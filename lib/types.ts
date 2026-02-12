@@ -8,7 +8,17 @@ export interface Profile {
   updated_at: string;
 }
 
-export type HealthMetricType = 'steps' | 'weight' | 'resting_heart_rate' | 'workout_minutes';
+export type HealthMetricType =
+  | 'steps'
+  | 'weight'
+  | 'resting_heart_rate'
+  | 'workout_minutes'
+  | 'body_fat_percentage'
+  | 'lean_body_mass'
+  | 'bmi'
+  | 'exercise_minutes'
+  | 'time_in_daylight'
+  | 'hrv';
 
 export interface Habit {
   id: string;
@@ -28,8 +38,14 @@ export interface Habit {
 export const METRIC_TYPE_LABELS: Record<HealthMetricType, string> = {
   steps: 'Steps',
   weight: 'Weight (lbs)',
-  resting_heart_rate: 'Resting Heart Rate (bpm)',
-  workout_minutes: 'Workout Minutes',
+  resting_heart_rate: 'Resting HR (bpm)',
+  workout_minutes: 'Workout Min',
+  body_fat_percentage: 'Body Fat (%)',
+  lean_body_mass: 'Lean Mass (lbs)',
+  bmi: 'BMI',
+  exercise_minutes: 'Exercise Min',
+  time_in_daylight: 'Daylight (min)',
+  hrv: 'HRV (ms)',
 };
 
 export const METRIC_TYPE_DEFAULTS: Record<HealthMetricType, number> = {
@@ -37,6 +53,12 @@ export const METRIC_TYPE_DEFAULTS: Record<HealthMetricType, number> = {
   weight: 0,
   resting_heart_rate: 0,
   workout_minutes: 30,
+  body_fat_percentage: 0,
+  lean_body_mass: 0,
+  bmi: 0,
+  exercise_minutes: 30,
+  time_in_daylight: 20,
+  hrv: 0,
 };
 
 export interface HabitCompletion {
@@ -54,6 +76,84 @@ export interface HabitSnooze {
   snoozed_date: string; // YYYY-MM-DD
   created_at: string;
 }
+
+// ──────────────────────────────────────────────
+// Goals
+// ──────────────────────────────────────────────
+
+export type GoalType =
+  | 'weight'
+  | 'running_pr'
+  | 'steps'
+  | 'resting_hr'
+  | 'weekly_workouts'
+  | 'body_fat'
+  | 'bmi'
+  | 'lean_body_mass'
+  | 'custom';
+
+export interface Goal {
+  id: string;
+  user_id: string;
+  goal_type: GoalType;
+  title: string;
+  target_value: number;
+  unit: string;
+  start_value: number | null;
+  start_date: string; // ISO timestamptz
+  target_date: string | null; // ISO timestamptz
+  rate: number | null;
+  rate_unit: string | null;
+  data_source: 'apple_health' | 'manual';
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoalEntry {
+  id: string;
+  goal_id: string;
+  user_id: string;
+  value: number;
+  recorded_date: string; // YYYY-MM-DD
+  created_at: string;
+}
+
+export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
+  weight: 'Target Weight',
+  running_pr: 'Running PR',
+  steps: 'Daily Steps',
+  resting_hr: 'Resting Heart Rate',
+  weekly_workouts: 'Weekly Workouts',
+  body_fat: 'Body Fat %',
+  bmi: 'BMI',
+  lean_body_mass: 'Lean Body Mass',
+  custom: 'Custom Goal',
+};
+
+export const GOAL_TYPE_ICONS: Record<GoalType, string> = {
+  weight: 'balance-scale',
+  running_pr: 'clock-o',
+  steps: 'road',
+  resting_hr: 'heartbeat',
+  weekly_workouts: 'bolt',
+  body_fat: 'pie-chart',
+  bmi: 'calculator',
+  lean_body_mass: 'child',
+  custom: 'star',
+};
+
+export const GOAL_TYPE_COLORS: Record<GoalType, string> = {
+  weight: '#2196F3',
+  running_pr: '#FF5722',
+  steps: '#4CAF50',
+  resting_hr: '#E91E63',
+  weekly_workouts: '#F39C12',
+  body_fat: '#9C27B0',
+  bmi: '#607D8B',
+  lean_body_mass: '#00BCD4',
+  custom: '#6C63FF',
+};
 
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 

@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
+    paddingBottom: 100,
   },
   sectionLabel: {
     fontSize: theme.fontSize.xs,
@@ -508,6 +508,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.xl,
+    paddingBottom: 100,
   },
   emptyEmoji: {
     fontSize: 56,

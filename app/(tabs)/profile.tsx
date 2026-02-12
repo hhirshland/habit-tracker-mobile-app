@@ -9,22 +9,33 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  Keyboard,
-  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHealth } from '@/contexts/HealthContext';
+import { HEALTH_METRIC_DISPLAY_NAMES } from '@/lib/health';
 import { supabase } from '@/lib/supabase';
 
 export default function ProfileScreen() {
   const { user, profile, signOut, refreshProfile } = useAuth();
+  const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+
+  const handleConnectHealth = async () => {
+    setConnecting(true);
+    try {
+      await connect();
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   useEffect(() => {
     if (profile) {
@@ -127,8 +138,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Profile</Text>
         </View>
@@ -188,6 +198,94 @@ export default function ProfileScreen() {
 
         <View style={styles.divider} />
 
+        {/* Apple Health Connection */}
+        {healthAvailable && (
+          <View style={styles.healthSection}>
+            <Text style={styles.sectionLabel}>Integrations</Text>
+            <View style={styles.healthCard}>
+              <View style={styles.healthCardLeft}>
+                <View style={[
+                  styles.healthIconContainer,
+                  { backgroundColor: healthAuthorized ? theme.colors.successLight : theme.colors.borderLight },
+                ]}>
+                  <FontAwesome
+                    name="heartbeat"
+                    size={18}
+                    color={healthAuthorized ? theme.colors.success : theme.colors.textMuted}
+                  />
+                </View>
+                <View style={styles.healthInfo}>
+                  <Text style={styles.healthTitle}>Apple Health</Text>
+                  <Text style={styles.healthStatus}>
+                    {healthAuthorized ? 'Connected' : 'Not connected'}
+                  </Text>
+                </View>
+              </View>
+              {healthAuthorized ? (
+                <View style={styles.connectedBadge}>
+                  <FontAwesome name="check-circle" size={16} color={theme.colors.success} />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.connectButton, connecting && { opacity: 0.6 }]}
+                  onPress={handleConnectHealth}
+                  activeOpacity={0.8}
+                  disabled={connecting}
+                >
+                  {connecting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.connectButtonText}>Connect</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+            {authFailed && !healthAuthorized && (
+              <View style={styles.authFailedBox}>
+                <Text style={styles.authFailedText}>
+                  Unable to access Health data. Please open{' '}
+                  <Text style={{ fontWeight: '700' }}>Settings → Health → Thrive</Text> and enable
+                  the data types you'd like to share, then tap Connect again.
+                </Text>
+              </View>
+            )}
+            {healthAuthorized && missingMetrics.length > 0 && (
+              <View style={styles.missingPermissionsCard}>
+                <View style={styles.missingPermissionsHeader}>
+                  <FontAwesome name="exclamation-circle" size={14} color="#E65100" />
+                  <Text style={styles.missingPermissionsTitle}>
+                    {missingMetrics.length} metric{missingMetrics.length > 1 ? 's' : ''} unavailable
+                  </Text>
+                </View>
+                <Text style={styles.missingPermissionsBody}>
+                  {missingMetrics.map((k) => HEALTH_METRIC_DISPLAY_NAMES[k] ?? k).join(', ')}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.grantAccessButton, connecting && { opacity: 0.6 }]}
+                  activeOpacity={0.8}
+                  disabled={connecting}
+                  onPress={async () => {
+                    setConnecting(true);
+                    try {
+                      await requestMorePermissions();
+                    } finally {
+                      setConnecting(false);
+                    }
+                  }}
+                >
+                  {connecting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.grantAccessButtonText}>Grant Access</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        <View style={styles.divider} />
+
         <TouchableOpacity
           style={styles.signOutButton}
           onPress={handleSignOut}
@@ -197,7 +295,6 @@ export default function ProfileScreen() {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
-      </Pressable>
     </SafeAreaView>
   );
 }
@@ -306,6 +403,9 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginVertical: theme.spacing.xl,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -322,5 +422,113 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.danger,
+  },
+  // Apple Health section
+  healthSection: {
+    paddingHorizontal: theme.spacing.lg,
+  },
+  sectionLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: theme.spacing.sm,
+  },
+  healthCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+  },
+  healthCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  healthIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthInfo: {
+    gap: 2,
+  },
+  healthTitle: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textPrimary,
+  },
+  healthStatus: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+  },
+  connectedBadge: {
+    paddingHorizontal: theme.spacing.sm,
+  },
+  connectButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.sm,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  connectButtonText: {
+    color: '#fff',
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  authFailedBox: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+  },
+  authFailedText: {
+    fontSize: theme.fontSize.sm,
+    color: '#E65100',
+    lineHeight: 20,
+  },
+  missingPermissionsCard: {
+    backgroundColor: '#FFF8E1',
+    borderWidth: 1,
+    borderColor: '#FFE082',
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+  },
+  missingPermissionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
+  },
+  missingPermissionsTitle: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: '#E65100',
+  },
+  missingPermissionsBody: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: theme.spacing.xs,
+  },
+  grantAccessButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.sm,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  grantAccessButtonText: {
+    color: '#fff',
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
   },
 });

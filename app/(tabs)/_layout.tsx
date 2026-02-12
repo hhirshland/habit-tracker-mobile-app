@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useAuth } from '../../contexts/AuthContext';
 
 const TAB_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
   index: 'home',
@@ -20,6 +22,7 @@ const TAB_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
 
   return (
     <View
@@ -67,12 +70,22 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               style={styles.tabItem}
             >
               {isFocused && <View style={styles.activeHighlight} />}
-              <FontAwesome
-                name={iconName}
-                size={20}
-                color={color}
-                style={{ zIndex: 1 }}
-              />
+              {route.name === 'profile' && profile?.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={[
+                    styles.profilePic,
+                    { borderColor: isFocused ? '#1A1A1A' : '#B0B0B0' },
+                  ]}
+                />
+              ) : (
+                <FontAwesome
+                  name={iconName}
+                  size={24}
+                  color={color}
+                  style={{ zIndex: 1 }}
+                />
+              )}
               <Text
                 style={[
                   styles.tabLabel,
@@ -135,12 +148,19 @@ const styles = StyleSheet.create({
   },
   activeHighlight: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 4,
-    right: 4,
+    top: -2,
+    bottom: -2,
+    left: 1,
+    right: 1,
     backgroundColor: '#F0F0F0',
     borderRadius: 24,
+  },
+  profilePic: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    zIndex: 1,
   },
   tabLabel: {
     fontSize: 10,
