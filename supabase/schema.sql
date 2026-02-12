@@ -73,6 +73,9 @@ create table public.habits (
   frequency_per_week integer not null default 7 check (frequency_per_week between 1 and 7),
   specific_days jsonb, -- array of day numbers: [0,1,2,3,4,5,6] where 0=Sun. null = any days
   is_active boolean default true not null,
+  metric_type text, -- e.g. 'steps', 'weight', 'resting_heart_rate', 'workout_minutes'
+  metric_threshold numeric, -- e.g. 10000 for 10k steps
+  auto_complete boolean default false not null,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
@@ -100,6 +103,16 @@ create policy "Users can delete their own habits"
 create trigger habits_updated_at
   before update on public.habits
   for each row execute procedure public.update_updated_at();
+
+-- ============================================
+-- HEALTH METRIC LINKING (for auto-completion)
+-- ============================================
+-- Migration: Add metric linking columns to habits
+-- Run this ALTER if the table already exists:
+--   alter table public.habits add column metric_type text;
+--   alter table public.habits add column metric_threshold numeric;
+--   alter table public.habits add column auto_complete boolean default false not null;
+-- Or include in the CREATE TABLE above for fresh installs.
 
 -- ============================================
 -- HABIT COMPLETIONS TABLE

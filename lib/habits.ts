@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
-import { Habit, HabitCompletion, HabitSnooze } from './types';
+import { Habit, HabitCompletion, HabitSnooze, HealthMetricType } from './types';
+import { getCurrentMetricValue, isHealthKitAvailable } from './health';
 
 // Get all active habits for the current user
 export async function getHabits(): Promise<Habit[]> {
@@ -115,6 +116,9 @@ export async function createHabit(
     description?: string;
     frequency_per_week: number;
     specific_days: number[] | null;
+    metric_type?: HealthMetricType | null;
+    metric_threshold?: number | null;
+    auto_complete?: boolean;
   }
 ): Promise<Habit> {
   const { data, error } = await supabase
@@ -125,6 +129,9 @@ export async function createHabit(
       description: habit.description || null,
       frequency_per_week: habit.frequency_per_week,
       specific_days: habit.specific_days,
+      metric_type: habit.metric_type || null,
+      metric_threshold: habit.metric_threshold || null,
+      auto_complete: habit.auto_complete || false,
     })
     .select()
     .single();
@@ -142,6 +149,9 @@ export async function updateHabit(
     frequency_per_week?: number;
     specific_days?: number[] | null;
     is_active?: boolean;
+    metric_type?: HealthMetricType | null;
+    metric_threshold?: number | null;
+    auto_complete?: boolean;
   }
 ): Promise<Habit> {
   const { data, error } = await supabase
@@ -284,6 +294,65 @@ export function formatDate(date: Date): string {
 // Helper: get today's date as YYYY-MM-DD in the user's local timezone
 export function getTodayDate(): string {
   return formatDate(new Date());
+}
+
+// ──────────────────────────────────────────────
+// Auto-completion from Health Data
+// ──────────────────────────────────────────────
+
+/**
+ * Check all auto-complete habits for today and insert completions
+ * for any that meet their health metric thresholds.
+ * Returns the list of habit IDs that were auto-completed.
+ */
+export async function checkAutoCompletions(
+  userId: string,
+  habits: Habit[],
+  existingCompletionIds: Set<string>,
+  date: string
+): Promise<string[]> {
+  if (!isHealthKitAvailable()) return [];
+
+  const autoCompleteHabits = habits.filter(
+    (h) =>
+      h.auto_complete &&
+      h.metric_type &&
+      h.metric_threshold != null &&
+      !existingCompletionIds.has(h.id) // not already completed
+  );
+
+  if (autoCompleteHabits.length === 0) return [];
+
+  const autoCompletedIds: string[] = [];
+
+  for (const habit of autoCompleteHabits) {
+    try {
+      const currentValue = await getCurrentMetricValue(habit.metric_type!);
+      if (currentValue === null) continue;
+
+      const meetsThreshold = currentValue >= habit.metric_threshold!;
+
+      if (meetsThreshold) {
+        // Insert completion record
+        const { error } = await supabase.from('habit_completions').insert({
+          habit_id: habit.id,
+          user_id: userId,
+          completed_date: date,
+        });
+
+        // Ignore unique constraint violations (already completed)
+        if (error && !error.message.includes('duplicate')) {
+          console.error(`Error auto-completing habit ${habit.name}:`, error);
+        } else if (!error) {
+          autoCompletedIds.push(habit.id);
+        }
+      }
+    } catch (error) {
+      console.error(`Error checking metric for habit ${habit.name}:`, error);
+    }
+  }
+
+  return autoCompletedIds;
 }
 
 // Helper: get the start and end of the current week (Sunday to Saturday) in local timezone

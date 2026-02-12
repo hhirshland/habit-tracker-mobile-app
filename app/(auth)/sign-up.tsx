@@ -16,6 +16,8 @@ import { Link } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ThriveLogo from '@/components/ThriveLogo';
+
 
 export default function SignUpScreen() {
   const { signUp } = useAuth();
@@ -51,7 +53,10 @@ export default function SignUpScreen() {
         style={styles.keyboardView}
       >
         <View style={styles.header}>
-          <Text style={styles.emoji}>🚀</Text>
+          <View style={styles.wordmarkRow}>
+            <ThriveLogo size={40} style={{ marginRight: 10 }} />
+            <Text style={styles.wordmark}>Thrive</Text>
+          </View>
           <Text style={styles.title}>Get Started</Text>
           <Text style={styles.subtitle}>Create an account to start building better habits</Text>
         </View>
@@ -139,9 +144,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.xl,
   },
-  emoji: {
-    fontSize: 48,
+  wordmarkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.md,
+  },
+  wordmark: {
+    fontSize: theme.fontSize.xxxl,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.primary,
+    letterSpacing: -0.5,
   },
   title: {
     fontSize: theme.fontSize.xxxl,

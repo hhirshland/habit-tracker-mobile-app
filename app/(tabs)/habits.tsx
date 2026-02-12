@@ -16,7 +16,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { getHabits, createHabit, updateHabit, deleteHabit } from '@/lib/habits';
-import { Habit } from '@/lib/types';
+import { Habit, HealthMetricType } from '@/lib/types';
 import HabitItem from '@/components/HabitItem';
 import HabitForm from '@/components/HabitForm';
 
@@ -51,6 +51,9 @@ export default function HabitsScreen() {
     description: string;
     frequency_per_week: number;
     specific_days: number[] | null;
+    metric_type: HealthMetricType | null;
+    metric_threshold: number | null;
+    auto_complete: boolean;
   }) => {
     if (!user) return;
     try {
@@ -59,6 +62,9 @@ export default function HabitsScreen() {
         description: data.description || undefined,
         frequency_per_week: data.frequency_per_week,
         specific_days: data.specific_days,
+        metric_type: data.metric_type,
+        metric_threshold: data.metric_threshold,
+        auto_complete: data.auto_complete,
       });
       setShowForm(false);
       await loadHabits();
@@ -73,6 +79,9 @@ export default function HabitsScreen() {
     description: string;
     frequency_per_week: number;
     specific_days: number[] | null;
+    metric_type: HealthMetricType | null;
+    metric_threshold: number | null;
+    auto_complete: boolean;
   }) => {
     if (!editingHabit) return;
     try {
@@ -81,6 +90,9 @@ export default function HabitsScreen() {
         description: data.description || null,
         frequency_per_week: data.frequency_per_week,
         specific_days: data.specific_days,
+        metric_type: data.metric_type,
+        metric_threshold: data.metric_threshold,
+        auto_complete: data.auto_complete,
       });
       setEditingHabit(null);
       await loadHabits();
@@ -230,6 +242,9 @@ export default function HabitsScreen() {
                   description: editingHabit.description || '',
                   frequency_per_week: editingHabit.frequency_per_week,
                   specific_days: editingHabit.specific_days,
+                  metric_type: editingHabit.metric_type,
+                  metric_threshold: editingHabit.metric_threshold,
+                  auto_complete: editingHabit.auto_complete,
                 }}
                 onSubmit={handleUpdate}
                 onCancel={() => setEditingHabit(null)}

@@ -26,13 +26,34 @@ When the user asks to create "variants," "alternatives," "versions," "AB test," 
 
 ### Variant Switcher
 
-- Always generate a `{ComponentName}VariantSwitcher.tsx` wrapper component alongside the variants.
-- The switcher should:
-  - Accept the same props as the variants and forward them.
-  - Render a **floating toggle bar** (positioned at the bottom or top of the component, visually distinct, high z-index) with buttons labeled A / B / C to switch between variants in real time.
-  - Display which variant is currently active (e.g., "Viewing: Variant A").
-  - Default to Variant A on mount.
-- The toggle must be easy to remove later — a single component swap back to the chosen variant.
+- Always generate a `{ComponentName}VariantSwitcher.tsx` file alongside the variants containing **two exports**:
+  1. **Default export** — a drop-in component that accepts the same props as the variants, reads the active variant from shared module-level state, and renders the correct variant. Place this inline wherever the component appears.
+  2. **Named export `VariantSwitcherBar`** — a floating bottom bar that controls which variant is active. Place this once per screen, as the last child inside the screen's root `SafeAreaView` / `View`.
+- The two exports share state via a **module-level pub/sub pattern** (no React Context or Provider needed):
+  - A module-scoped `_activeVariant` variable and `Set<Function>` listener set.
+  - A `useActiveVariant()` hook that subscribes/unsubscribes on mount/unmount.
+  - A `setActiveVariant()` function that updates the variable and notifies all listeners.
+- Default to Variant A on mount.
+- The switcher must be easy to remove later — swap the default import back to the chosen variant and delete the `VariantSwitcherBar` line.
+
+#### Switcher Bar Visual Spec (always follow this exactly)
+
+The `VariantSwitcherBar` is a dark floating pill that hovers above the tab bar / bottom of the screen. It must match this design every time:
+
+- **Position**: `position: 'absolute', bottom: 84, left: 12, right: 12, zIndex: 9999` (floats above tab bar with horizontal margin)
+- **Shape**: `borderRadius: 16` — a rounded pill / card
+- **Background**: dark charcoal `#1F1D2B`
+- **Shadow**: `shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 10`
+- **Padding**: `paddingHorizontal: 16, paddingVertical: 12`
+- **Layout**: single horizontal row with `justifyContent: 'space-between', alignItems: 'center'`
+  - **Left side**: label text
+  - **Right side**: row of circular buttons
+- **Label**: `"Variant {letter}: {name}"` in `fontSize: 14, fontWeight: '600', color: '#FFFFFF'`
+- **Buttons**: one per variant (A, B, C, …), displayed in a row with `gap: 8`
+  - Size: `width: 36, height: 36, borderRadius: 18` (perfect circle)
+  - Inactive: `backgroundColor: '#2E2C3E'`, text `color: '#6B7280'`
+  - Active: `backgroundColor: '#6C63FF'`, text `color: '#FFFFFF'`
+  - Text: `fontSize: 14, fontWeight: '700'`
 
 ### Quality Standards
 

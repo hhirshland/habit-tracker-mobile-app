@@ -18,6 +18,7 @@ import {
   getCompletionsForWeek,
   getCompletionsForDateRange,
   getSnoozesForDate,
+  getSnoozesForDateRange,
   toggleHabitCompletion,
   snoozeHabit,
   unsnoozeHabit,
@@ -26,15 +27,19 @@ import {
   formatDate,
   isHabitRequiredToday,
   getStreak,
+  checkAutoCompletions,
 } from '@/lib/habits';
 import { Habit, HabitCompletion, HabitSnooze, DayOfWeek } from '@/lib/types';
+import { useHealth } from '@/contexts/HealthContext';
 import PriorityItem from '@/components/PriorityItemVariantA';
 import CalendarStrip from '@/components/CalendarStrip';
+import ThriveLogo from '@/components/ThriveLogo';
 
 const CALENDAR_BUFFER = 30; // days in each direction
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { isAuthorized: healthAuthorized } = useHealth();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [completions, setCompletions] = useState<HabitCompletion[]>([]);
   const [weekCompletions, setWeekCompletions] = useState<HabitCompletion[]>([]);
@@ -51,6 +56,8 @@ export default function HomeScreen() {
 
   // All completions for the calendar strip range
   const [calendarCompletions, setCalendarCompletions] = useState<HabitCompletion[]>([]);
+  // All snoozes for the calendar strip range
+  const [calendarSnoozes, setCalendarSnoozes] = useState<HabitSnooze[]>([]);
 
   // Derive the selected date's dayOfWeek
   const selectedDayOfWeek = useMemo(() => {
@@ -89,7 +96,7 @@ export default function HomeScreen() {
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      const [allHabits, dateCompletions, weekComps, dateSnoozes, streakData, calComps] =
+      const [allHabits, dateCompletions, weekComps, dateSnoozes, streakData, calComps, calSnoozes] =
         await Promise.all([
           getHabits(),
           getCompletionsForDate(selectedDate),
@@ -97,6 +104,7 @@ export default function HomeScreen() {
           getSnoozesForDate(selectedDate),
           getStreak(),
           getCompletionsForDateRange(calendarRange.start, calendarRange.end),
+          getSnoozesForDateRange(calendarRange.start, calendarRange.end),
         ]);
       setHabits(allHabits);
       setCompletions(dateCompletions);
@@ -104,13 +112,36 @@ export default function HomeScreen() {
       setSnoozes(dateSnoozes);
       setStreak(streakData);
       setCalendarCompletions(calComps);
+      setCalendarSnoozes(calSnoozes);
+
+      // Auto-complete habits from health data (only for today)
+      if (healthAuthorized && selectedDate === getTodayDate()) {
+        const completedIds = new Set(dateCompletions.map((c) => c.habit_id));
+        const autoCompleted = await checkAutoCompletions(
+          user.id,
+          allHabits,
+          completedIds,
+          selectedDate
+        );
+        // Reload completions if any were auto-completed
+        if (autoCompleted.length > 0) {
+          const [updatedCompletions, updatedStreak, updatedCalComps] = await Promise.all([
+            getCompletionsForDate(selectedDate),
+            getStreak(),
+            getCompletionsForDateRange(calendarRange.start, calendarRange.end),
+          ]);
+          setCompletions(updatedCompletions);
+          setStreak(updatedStreak);
+          setCalendarCompletions(updatedCalComps);
+        }
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, selectedDate, selectedWeekRange, calendarRange]);
+  }, [user, selectedDate, selectedWeekRange, calendarRange, healthAuthorized]);
 
   useFocusEffect(
     useCallback(() => {
@@ -161,7 +192,7 @@ export default function HomeScreen() {
     const progress: Record<string, { completed: number; total: number }> = {};
 
     // For each day in the calendar range, figure out how many habits were scheduled
-    // and how many were completed
+    // and how many were completed (excluding snoozed habits from the count)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -171,23 +202,31 @@ export default function HomeScreen() {
       const dateStr = formatDate(d);
       const dow = d.getDay() as DayOfWeek;
 
-      const dayHabits = getHabitsForDay(habits, dow);
+      const dayHabits = getHabitsForDay(habits, dow)
+        .filter((h) => h.created_at.slice(0, 10) <= dateStr);
+      const daySnoozedIds = new Set(
+        calendarSnoozes
+          .filter((s) => s.snoozed_date === dateStr)
+          .map((s) => s.habit_id)
+      );
+      const unsnoozedHabits = dayHabits.filter((h) => !daySnoozedIds.has(h.id));
       const dayCompletions = calendarCompletions.filter(
         (c) => c.completed_date === dateStr
       );
       const completedHabitIds = new Set(dayCompletions.map((c) => c.habit_id));
-      const completedCount = dayHabits.filter((h) => completedHabitIds.has(h.id)).length;
+      const completedCount = unsnoozedHabits.filter((h) => completedHabitIds.has(h.id)).length;
 
       progress[dateStr] = {
         completed: completedCount,
-        total: dayHabits.length,
+        total: unsnoozedHabits.length,
       };
     }
 
     return progress;
-  }, [habits, calendarCompletions]);
+  }, [habits, calendarCompletions, calendarSnoozes]);
 
-  const selectedDayHabits = getHabitsForDay(habits, selectedDayOfWeek);
+  const selectedDayHabits = getHabitsForDay(habits, selectedDayOfWeek)
+    .filter((h) => h.created_at.slice(0, 10) <= selectedDate);
   const completedIds = new Set(completions.map((c) => c.habit_id));
   const snoozedIds = new Set(snoozes.map((s) => s.habit_id));
 
@@ -308,7 +347,10 @@ export default function HomeScreen() {
       {/* Top row: wordmark + streak badge */}
       <View style={styles.topRow}>
         <View style={styles.wordmarkContainer}>
-          <Text style={styles.wordmark}>Thrive</Text>
+          <View style={styles.wordmarkRow}>
+            <ThriveLogo size={28} style={{ marginRight: 8 }} />
+            <Text style={styles.wordmark}>Thrive</Text>
+          </View>
           <Text style={styles.wordmarkSubtext}>Win your day</Text>
         </View>
         <View
@@ -398,6 +440,10 @@ const styles = StyleSheet.create({
   },
   wordmarkContainer: {
     flexDirection: 'column',
+  },
+  wordmarkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   wordmark: {
     fontSize: theme.fontSize.xxl,

@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { HealthProvider } from '@/contexts/HealthContext';
 import { theme } from '@/lib/theme';
 
 export {
@@ -42,7 +43,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <RootLayoutNav />
+        <HealthProvider>
+          <RootLayoutNav />
+        </HealthProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );

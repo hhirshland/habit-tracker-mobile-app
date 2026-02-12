@@ -12,13 +12,23 @@ import {
 } from 'react-native';
 
 import { theme } from '@/lib/theme';
-import { DAY_LABELS, DayOfWeek } from '@/lib/types';
+import {
+  DAY_LABELS,
+  DayOfWeek,
+  HealthMetricType,
+  METRIC_TYPE_LABELS,
+  METRIC_TYPE_DEFAULTS,
+} from '@/lib/types';
+import { useHealth } from '@/contexts/HealthContext';
 
 interface HabitFormData {
   name: string;
   description: string;
   frequency_per_week: number;
   specific_days: number[] | null;
+  metric_type: HealthMetricType | null;
+  metric_threshold: number | null;
+  auto_complete: boolean;
 }
 
 interface HabitFormProps {
@@ -34,6 +44,8 @@ export default function HabitForm({
   onCancel,
   submitLabel = 'Save Habit',
 }: HabitFormProps) {
+  const { isAvailable: healthAvailable, isAuthorized: healthAuthorized } = useHealth();
+
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [frequencyPerWeek, setFrequencyPerWeek] = useState(initialData?.frequency_per_week || 7);
@@ -41,6 +53,15 @@ export default function HabitForm({
     initialData?.specific_days != null && initialData.specific_days.length > 0
   );
   const [specificDays, setSpecificDays] = useState<number[]>(initialData?.specific_days || []);
+
+  // Health metric linking state
+  const [linkMetric, setLinkMetric] = useState(initialData?.auto_complete || false);
+  const [metricType, setMetricType] = useState<HealthMetricType | null>(
+    initialData?.metric_type || null
+  );
+  const [metricThreshold, setMetricThreshold] = useState(
+    initialData?.metric_threshold?.toString() || ''
+  );
 
   const toggleDay = (day: number) => {
     setSpecificDays((prev) =>
@@ -59,6 +80,9 @@ export default function HabitForm({
       description: description.trim(),
       frequency_per_week: freq,
       specific_days: days,
+      metric_type: linkMetric ? metricType : null,
+      metric_threshold: linkMetric && metricThreshold ? parseFloat(metricThreshold) : null,
+      auto_complete: linkMetric,
     });
   };
 
@@ -165,6 +189,82 @@ export default function HabitForm({
             ))}
           </View>
         </View>
+      )}
+
+      {/* Health Metric Linking (only show if Apple Health is connected) */}
+      {healthAvailable && healthAuthorized && (
+        <>
+          <View style={styles.field}>
+            <View style={styles.switchRow}>
+              <View style={styles.switchLabelContainer}>
+                <Text style={styles.label}>Link to Health Metric</Text>
+                <Text style={styles.helperText}>
+                  Auto-complete when a health target is met
+                </Text>
+              </View>
+              <Switch
+                value={linkMetric}
+                onValueChange={(val) => {
+                  setLinkMetric(val);
+                  if (val && !metricType) {
+                    setMetricType('steps');
+                    setMetricThreshold(METRIC_TYPE_DEFAULTS['steps'].toString());
+                  }
+                }}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
+                thumbColor={linkMetric ? theme.colors.primary : '#f4f3f4'}
+              />
+            </View>
+          </View>
+
+          {linkMetric && (
+            <>
+              <View style={styles.field}>
+                <Text style={styles.label}>Metric</Text>
+                <View style={styles.metricRow}>
+                  {(Object.keys(METRIC_TYPE_LABELS) as HealthMetricType[]).map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.metricButton,
+                        metricType === type && styles.metricButtonActive,
+                      ]}
+                      onPress={() => {
+                        setMetricType(type);
+                        setMetricThreshold(METRIC_TYPE_DEFAULTS[type].toString());
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.metricButtonText,
+                          metricType === type && styles.metricButtonTextActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {METRIC_TYPE_LABELS[type].split(' ')[0]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>
+                  Target ({metricType ? METRIC_TYPE_LABELS[metricType] : ''})
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., 10000"
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={metricThreshold}
+                  onChangeText={setMetricThreshold}
+                  keyboardType="numeric"
+                />
+              </View>
+            </>
+          )}
+        </>
       )}
 
       <View style={styles.actions}>
@@ -318,5 +418,30 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.medium,
+  },
+  metricRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  metricButton: {
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  metricButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  metricButtonText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+  },
+  metricButtonTextActive: {
+    color: '#fff',
   },
 });

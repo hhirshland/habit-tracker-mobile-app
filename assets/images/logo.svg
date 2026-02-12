@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Thrive Logo: Three ascending capsule shapes representing growth and progress -->
+  <rect x="88" y="316" width="88" height="120" rx="44" fill="#AAA7FF"/>
+  <rect x="212" y="196" width="88" height="240" rx="44" fill="#8B85FF"/>
+  <rect x="336" y="76" width="88" height="360" rx="44" fill="#6C63FF"/>
+</svg>

@@ -35,7 +35,12 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      ["@kingstinct/react-native-healthkit", {
+        "NSHealthShareUsageDescription": "Thrive reads your health data to track progress and auto-complete habits.",
+        "NSHealthUpdateUsageDescription": false,
+        "background": false
+      }]
     ],
     "experiments": {
       "typedRoutes": true

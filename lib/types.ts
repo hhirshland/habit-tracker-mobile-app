@@ -8,6 +8,8 @@ export interface Profile {
   updated_at: string;
 }
 
+export type HealthMetricType = 'steps' | 'weight' | 'resting_heart_rate' | 'workout_minutes';
+
 export interface Habit {
   id: string;
   user_id: string;
@@ -16,9 +18,26 @@ export interface Habit {
   frequency_per_week: number;
   specific_days: number[] | null; // 0=Sun, 1=Mon, ..., 6=Sat. null means "any days"
   is_active: boolean;
+  metric_type: HealthMetricType | null; // linked health metric
+  metric_threshold: number | null; // threshold to auto-complete
+  auto_complete: boolean; // whether to auto-complete from health data
   created_at: string;
   updated_at: string;
 }
+
+export const METRIC_TYPE_LABELS: Record<HealthMetricType, string> = {
+  steps: 'Steps',
+  weight: 'Weight (lbs)',
+  resting_heart_rate: 'Resting Heart Rate (bpm)',
+  workout_minutes: 'Workout Minutes',
+};
+
+export const METRIC_TYPE_DEFAULTS: Record<HealthMetricType, number> = {
+  steps: 10000,
+  weight: 0,
+  resting_heart_rate: 0,
+  workout_minutes: 30,
+};
 
 export interface HabitCompletion {
   id: string;
