@@ -1,0 +1,51 @@
+---
+description: Multi-variate design exploration workflow. Use when the user asks to create "variants," "alternatives," "versions," "AB test," "comparison," or "design exploration" of a component, feature, or page section.
+alwaysApply: false
+---
+
+# Variant Testing Workflow
+
+## When to Apply
+
+When the user asks to create "variants," "alternatives," "versions," "AB test," "comparison," or "design exploration" of a component or page section. Default to **3 variants** unless the user specifies otherwise.
+
+## Instructions
+
+### Before Building
+
+1. If the user provides design directions for each variant, follow them.
+2. If the user does **not** specify directions, propose 3 distinct design strategies before writing code (e.g., minimal/clean, social-proof-heavy, interactive/gamified). Wait for confirmation or adjustment before proceeding.
+3. For each variant, state a one-line **design thesis** explaining its core idea.
+
+### Generating Variants
+
+- Create separate files named `{ComponentName}VariantA.tsx`, `{ComponentName}VariantB.tsx`, `{ComponentName}VariantC.tsx` in the same directory as the original component (or a `variants/` subdirectory if preferred).
+- Every variant **must** export a component that accepts the exact same props interface as the original, so they are drop-in replaceable.
+- Each variant should take a **meaningfully different** approach — not just tweaked spacing, colors, or minor copy changes. Aim for distinct layout, interaction pattern, information hierarchy, or user flow.
+- If the original component doesn't exist yet, define a shared props interface in a separate `{ComponentName}.types.ts` file and import it in each variant.
+
+### Variant Switcher
+
+- Always generate a `{ComponentName}VariantSwitcher.tsx` wrapper component alongside the variants.
+- The switcher should:
+  - Accept the same props as the variants and forward them.
+  - Render a **floating toggle bar** (positioned at the bottom or top of the component, visually distinct, high z-index) with buttons labeled A / B / C to switch between variants in real time.
+  - Display which variant is currently active (e.g., "Viewing: Variant A").
+  - Default to Variant A on mount.
+- The toggle must be easy to remove later — a single component swap back to the chosen variant.
+
+### Quality Standards
+
+- Maintain the project's existing design system (colors, fonts, spacing, component library).
+- Every variant must be **fully functional** — no placeholder buttons or stubbed interactions.
+- Every variant must be **fully responsive** across mobile screen sizes.
+- Include meaningfully different copy/headlines where applicable, not just layout changes.
+- Preserve all original functionality and data flow.
+
+### Output Format
+
+After generating the variants, provide:
+
+1. A **table summarizing key differences** across the variants (layout, interaction model, copy strategy, unique elements).
+2. Guidance on how to swap the `VariantSwitcher` into the existing app to start testing.
+3. Instructions for removing the switcher once a winner is chosen.

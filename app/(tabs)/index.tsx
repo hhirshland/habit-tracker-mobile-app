@@ -1,0 +1,482 @@
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
+import { theme } from '@/lib/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  getHabits,
+  getHabitsForDay,
+  getCompletionsForDate,
+  getCompletionsForWeek,
+  getCompletionsForDateRange,
+  getSnoozesForDate,
+  toggleHabitCompletion,
+  snoozeHabit,
+  unsnoozeHabit,
+  getTodayDate,
+  getCurrentWeekRange,
+  formatDate,
+  isHabitRequiredToday,
+  getStreak,
+} from '@/lib/habits';
+import { Habit, HabitCompletion, HabitSnooze, DayOfWeek } from '@/lib/types';
+import PriorityItem from '@/components/PriorityItemVariantA';
+import CalendarStrip from '@/components/CalendarStrip';
+
+const CALENDAR_BUFFER = 30; // days in each direction
+
+export default function HomeScreen() {
+  const { user } = useAuth();
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [completions, setCompletions] = useState<HabitCompletion[]>([]);
+  const [weekCompletions, setWeekCompletions] = useState<HabitCompletion[]>([]);
+  const [snoozes, setSnoozes] = useState<HabitSnooze[]>([]);
+  const [streak, setStreak] = useState<{ streakCount: number; earnedToday: boolean }>({
+    streakCount: 0,
+    earnedToday: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Selected date state
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+
+  // All completions for the calendar strip range
+  const [calendarCompletions, setCalendarCompletions] = useState<HabitCompletion[]>([]);
+
+  // Derive the selected date's dayOfWeek
+  const selectedDayOfWeek = useMemo(() => {
+    const d = new Date(selectedDate + 'T12:00:00');
+    return d.getDay() as DayOfWeek;
+  }, [selectedDate]);
+
+  // Calculate the date range for calendar strip progress
+  const calendarRange = useMemo(() => {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(today.getDate() - CALENDAR_BUFFER);
+    const end = new Date(today);
+    end.setDate(today.getDate() + CALENDAR_BUFFER);
+    return {
+      start: formatDate(start),
+      end: formatDate(end),
+    };
+  }, []);
+
+  // Get the week range for the selected date (for weekly progress tracking)
+  const selectedWeekRange = useMemo(() => {
+    const d = new Date(selectedDate + 'T12:00:00');
+    const dow = d.getDay();
+    const start = new Date(d);
+    start.setDate(d.getDate() - dow);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return {
+      start: formatDate(start),
+      end: formatDate(end),
+    };
+  }, [selectedDate]);
+
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [allHabits, dateCompletions, weekComps, dateSnoozes, streakData, calComps] =
+        await Promise.all([
+          getHabits(),
+          getCompletionsForDate(selectedDate),
+          getCompletionsForWeek(selectedWeekRange.start, selectedWeekRange.end),
+          getSnoozesForDate(selectedDate),
+          getStreak(),
+          getCompletionsForDateRange(calendarRange.start, calendarRange.end),
+        ]);
+      setHabits(allHabits);
+      setCompletions(dateCompletions);
+      setWeekCompletions(weekComps);
+      setSnoozes(dateSnoozes);
+      setStreak(streakData);
+      setCalendarCompletions(calComps);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user, selectedDate, selectedWeekRange, calendarRange]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  // Reload when selected date changes
+  useEffect(() => {
+    if (!loading) {
+      loadData();
+    }
+  }, [selectedDate]);
+
+  const handleToggle = async (habit: Habit) => {
+    if (!user) return;
+    const isCompleted = completions.some((c) => c.habit_id === habit.id);
+
+    try {
+      await toggleHabitCompletion(habit.id, user.id, selectedDate, isCompleted);
+      await loadData();
+    } catch (error) {
+      console.error('Error toggling habit:', error);
+    }
+  };
+
+  const handleSnooze = async (habit: Habit) => {
+    if (!user) return;
+    try {
+      await snoozeHabit(habit.id, user.id, selectedDate);
+      await loadData();
+    } catch (error) {
+      console.error('Error snoozing habit:', error);
+    }
+  };
+
+  const handleUnsnooze = async (habit: Habit) => {
+    try {
+      await unsnoozeHabit(habit.id, selectedDate);
+      await loadData();
+    } catch (error) {
+      console.error('Error unsnoozing habit:', error);
+    }
+  };
+
+  // Calculate day progress for the calendar strip
+  const dayProgress = useMemo(() => {
+    const progress: Record<string, { completed: number; total: number }> = {};
+
+    // For each day in the calendar range, figure out how many habits were scheduled
+    // and how many were completed
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = -CALENDAR_BUFFER; i <= CALENDAR_BUFFER; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dateStr = formatDate(d);
+      const dow = d.getDay() as DayOfWeek;
+
+      const dayHabits = getHabitsForDay(habits, dow);
+      const dayCompletions = calendarCompletions.filter(
+        (c) => c.completed_date === dateStr
+      );
+      const completedHabitIds = new Set(dayCompletions.map((c) => c.habit_id));
+      const completedCount = dayHabits.filter((h) => completedHabitIds.has(h.id)).length;
+
+      progress[dateStr] = {
+        completed: completedCount,
+        total: dayHabits.length,
+      };
+    }
+
+    return progress;
+  }, [habits, calendarCompletions]);
+
+  const selectedDayHabits = getHabitsForDay(habits, selectedDayOfWeek);
+  const completedIds = new Set(completions.map((c) => c.habit_id));
+  const snoozedIds = new Set(snoozes.map((s) => s.habit_id));
+
+  const getWeeklyCompletionCount = (habit: Habit) =>
+    weekCompletions.filter((c) => c.habit_id === habit.id).length;
+
+  const getIsRequired = (habit: Habit) =>
+    isHabitRequiredToday(
+      habit,
+      selectedDayOfWeek,
+      getWeeklyCompletionCount(habit),
+      completedIds.has(habit.id)
+    );
+
+  // Separate into incomplete, completed, and snoozed — with required first in incomplete
+  const incompleteHabits = selectedDayHabits
+    .filter((h) => !completedIds.has(h.id) && !snoozedIds.has(h.id))
+    .sort((a, b) => {
+      const aReq = getIsRequired(a);
+      const bReq = getIsRequired(b);
+      if (aReq && !bReq) return -1;
+      if (!aReq && bReq) return 1;
+      return 0;
+    });
+
+  const completedHabits = selectedDayHabits.filter((h) => completedIds.has(h.id));
+  const snoozedHabits = selectedDayHabits.filter(
+    (h) => snoozedIds.has(h.id) && !completedIds.has(h.id)
+  );
+
+  const getWeeklyProgress = (habit: Habit) => {
+    return {
+      done: getWeeklyCompletionCount(habit),
+      total: habit.frequency_per_week,
+    };
+  };
+
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  type ListItem =
+    | { type: 'habit'; habit: Habit; state: 'incomplete' | 'completed' | 'snoozed' }
+    | { type: 'label'; label: string };
+
+  const buildListData = (): ListItem[] => {
+    const items: ListItem[] = [];
+
+    // To Do section
+    if (incompleteHabits.length > 0) {
+      items.push({ type: 'label', label: 'To Do' });
+      incompleteHabits.forEach((h) =>
+        items.push({ type: 'habit', habit: h, state: 'incomplete' })
+      );
+    } else if (
+      completedHabits.length > 0 &&
+      incompleteHabits.length === 0 &&
+      snoozedHabits.length === 0
+    ) {
+      items.push({ type: 'label', label: 'All Done! 🎉' });
+    } else if (incompleteHabits.length === 0 && snoozedHabits.length > 0) {
+      items.push({ type: 'label', label: 'All Done! 🎉' });
+    }
+
+    // Completed section
+    if (completedHabits.length > 0) {
+      items.push({ type: 'label', label: 'Completed' });
+      completedHabits.forEach((h) =>
+        items.push({ type: 'habit', habit: h, state: 'completed' })
+      );
+    }
+
+    // Snoozed section
+    if (snoozedHabits.length > 0) {
+      items.push({ type: 'label', label: 'Snoozed' });
+      snoozedHabits.forEach((h) =>
+        items.push({ type: 'habit', habit: h, state: 'snoozed' })
+      );
+    }
+
+    return items;
+  };
+
+  const listData = buildListData();
+
+  const renderItem = ({ item }: { item: ListItem }) => {
+    if (item.type === 'label') {
+      return <Text style={styles.sectionLabel}>{item.label}</Text>;
+    }
+
+    const { habit, state } = item;
+    const isCompleted = state === 'completed';
+    const isSnoozed = state === 'snoozed';
+
+    return (
+      <View style={styles.itemWrapper}>
+        <PriorityItem
+          habit={habit}
+          isCompleted={isCompleted}
+          isSnoozed={isSnoozed}
+          isRequired={getIsRequired(habit)}
+          weeklyProgress={getWeeklyProgress(habit)}
+          onToggle={() => handleToggle(habit)}
+          onSnooze={() => handleSnooze(habit)}
+          onUnsnooze={() => handleUnsnooze(habit)}
+        />
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Top row: wordmark + streak badge */}
+      <View style={styles.topRow}>
+        <View style={styles.wordmarkContainer}>
+          <Text style={styles.wordmark}>Thrive</Text>
+          <Text style={styles.wordmarkSubtext}>Win your day</Text>
+        </View>
+        <View
+          style={[
+            styles.streakBadge,
+            streak.earnedToday ? styles.streakBadgeActive : styles.streakBadgeInactive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.streakEmoji,
+              !streak.earnedToday && styles.streakEmojiInactive,
+            ]}
+          >
+            🔥
+          </Text>
+          <Text
+            style={[
+              styles.streakCount,
+              streak.earnedToday ? styles.streakCountActive : styles.streakCountInactive,
+            ]}
+          >
+            {streak.streakCount}
+          </Text>
+        </View>
+      </View>
+
+      {/* Calendar strip */}
+      <CalendarStrip
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        dayProgress={dayProgress}
+      />
+
+
+      {selectedDayHabits.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyEmoji}>🌟</Text>
+          <Text style={styles.emptyTitle}>No habits for this day</Text>
+          <Text style={styles.emptySubtitle}>
+            Go to "My Habits" to add habits to your schedule
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={listData}
+          keyExtractor={(item, index) =>
+            item.type === 'label' ? `label-${item.label}-${index}` : `habit-${item.habit.id}`
+          }
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                loadData();
+              }}
+              tintColor={theme.colors.primary}
+            />
+          }
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.xs,
+  },
+  wordmarkContainer: {
+    flexDirection: 'column',
+  },
+  wordmark: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.primary,
+    letterSpacing: -0.5,
+  },
+  wordmarkSubtext: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textMuted,
+    marginTop: -2,
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.full,
+    gap: 4,
+  },
+  streakBadgeActive: {
+    backgroundColor: '#FFF3E0',
+  },
+  streakBadgeInactive: {
+    backgroundColor: theme.colors.borderLight,
+  },
+  streakEmoji: {
+    fontSize: 16,
+  },
+  streakEmojiInactive: {
+    opacity: 0.35,
+  },
+  streakCount: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.bold,
+  },
+  streakCountActive: {
+    color: '#E65100',
+  },
+  streakCountInactive: {
+    color: theme.colors.textMuted,
+  },
+  list: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+  },
+  sectionLabel: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  itemWrapper: {
+    marginBottom: theme.spacing.sm,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
+  emptyEmoji: {
+    fontSize: 56,
+    marginBottom: theme.spacing.md,
+  },
+  emptyTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
+  },
+  emptySubtitle: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+});
