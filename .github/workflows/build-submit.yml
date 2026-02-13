@@ -1,0 +1,68 @@
+name: Build & Submit
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-submit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test:ci
+
+      - name: Generate release tag
+        id: tag
+        run: echo "tag=v$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          # Get the latest release tag, or use the initial commit if none exists
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+
+          # Generate changelog from commits since last release
+          CHANGELOG=$(git log "$LAST_TAG"..HEAD --pretty=format:"- %s (%an)" --no-merges)
+
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- No changes since last release"
+          fi
+
+          # Write to file for the release step (multi-line safe)
+          echo "$CHANGELOG" > /tmp/release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          body_path: /tmp/release-notes.md
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS (production)
+        run: eas build --profile production --platform ios --non-interactive
+
+      - name: Submit to TestFlight
+        run: eas submit --platform ios --latest --non-interactive
