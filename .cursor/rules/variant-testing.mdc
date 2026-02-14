@@ -14,7 +14,7 @@ When the user asks to create "variants," "alternatives," "versions," "AB test," 
 ### Before Building
 
 1. If the user provides design directions for each variant, follow them.
-2. If the user does **not** specify directions, propose 3 distinct design strategies before writing code (e.g., minimal/clean, social-proof-heavy, interactive/gamified). Wait for confirmation or adjustment before proceeding.
+2. If the user does **not** specify directions, propose 3 distinct design strategies before writing code (e.g., minimal/clean, social-proof-heavy, interactive/gamified). Wait for confirmation or adjustment before proceeding.  The point is to generate distinct variants, so ensure they are sufficiently different from eachother.
 3. For each variant, state a one-line **design thesis** explaining its core idea.
 
 ### Generating Variants
