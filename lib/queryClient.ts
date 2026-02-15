@@ -1,14 +1,30 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, onlineManager } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
+
+// ── Wire up React Query's online manager to NetInfo ──
+// This tells React Query to pause refetches when offline
+// and automatically resume them when connectivity returns.
+onlineManager.setEventListener((setOnline) => {
+  return NetInfo.addEventListener((state) => {
+    setOnline(!!state.isConnected);
+  });
+});
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Show cached data immediately, refetch in background if stale
       staleTime: 1000 * 60, // 1 minute default
-      gcTime: 1000 * 60 * 10, // Keep unused cache for 10 minutes
+      gcTime: 1000 * 60 * 30, // Keep unused cache for 30 minutes (longer for offline)
       retry: 2,
       refetchOnWindowFocus: false, // Not relevant for mobile
       refetchOnReconnect: true,
+      // When offline, serve stale cache instead of showing errors
+      networkMode: 'offlineFirst',
+    },
+    mutations: {
+      // Allow mutations to be attempted even when offline (we handle queueing)
+      networkMode: 'always',
     },
   },
 });

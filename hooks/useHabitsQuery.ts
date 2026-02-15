@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, onlineManager } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import {
   getHabits,
@@ -15,7 +15,8 @@ import {
   updateHabit,
   deleteHabit,
 } from '@/lib/habits';
-import type { HealthMetricType } from '@/lib/types';
+import type { HabitCompletion, HabitSnooze, HealthMetricType } from '@/lib/types';
+import { addPendingMutation } from '@/lib/offlineStorage';
 
 // ── Stale times ────────────────────────────────
 
@@ -84,29 +85,13 @@ export function useStreak() {
   });
 }
 
-// ── Mutation hooks ─────────────────────────────
-
-/** Invalidate all queries that could be affected by a completion change */
-function useInvalidateOnCompletionChange() {
-  const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries({ queryKey: ['completions'] });
-    qc.invalidateQueries({ queryKey: queryKeys.streak });
-  };
-}
-
-/** Invalidate snooze-related queries */
-function useInvalidateOnSnoozeChange() {
-  const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries({ queryKey: ['snoozes'] });
-  };
-}
+// ── Mutation hooks with optimistic updates ────
 
 export function useToggleCompletion() {
-  const invalidate = useInvalidateOnCompletionChange();
+  const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       habitId,
       userId,
       date,
@@ -116,15 +101,124 @@ export function useToggleCompletion() {
       userId: string;
       date: string;
       isCompleted: boolean;
-    }) => toggleHabitCompletion(habitId, userId, date, isCompleted),
-    onSuccess: invalidate,
+    }) => {
+      if (!onlineManager.isOnline()) {
+        // Queue mutation for later sync
+        await addPendingMutation('toggle_completion', {
+          habitId,
+          userId,
+          date,
+          isCompleted,
+        });
+        return;
+      }
+      return toggleHabitCompletion(habitId, userId, date, isCompleted);
+    },
+
+    // Optimistic update: immediately reflect the change in cache
+    onMutate: async ({ habitId, userId, date, isCompleted }) => {
+      // Cancel any in-flight refetches for this date's completions
+      await qc.cancelQueries({ queryKey: queryKeys.completions.forDate(date) });
+
+      // Snapshot the previous value
+      const previousCompletions = qc.getQueryData<HabitCompletion[]>(
+        queryKeys.completions.forDate(date)
+      );
+
+      // Optimistically update the cache
+      qc.setQueryData<HabitCompletion[]>(
+        queryKeys.completions.forDate(date),
+        (old = []) => {
+          if (isCompleted) {
+            // Remove the completion
+            return old.filter((c) => c.habit_id !== habitId);
+          } else {
+            // Add a new completion (with a temporary local ID)
+            const optimisticCompletion: HabitCompletion = {
+              id: `offline_${Date.now()}`,
+              habit_id: habitId,
+              user_id: userId,
+              completed_date: date,
+              created_at: new Date().toISOString(),
+            };
+            return [...old, optimisticCompletion];
+          }
+        }
+      );
+
+      // Also update week completions and range completions optimistically
+      qc.setQueriesData<HabitCompletion[]>(
+        { queryKey: ['completions', 'week'] },
+        (old = []) => {
+          if (isCompleted) {
+            return old.filter(
+              (c) => !(c.habit_id === habitId && c.completed_date === date)
+            );
+          } else {
+            return [
+              ...old,
+              {
+                id: `offline_${Date.now()}`,
+                habit_id: habitId,
+                user_id: userId,
+                completed_date: date,
+                created_at: new Date().toISOString(),
+              },
+            ];
+          }
+        }
+      );
+
+      qc.setQueriesData<HabitCompletion[]>(
+        { queryKey: ['completions', 'range'] },
+        (old = []) => {
+          if (isCompleted) {
+            return old.filter(
+              (c) => !(c.habit_id === habitId && c.completed_date === date)
+            );
+          } else {
+            return [
+              ...old,
+              {
+                id: `offline_${Date.now()}`,
+                habit_id: habitId,
+                user_id: userId,
+                completed_date: date,
+                created_at: new Date().toISOString(),
+              },
+            ];
+          }
+        }
+      );
+
+      return { previousCompletions };
+    },
+
+    onError: (_err, { date }, context) => {
+      // Roll back optimistic update on error (only if we're online — offline mutations are queued)
+      if (onlineManager.isOnline() && context?.previousCompletions) {
+        qc.setQueryData(
+          queryKeys.completions.forDate(date),
+          context.previousCompletions
+        );
+      }
+    },
+
+    onSettled: () => {
+      // Only refetch if online
+      if (onlineManager.isOnline()) {
+        qc.invalidateQueries({ queryKey: ['completions'] });
+        qc.invalidateQueries({ queryKey: queryKeys.streak });
+      }
+    },
   });
 }
 
 export function useSnoozeHabit() {
-  const invalidate = useInvalidateOnSnoozeChange();
+  const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       habitId,
       userId,
       date,
@@ -132,17 +226,90 @@ export function useSnoozeHabit() {
       habitId: string;
       userId: string;
       date: string;
-    }) => snoozeHabit(habitId, userId, date),
-    onSuccess: invalidate,
+    }) => {
+      if (!onlineManager.isOnline()) {
+        await addPendingMutation('snooze', { habitId, userId, date });
+        return;
+      }
+      return snoozeHabit(habitId, userId, date);
+    },
+
+    onMutate: async ({ habitId, userId, date }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.snoozes.forDate(date) });
+
+      const previousSnoozes = qc.getQueryData<HabitSnooze[]>(
+        queryKeys.snoozes.forDate(date)
+      );
+
+      qc.setQueryData<HabitSnooze[]>(
+        queryKeys.snoozes.forDate(date),
+        (old = []) => [
+          ...old,
+          {
+            id: `offline_${Date.now()}`,
+            habit_id: habitId,
+            user_id: userId,
+            snoozed_date: date,
+            created_at: new Date().toISOString(),
+          },
+        ]
+      );
+
+      return { previousSnoozes };
+    },
+
+    onError: (_err, { date }, context) => {
+      if (onlineManager.isOnline() && context?.previousSnoozes) {
+        qc.setQueryData(queryKeys.snoozes.forDate(date), context.previousSnoozes);
+      }
+    },
+
+    onSettled: () => {
+      if (onlineManager.isOnline()) {
+        qc.invalidateQueries({ queryKey: ['snoozes'] });
+      }
+    },
   });
 }
 
 export function useUnsnoozeHabit() {
-  const invalidate = useInvalidateOnSnoozeChange();
+  const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ habitId, date }: { habitId: string; date: string }) =>
-      unsnoozeHabit(habitId, date),
-    onSuccess: invalidate,
+    mutationFn: async ({ habitId, date }: { habitId: string; date: string }) => {
+      if (!onlineManager.isOnline()) {
+        await addPendingMutation('unsnooze', { habitId, date });
+        return;
+      }
+      return unsnoozeHabit(habitId, date);
+    },
+
+    onMutate: async ({ habitId, date }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.snoozes.forDate(date) });
+
+      const previousSnoozes = qc.getQueryData<HabitSnooze[]>(
+        queryKeys.snoozes.forDate(date)
+      );
+
+      qc.setQueryData<HabitSnooze[]>(
+        queryKeys.snoozes.forDate(date),
+        (old = []) => old.filter((s) => s.habit_id !== habitId)
+      );
+
+      return { previousSnoozes };
+    },
+
+    onError: (_err, { date }, context) => {
+      if (onlineManager.isOnline() && context?.previousSnoozes) {
+        qc.setQueryData(queryKeys.snoozes.forDate(date), context.previousSnoozes);
+      }
+    },
+
+    onSettled: () => {
+      if (onlineManager.isOnline()) {
+        qc.invalidateQueries({ queryKey: ['snoozes'] });
+      }
+    },
   });
 }
 

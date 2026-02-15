@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -12,6 +12,10 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { HealthProvider } from '@/contexts/HealthContext';
 import { queryClient } from '@/lib/queryClient';
 import { theme } from '@/lib/theme';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { syncPendingMutations } from '@/lib/offlineSync';
+import { getPendingMutations } from '@/lib/offlineStorage';
+import OfflineBanner from '@/components/OfflineBanner';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -47,11 +51,53 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <HealthProvider>
-            <RootLayoutNav />
+            <OfflineSyncProvider>
+              <RootLayoutNav />
+            </OfflineSyncProvider>
           </HealthProvider>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** Handles offline banner display and auto-sync on reconnection */
+function OfflineSyncProvider({ children }: { children: React.ReactNode }) {
+  const { isOffline } = useNetworkStatus();
+  const [pendingCount, setPendingCount] = useState(0);
+  const wasOffline = useRef(false);
+
+  // Track pending mutation count
+  useEffect(() => {
+    if (isOffline) {
+      const interval = setInterval(async () => {
+        const mutations = await getPendingMutations();
+        setPendingCount(mutations.length);
+      }, 2000);
+      return () => clearInterval(interval);
+    } else {
+      setPendingCount(0);
+    }
+  }, [isOffline]);
+
+  // Sync pending mutations when coming back online
+  useEffect(() => {
+    if (wasOffline.current && !isOffline) {
+      syncPendingMutations().then(({ synced, failed }) => {
+        if (synced > 0 || failed > 0) {
+          console.log(`Offline sync: ${synced} synced, ${failed} failed`);
+        }
+        setPendingCount(0);
+      });
+    }
+    wasOffline.current = isOffline;
+  }, [isOffline]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <OfflineBanner isOffline={isOffline} pendingCount={pendingCount} />
+      {children}
+    </View>
   );
 }
 
