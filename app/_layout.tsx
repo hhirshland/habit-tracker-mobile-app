@@ -10,6 +10,7 @@ import 'react-native-reanimated';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { HealthProvider } from '@/contexts/HealthContext';
+import { getAuthRedirectTarget } from '@/lib/authRouting';
 import { queryClient } from '@/lib/queryClient';
 import { theme } from '@/lib/theme';
 
@@ -63,24 +64,14 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const inOnboardingGroup = segments[0] === '(onboarding)';
+    const redirectTarget = getAuthRedirectTarget({
+      hasSession: !!session,
+      onboardingState: profile?.has_onboarded,
+      segmentRoot: segments[0],
+    });
 
-    if (!session) {
-      // Not signed in - redirect to auth
-      if (!inAuthGroup) {
-        router.replace('/(auth)/sign-in');
-      }
-    } else if (!profile?.has_onboarded) {
-      // Signed in but hasn't onboarded
-      if (!inOnboardingGroup) {
-        router.replace('/(onboarding)');
-      }
-    } else {
-      // Signed in and onboarded
-      if (inAuthGroup || inOnboardingGroup) {
-        router.replace('/(tabs)');
-      }
+    if (redirectTarget) {
+      router.replace(redirectTarget);
     }
   }, [session, profile, loading, segments]);
 
