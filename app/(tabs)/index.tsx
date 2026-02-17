@@ -141,6 +141,8 @@ export default function HomeScreen() {
       userId: user.id,
       date: selectedDate,
       isCompleted,
+      habitName: habit.name,
+      isAutoComplete: habit.auto_complete,
     });
   };
 
@@ -150,6 +152,7 @@ export default function HomeScreen() {
       habitId: habit.id,
       userId: user.id,
       date: selectedDate,
+      habitName: habit.name,
     });
   };
 
@@ -157,6 +160,7 @@ export default function HomeScreen() {
     unsnoozeMutation.mutate({
       habitId: habit.id,
       date: selectedDate,
+      habitName: habit.name,
     });
   };
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
+import { EVENTS, captureEvent, identifyUser, resetUser, setUserProperties } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/lib/types';
 
@@ -58,8 +59,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
+          identifyUser(session.user.id, {
+            email: session.user.email ?? null,
+            created_at: session.user.created_at ?? null,
+          });
           await fetchProfile(session.user.id);
         } else {
+          captureEvent(EVENTS.USER_SIGNED_OUT);
+          resetUser();
           setProfile(null);
           setLoading(false);
         }
@@ -103,6 +110,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error fetching profile:', error);
       }
       setProfile(data);
+      if (data) {
+        setUserProperties({
+          name: data.full_name,
+          has_onboarded: data.has_onboarded,
+          created_at: data.created_at,
+        });
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -147,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    resetUser();
     setProfile(null);
   };
 

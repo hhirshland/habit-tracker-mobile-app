@@ -36,16 +36,22 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      ["@kingstinct/react-native-healthkit", {
-        "NSHealthShareUsageDescription": "Thrive reads your health data to track progress and auto-complete habits.",
-        "NSHealthUpdateUsageDescription": false,
-        "background": false
-      }]
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Thrive reads your health data to track progress and auto-complete habits.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
+      "posthogApiKey": "",
+      "posthogHost": "https://us.i.posthog.com",
       "eas": {
         "projectId": "38a997f1-2a62-44d7-bfe9-ecea70fd81c7"
       },

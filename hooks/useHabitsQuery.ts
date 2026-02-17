@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { EVENTS, captureEvent } from '@/lib/analytics';
 import { queryKeys } from '@/lib/queryClient';
 import {
   getHabits,
@@ -116,8 +117,26 @@ export function useToggleCompletion() {
       userId: string;
       date: string;
       isCompleted: boolean;
+      habitName?: string;
+      isAutoComplete?: boolean;
     }) => toggleHabitCompletion(habitId, userId, date, isCompleted),
-    onSuccess: invalidate,
+    onSuccess: (_, variables) => {
+      invalidate();
+      if (variables.isCompleted) {
+        captureEvent(EVENTS.HABIT_UNCOMPLETED, {
+          habit_id: variables.habitId,
+          habit_name: variables.habitName,
+        });
+        return;
+      }
+
+      captureEvent(EVENTS.HABIT_COMPLETED, {
+        habit_id: variables.habitId,
+        habit_name: variables.habitName,
+        is_auto_complete: !!variables.isAutoComplete,
+        day_of_week: new Date(`${variables.date}T12:00:00`).getDay(),
+      });
+    },
   });
 }
 
@@ -132,17 +151,30 @@ export function useSnoozeHabit() {
       habitId: string;
       userId: string;
       date: string;
+      habitName?: string;
     }) => snoozeHabit(habitId, userId, date),
-    onSuccess: invalidate,
+    onSuccess: (_, variables) => {
+      invalidate();
+      captureEvent(EVENTS.HABIT_SNOOZED, {
+        habit_id: variables.habitId,
+        habit_name: variables.habitName,
+      });
+    },
   });
 }
 
 export function useUnsnoozeHabit() {
   const invalidate = useInvalidateOnSnoozeChange();
   return useMutation({
-    mutationFn: ({ habitId, date }: { habitId: string; date: string }) =>
+    mutationFn: ({ habitId, date }: { habitId: string; date: string; habitName?: string }) =>
       unsnoozeHabit(habitId, date),
-    onSuccess: invalidate,
+    onSuccess: (_, variables) => {
+      invalidate();
+      captureEvent(EVENTS.HABIT_UNSNOOZED, {
+        habit_id: variables.habitId,
+        habit_name: variables.habitName,
+      });
+    },
   });
 }
 
@@ -164,8 +196,15 @@ export function useCreateHabit() {
         auto_complete?: boolean;
       };
     }) => createHabit(userId, habit),
-    onSuccess: () => {
+    onSuccess: (createdHabit, variables) => {
       qc.invalidateQueries({ queryKey: queryKeys.habits.all });
+      captureEvent(EVENTS.HABIT_CREATED, {
+        habit_name: createdHabit.name || variables.habit.name,
+        frequency_per_week: variables.habit.frequency_per_week,
+        has_specific_days: !!variables.habit.specific_days?.length,
+        auto_complete: !!variables.habit.auto_complete,
+        metric_type: variables.habit.metric_type ?? null,
+      });
     },
   });
 }
@@ -189,8 +228,12 @@ export function useUpdateHabit() {
         auto_complete?: boolean;
       };
     }) => updateHabit(habitId, updates),
-    onSuccess: () => {
+    onSuccess: (_updatedHabit, variables) => {
       qc.invalidateQueries({ queryKey: queryKeys.habits.all });
+      captureEvent(EVENTS.HABIT_UPDATED, {
+        habit_id: variables.habitId,
+        fields_changed: Object.keys(variables.updates),
+      });
     },
   });
 }
@@ -198,9 +241,19 @@ export function useUpdateHabit() {
 export function useDeleteHabit() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (habitId: string) => deleteHabit(habitId),
-    onSuccess: () => {
+    mutationFn: ({
+      habitId,
+      habitName,
+    }: {
+      habitId: string;
+      habitName?: string;
+    }) => deleteHabit(habitId),
+    onSuccess: (_result, variables) => {
       qc.invalidateQueries({ queryKey: queryKeys.habits.all });
+      captureEvent(EVENTS.HABIT_DELETED, {
+        habit_id: variables.habitId,
+        habit_name: variables.habitName,
+      });
     },
   });
 }

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { EVENTS, captureEvent } from '@/lib/analytics';
 import { theme } from '@/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ThriveLogo from '@/components/ThriveLogo';
@@ -42,6 +43,8 @@ export default function SignUpScreen() {
 
     if (error) {
       Alert.alert('Sign Up Failed', error.message);
+    } else {
+      captureEvent(EVENTS.USER_SIGNED_UP, { method: 'email' });
     }
   };
 

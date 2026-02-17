@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { EVENTS, captureEvent, setSuperProperties } from '@/lib/analytics';
 import {
   HealthMetrics,
   isHealthKitAvailable,
@@ -42,6 +43,19 @@ const defaultMetrics: HealthMetrics = {
   workoutsThisWeek: [],
 };
 
+const REQUESTED_HEALTH_METRICS = [
+  'steps',
+  'weight',
+  'resting_heart_rate',
+  'workout_minutes',
+  'body_fat_percentage',
+  'lean_body_mass',
+  'bmi',
+  'exercise_minutes',
+  'time_in_daylight',
+  'hrv',
+];
+
 const HealthContext = createContext<HealthContextType | undefined>(undefined);
 
 export function HealthProvider({ children }: { children: React.ReactNode }) {
@@ -62,6 +76,7 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
     checkHealthAuthorization().then((authorized) => {
       console.log('[HealthContext] Initial authorization check:', authorized);
       setIsAuthorized(authorized);
+      setSuperProperties({ has_health_connected: authorized });
       if (authorized) {
         loadMetrics();
       }
@@ -90,14 +105,20 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
     setAuthFailed(false);
 
     console.log('[HealthContext] Starting connect flow...');
+    captureEvent(EVENTS.HEALTH_PERMISSIONS_REQUESTED, {
+      metrics: REQUESTED_HEALTH_METRICS,
+    });
     const granted = await requestHealthPermissions();
     console.log('[HealthContext] requestHealthPermissions returned:', granted);
 
     if (granted) {
       setIsAuthorized(true);
+      setSuperProperties({ has_health_connected: true });
+      captureEvent(EVENTS.HEALTH_CONNECTED);
       await loadMetrics();
     } else {
       setIsAuthorized(false);
+      setSuperProperties({ has_health_connected: false });
       setAuthFailed(true);
     }
 
@@ -108,6 +129,9 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
     if (!isAvailable) return;
     // Re-call requestAuthorization — iOS will only show the prompt for types
     // that haven't been asked about yet (i.e. the new ones we added)
+    captureEvent(EVENTS.HEALTH_PERMISSIONS_REQUESTED, {
+      metrics: REQUESTED_HEALTH_METRICS,
+    });
     await requestHealthPermissions();
     // Reload metrics to pick up any newly-permitted data
     await loadMetrics();

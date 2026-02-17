@@ -286,7 +286,11 @@ export default function ProgressScreen() {
 
   const handleDeleteGoal = async (goalId: string) => {
     try {
-      await deleteGoalMutation.mutateAsync(goalId);
+      const goal = goals.find((g) => g.id === goalId);
+      await deleteGoalMutation.mutateAsync({
+        goalId,
+        goalType: goal?.goal_type,
+      });
       setSelectedGoal(null);
     } catch (error) {
       console.error('Error deleting goal:', error);
@@ -296,7 +300,14 @@ export default function ProgressScreen() {
   const handleLogGoalEntry = async (goalId: string, value: number, date: string) => {
     if (!user) return;
     try {
-      await addGoalEntryMutation.mutateAsync({ goalId, userId: user.id, value, date });
+      const goal = goals.find((g) => g.id === goalId);
+      await addGoalEntryMutation.mutateAsync({
+        goalId,
+        userId: user.id,
+        value,
+        date,
+        goalType: goal?.goal_type,
+      });
     } catch (error) {
       console.error('Error logging goal entry:', error);
     }

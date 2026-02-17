@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { EVENTS, captureEvent } from '@/lib/analytics';
 import { createHabit } from '@/lib/habits';
 import { supabase } from '@/lib/supabase';
 import HabitForm from '@/components/HabitForm';
@@ -34,6 +35,10 @@ export default function OnboardingScreen() {
   const [showForm, setShowForm] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    captureEvent(EVENTS.ONBOARDING_STARTED);
+  }, []);
+
   const handleAddHabit = (data: {
     name: string;
     description: string;
@@ -45,6 +50,11 @@ export default function OnboardingScreen() {
       ...data,
     };
     setHabits((prev) => [...prev, newHabit]);
+    captureEvent(EVENTS.ONBOARDING_HABIT_ADDED, {
+      habit_name: data.name,
+      has_health_metric: false,
+      position: habits.length + 1,
+    });
     setShowForm(false);
   };
 
@@ -78,6 +88,7 @@ export default function OnboardingScreen() {
         .eq('user_id', user.id);
 
       await refreshProfile();
+      captureEvent(EVENTS.ONBOARDING_COMPLETED, { habits_count: habits.length });
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Error saving habits:', error);

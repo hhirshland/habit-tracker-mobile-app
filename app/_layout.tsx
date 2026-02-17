@@ -1,16 +1,20 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Href, Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { PostHogProvider } from 'posthog-react-native';
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { HealthProvider } from '@/contexts/HealthContext';
+import { setSuperProperties, trackScreen } from '@/lib/analytics';
 import { getAuthRedirectTarget } from '@/lib/authRouting';
+import { posthogClient } from '@/lib/posthog';
 import { queryClient } from '@/lib/queryClient';
 import { theme } from '@/lib/theme';
 
@@ -45,13 +49,25 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <HealthProvider>
-            <RootLayoutNav />
-          </HealthProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      {posthogClient ? (
+        <PostHogProvider client={posthogClient}>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <HealthProvider>
+                <RootLayoutNav />
+              </HealthProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </PostHogProvider>
+      ) : (
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <HealthProvider>
+              <RootLayoutNav />
+            </HealthProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      )}
     </GestureHandlerRootView>
   );
 }
@@ -59,7 +75,9 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const { session, profile, loading } = useAuth();
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
+  const lastTrackedPath = useRef<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -71,9 +89,23 @@ function RootLayoutNav() {
     });
 
     if (redirectTarget) {
-      router.replace(redirectTarget);
+      router.replace(redirectTarget as Href);
     }
   }, [session, profile, loading, segments]);
+
+  useEffect(() => {
+    setSuperProperties({
+      platform: Platform.OS,
+      app_version: Constants.expoConfig?.version ?? 'unknown',
+      has_onboarded: !!profile?.has_onboarded,
+    });
+  }, [profile?.has_onboarded]);
+
+  useEffect(() => {
+    if (!pathname || lastTrackedPath.current === pathname) return;
+    lastTrackedPath.current = pathname;
+    trackScreen(pathname);
+  }, [pathname]);
 
   if (loading) {
     return (

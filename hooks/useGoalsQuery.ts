@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { EVENTS, captureEvent } from '@/lib/analytics';
 import {
   getGoals,
   createGoal,
@@ -64,8 +65,15 @@ export function useCreateGoal() {
         data_source: 'apple_health' | 'manual';
       };
     }) => createGoal(userId, goal),
-    onSuccess: () => {
+    onSuccess: (createdGoal) => {
       qc.invalidateQueries({ queryKey: goalKeys.all });
+      captureEvent(EVENTS.GOAL_CREATED, {
+        goal_type: createdGoal.goal_type,
+        target_value: createdGoal.target_value,
+        unit: createdGoal.unit,
+        data_source: createdGoal.data_source,
+        has_target_date: !!createdGoal.target_date,
+      });
     },
   });
 }
@@ -73,9 +81,14 @@ export function useCreateGoal() {
 export function useDeleteGoal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (goalId: string) => deleteGoal(goalId),
-    onSuccess: () => {
+    mutationFn: ({ goalId, goalType }: { goalId: string; goalType?: GoalType }) =>
+      deleteGoal(goalId),
+    onSuccess: (_result, variables) => {
       qc.invalidateQueries({ queryKey: goalKeys.all });
+      captureEvent(EVENTS.GOAL_DELETED, {
+        goal_id: variables.goalId,
+        goal_type: variables.goalType,
+      });
     },
   });
 }
@@ -93,9 +106,15 @@ export function useAddGoalEntry() {
       userId: string;
       value: number;
       date: string;
+      goalType?: GoalType;
     }) => addGoalEntry(goalId, userId, value, date),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       qc.invalidateQueries({ queryKey: ['goals'] });
+      captureEvent(EVENTS.GOAL_ENTRY_ADDED, {
+        goal_id: variables.goalId,
+        goal_type: variables.goalType,
+        value: variables.value,
+      });
     },
   });
 }

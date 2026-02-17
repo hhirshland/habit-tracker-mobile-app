@@ -110,7 +110,10 @@ export default function HabitsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteMutation.mutateAsync(habit.id);
+            await deleteMutation.mutateAsync({
+              habitId: habit.id,
+              habitName: habit.name,
+            });
           } catch (error) {
             console.error('Error deleting habit:', error);
             Alert.alert('Error', 'Failed to delete habit');
