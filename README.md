@@ -38,6 +38,24 @@ npx expo start
 
 Then press `i` for iOS simulator or `a` for Android emulator, or scan the QR code with Expo Go.
 
+## CI/CD (EAS iOS Build + Submit)
+
+For non-interactive GitHub Actions builds/submits, configure these repository secrets:
+
+- `EXPO_TOKEN` (Expo personal access token)
+- `EXPO_ASC_APP_ID` (numeric App Store Connect app id)
+
+Recommended for stable Apple auth in CI:
+
+- `EXPO_ASC_KEY_ID`
+- `EXPO_ASC_ISSUER_ID`
+- `EXPO_ASC_API_KEY_BASE64` (base64-encoded contents of your App Store Connect `.p8` key)
+
+Fallback Apple login method (if not using ASC API key):
+
+- `EXPO_APPLE_ID`
+- `EXPO_APPLE_APP_SPECIFIC_PASSWORD`
+
 ## Project Structure
 
 ```
