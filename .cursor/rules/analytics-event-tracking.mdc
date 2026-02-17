@@ -1,0 +1,40 @@
+---
+description: Require product analytics instrumentation for new features and confirm before introducing new events
+alwaysApply: true
+---
+
+# Analytics Tracking Standard
+
+## Naming conventions (required)
+
+- Event names must use `object_action` in `snake_case` (for example `habit_created`, `goal_deleted`).
+- Put the object first, then the verb (use `habit_created`, not `created_habit`).
+- Use past tense for completed user actions (`habit_completed`, `goal_created`).
+- Use present tense for state/view events (`screen_viewed`, `modal_opened`).
+- Property names must be `snake_case`.
+- Keep event names stable; do not rename existing events without user approval.
+
+## When implementing features
+
+- For any new feature, include product analytics as part of the implementation (not as a follow-up).
+- Instrument at successful action points (for example mutation success), not just button taps.
+- Reuse existing event names from `lib/analytics.ts` whenever possible.
+- Keep properties minimal and useful for product decisions (avoid noisy or redundant fields).
+- Prefer IDs and enums over verbose text values for properties when possible.
+- Do not include high-cardinality or sensitive values unless explicitly approved.
+
+## New event governance (required)
+
+- If existing events do not fit, **pause and ask the user for confirmation before adding any new event name**.
+- Present a short proposal using this checklist:
+  - proposed event name
+  - why existing events are insufficient
+  - trigger location (file + flow)
+  - properties to include (name + type + purpose)
+- Only add the new event after explicit user approval.
+
+## Quality checks
+
+- Ensure analytics still type-checks and does not break app behavior.
+- Verify the event and property names follow `object_action` + `snake_case`.
+- Do not log secrets, tokens, passwords, or raw PII beyond approved identifiers.

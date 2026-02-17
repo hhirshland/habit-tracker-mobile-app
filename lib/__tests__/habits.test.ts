@@ -303,11 +303,11 @@ describe('getStreak', () => {
     expect(result).toEqual({ streakCount: 0, earnedToday: false });
   });
 
-  it('counts streak from today when today is completed', async () => {
+  it('counts streak from today when a completion was logged today', async () => {
     const completions = [
-      { completed_date: '2025-06-15' }, // today
-      { completed_date: '2025-06-14' },
-      { completed_date: '2025-06-13' },
+      { created_at: '2025-06-15T08:00:00Z' }, // today
+      { created_at: '2025-06-14T08:00:00Z' },
+      { created_at: '2025-06-13T08:00:00Z' },
     ];
     const chain = {
       select: jest.fn().mockReturnThis(),
@@ -320,10 +320,10 @@ describe('getStreak', () => {
     expect(result.earnedToday).toBe(true);
   });
 
-  it('counts streak from yesterday when today is not completed', async () => {
+  it('counts streak from yesterday when no completion was logged today', async () => {
     const completions = [
-      { completed_date: '2025-06-14' }, // yesterday
-      { completed_date: '2025-06-13' },
+      { created_at: '2025-06-14T08:00:00Z' }, // yesterday
+      { created_at: '2025-06-13T08:00:00Z' },
     ];
     const chain = {
       select: jest.fn().mockReturnThis(),
@@ -338,10 +338,10 @@ describe('getStreak', () => {
 
   it('breaks streak on gap', async () => {
     const completions = [
-      { completed_date: '2025-06-15' }, // today
-      { completed_date: '2025-06-14' },
+      { created_at: '2025-06-15T08:00:00Z' }, // today
+      { created_at: '2025-06-14T08:00:00Z' },
       // gap on June 13
-      { completed_date: '2025-06-12' },
+      { created_at: '2025-06-12T08:00:00Z' },
     ];
     const chain = {
       select: jest.fn().mockReturnThis(),
@@ -362,5 +362,22 @@ describe('getStreak', () => {
     mockFrom.mockReturnValue(chain);
 
     await expect(getStreak()).rejects.toThrow('DB error');
+  });
+
+  it('uses log day (created_at) instead of target completed_date', async () => {
+    const completions = [
+      // Logged today, even though the user marked an older completed_date.
+      { created_at: '2025-06-15T08:00:00Z', completed_date: '2025-06-01' },
+      { created_at: '2025-06-14T08:00:00Z', completed_date: '2025-05-31' },
+    ];
+    const chain = {
+      select: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({ data: completions, error: null }),
+    };
+    mockFrom.mockReturnValue(chain);
+
+    const result = await getStreak();
+    expect(result.streakCount).toBe(2);
+    expect(result.earnedToday).toBe(true);
   });
 });

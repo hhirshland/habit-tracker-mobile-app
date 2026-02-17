@@ -2,6 +2,16 @@ import { supabase } from './supabase';
 import { Habit, HabitCompletion, HabitSnooze, HealthMetricType } from './types';
 import { getCurrentMetricValue, isHealthKitAvailable } from './health';
 
+export type HabitWeeklyStatus = 'on_track' | 'at_risk' | 'behind' | 'met' | 'missed';
+
+export interface HabitWeeklyStats {
+  habit: Habit;
+  completedDays: number;
+  targetDays: number;
+  adherencePercent: number;
+  status: HabitWeeklyStatus;
+}
+
 // Get all active habits for the current user
 export async function getHabits(): Promise<Habit[]> {
   const { data, error } = await supabase
@@ -215,20 +225,23 @@ export async function unsnoozeHabit(
   if (error) throw error;
 }
 
-// Calculate the user's current streak (consecutive days with at least one completion)
+// Calculate the user's current streak based on the day completions were logged
+// (consecutive local days with at least one completion created on that day).
 export async function getStreak(): Promise<{ streakCount: number; earnedToday: boolean }> {
   const today = getTodayDate();
 
   const { data, error } = await supabase
     .from('habit_completions')
-    .select('completed_date')
-    .order('completed_date', { ascending: false });
+    .select('created_at')
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
   if (!data || data.length === 0) return { streakCount: 0, earnedToday: false };
 
-  // Get unique dates as a Set
-  const uniqueDates = new Set(data.map((d: { completed_date: string }) => d.completed_date));
+  // Convert each completion timestamp to the user's local calendar day, then de-duplicate.
+  const uniqueDates = new Set(
+    data.map((d: { created_at: string }) => formatDate(new Date(d.created_at)))
+  );
   const earnedToday = uniqueDates.has(today);
 
   // Count consecutive days starting from today (if earned) or yesterday (if not)
@@ -294,6 +307,113 @@ export function formatDate(date: Date): string {
 // Helper: get today's date as YYYY-MM-DD in the user's local timezone
 export function getTodayDate(): string {
   return formatDate(new Date());
+}
+
+// Helper: format week labels like "Feb 9 - Feb 15"
+function formatWeekLabel(start: Date, end: Date): string {
+  const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${startLabel} - ${endLabel}`;
+}
+
+function parseLocalDate(dateStr: string): Date {
+  return new Date(`${dateStr}T12:00:00`);
+}
+
+function dayDiff(startDate: string, endDate: string): number {
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  return Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+export function getWeekRange(weekOffset: number): {
+  start: string;
+  end: string;
+  label: string;
+  isCurrentWeek: boolean;
+} {
+  const now = new Date();
+  now.setHours(12, 0, 0, 0);
+  const dayOfWeek = now.getDay();
+
+  const start = new Date(now);
+  start.setDate(now.getDate() - dayOfWeek + weekOffset * 7);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  return {
+    start: formatDate(start),
+    end: formatDate(end),
+    label: formatWeekLabel(start, end),
+    isCurrentWeek: weekOffset === 0,
+  };
+}
+
+export function computeWeeklyAdherence(
+  habits: Habit[],
+  completions: HabitCompletion[],
+  weekEnd: string,
+  referenceDate: string = getTodayDate()
+): HabitWeeklyStats[] {
+  const weekEnded = weekEnd < referenceDate;
+  const completionDatesByHabit = new Map<string, Set<string>>();
+
+  for (const completion of completions) {
+    if (!completionDatesByHabit.has(completion.habit_id)) {
+      completionDatesByHabit.set(completion.habit_id, new Set<string>());
+    }
+    completionDatesByHabit.get(completion.habit_id)!.add(completion.completed_date);
+  }
+
+  const stats = habits.map((habit): HabitWeeklyStats => {
+    const targetDays =
+      habit.specific_days && habit.specific_days.length > 0
+        ? habit.specific_days.length
+        : habit.frequency_per_week;
+    const completedDays = completionDatesByHabit.get(habit.id)?.size ?? 0;
+    const adherencePercent = targetDays > 0 ? Math.min(100, Math.round((completedDays / targetDays) * 100)) : 0;
+
+    let status: HabitWeeklyStatus;
+    if (weekEnded) {
+      status = completedDays >= targetDays ? 'met' : 'missed';
+    } else {
+      const remainingNeeded = Math.max(targetDays - completedDays, 0);
+      const remainingDaysIncludingToday = Math.max(dayDiff(referenceDate, weekEnd) + 1, 0);
+
+      if (remainingNeeded === 0) {
+        status = 'on_track';
+      } else if (remainingNeeded > remainingDaysIncludingToday) {
+        status = 'behind';
+      } else if (remainingNeeded === remainingDaysIncludingToday) {
+        status = 'at_risk';
+      } else {
+        status = 'on_track';
+      }
+    }
+
+    return {
+      habit,
+      completedDays,
+      targetDays,
+      adherencePercent,
+      status,
+    };
+  });
+
+  const rank: Record<HabitWeeklyStatus, number> = {
+    behind: 0,
+    missed: 1,
+    at_risk: 2,
+    on_track: 3,
+    met: 4,
+  };
+
+  return stats.sort((a, b) => {
+    if (rank[a.status] !== rank[b.status]) return rank[a.status] - rank[b.status];
+    if (a.adherencePercent !== b.adherencePercent) return a.adherencePercent - b.adherencePercent;
+    return a.habit.name.localeCompare(b.habit.name);
+  });
 }
 
 // ──────────────────────────────────────────────

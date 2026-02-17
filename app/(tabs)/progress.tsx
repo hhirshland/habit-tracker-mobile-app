@@ -21,6 +21,7 @@ import {
   WorkoutSummary,
   HEALTH_METRIC_DISPLAY_NAMES,
 } from '@/lib/health';
+import { getWeekRange } from '@/lib/habits';
 import { getGoalCurrentValue } from '@/lib/goals';
 import { Goal } from '@/lib/types';
 import {
@@ -44,12 +45,15 @@ import {
   useAddGoalEntry,
   useRefreshGoals,
 } from '@/hooks/useGoalsQuery';
+import { useRefreshAllHabitData, useWeeklyAdherence } from '@/hooks/useHabitsQuery';
 import GoalCard from '@/components/GoalCard';
 import GoalDetailModal from '@/components/GoalDetailModal';
 import AddGoalSheet from '@/components/AddGoalSheet';
 import Sparkline from '@/components/Sparkline';
 import MetricDetailModal from '@/components/MetricDetailModal';
 import EditMetricsSheet from '@/components/EditMetricsSheet';
+import WeeklyAdherenceSummary from '@/components/WeeklyAdherenceSummary';
+import HabitAdherenceRow from '@/components/HabitAdherenceRow';
 
 const METRIC_PREFS_KEY = '@metric_preferences';
 
@@ -188,6 +192,7 @@ export default function ProgressScreen() {
   const { user } = useAuth();
   const { isAvailable, isAuthorized, loading, metrics, connect, refresh, authFailed, missingMetrics } = useHealth();
   const [refreshing, setRefreshing] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   // ── Health history queries (last 7 days for sparklines) ──
   const { data: stepHistory = [] } = useStepHistory(7, isAuthorized);
@@ -203,6 +208,12 @@ export default function ProgressScreen() {
   const deleteGoalMutation = useDeleteGoal();
   const addGoalEntryMutation = useAddGoalEntry();
   const refreshGoals = useRefreshGoals();
+  const refreshHabitData = useRefreshAllHabitData();
+  const weekRange = getWeekRange(weekOffset);
+  const {
+    data: weeklyAdherence,
+    isLoading: weeklyAdherenceLoading,
+  } = useWeeklyAdherence(weekRange.start, weekRange.end);
 
   // Current values for each goal (loaded in parallel)
   const [goalCurrentValues, setGoalCurrentValues] = useState<Record<string, number | null>>({});
@@ -259,6 +270,7 @@ export default function ProgressScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    refreshHabitData(); // Invalidate habit + completion cache
     refreshHealthHistory(); // Invalidate cached history so queries refetch
     refreshGoals(); // Invalidate cached goals
     await refresh(); // Refresh today's metrics from HealthContext
@@ -410,6 +422,38 @@ export default function ProgressScreen() {
             </View>
             <FontAwesome name="chevron-right" size={12} color="#E65100" />
           </TouchableOpacity>
+        )}
+
+        {/* Habit Adherence Section */}
+        <WeeklyAdherenceSummary
+          weekLabel={weekRange.label}
+          weekOffset={weekOffset}
+          adherencePercent={weeklyAdherence?.adherencePercent ?? 0}
+          completedTotal={weeklyAdherence?.completedTotal ?? 0}
+          targetTotal={weeklyAdherence?.targetTotal ?? 0}
+          disableNextWeek={weekOffset === 0}
+          onPrevWeek={() => setWeekOffset((prev) => prev - 1)}
+          onNextWeek={() => setWeekOffset((prev) => Math.min(prev + 1, 0))}
+          onJumpToCurrentWeek={() => setWeekOffset(0)}
+        />
+
+        {weeklyAdherenceLoading ? (
+          <View style={styles.habitAdherenceLoading}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          </View>
+        ) : weeklyAdherence && weeklyAdherence.stats.length > 0 ? (
+          <View style={styles.habitRows}>
+            {weeklyAdherence.stats.map((stat) => (
+              <HabitAdherenceRow key={stat.habit.id} stat={stat} />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyHabitsCard}>
+            <FontAwesome name="check-square-o" size={20} color={theme.colors.textMuted} />
+            <Text style={styles.emptyHabitsText}>
+              No active habits yet. Add habits in the Habits tab to start tracking weekly adherence.
+            </Text>
+          </View>
         )}
 
         {/* Goals Section */}
@@ -772,6 +816,30 @@ const styles = StyleSheet.create({
   },
 
   // Goals
+  habitRows: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  habitAdherenceLoading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+  },
+  emptyHabitsCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    ...theme.shadow.sm,
+  },
+  emptyHabitsText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   goalsSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

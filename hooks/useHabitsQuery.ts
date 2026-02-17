@@ -15,6 +15,8 @@ import {
   createHabit,
   updateHabit,
   deleteHabit,
+  computeWeeklyAdherence,
+  getTodayDate,
 } from '@/lib/habits';
 import type { HealthMetricType } from '@/lib/types';
 
@@ -83,6 +85,37 @@ export function useStreak() {
     queryFn: getStreak,
     staleTime: STALE.streak,
   });
+}
+
+export function useWeeklyAdherence(weekStart: string, weekEnd: string) {
+  const habitsQuery = useHabits();
+  const completionsQuery = useCompletionsForWeek(weekStart, weekEnd);
+
+  const habits = habitsQuery.data ?? [];
+  const completions = completionsQuery.data ?? [];
+  const today = getTodayDate();
+  const weekEnded = weekEnd < today;
+
+  const stats = computeWeeklyAdherence(habits, completions, weekEnd, today);
+  const completedTotal = stats.reduce((sum, s) => sum + s.completedDays, 0);
+  const targetTotal = stats.reduce((sum, s) => sum + s.targetDays, 0);
+  const adherencePercent = targetTotal > 0 ? Math.min(100, Math.round((completedTotal / targetTotal) * 100)) : 0;
+
+  return {
+    data: {
+      stats,
+      completedTotal,
+      targetTotal,
+      adherencePercent,
+      weekEnded,
+    },
+    isLoading: habitsQuery.isLoading || completionsQuery.isLoading,
+    isFetching: habitsQuery.isFetching || completionsQuery.isFetching,
+    error: habitsQuery.error ?? completionsQuery.error ?? null,
+    refetch: async () => {
+      await Promise.all([habitsQuery.refetch(), completionsQuery.refetch()]);
+    },
+  };
 }
 
 // ── Mutation hooks ─────────────────────────────
