@@ -74,6 +74,21 @@ jobs:
             exit 1
           fi
 
+      - name: Inject ascAppId into eas.json
+        env:
+          EXPO_ASC_APP_ID: ${{ secrets.EXPO_ASC_APP_ID }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = "eas.json";
+            const config = JSON.parse(fs.readFileSync(path, "utf8"));
+            config.submit ??= {};
+            config.submit.production ??= {};
+            config.submit.production.ios ??= {};
+            config.submit.production.ios.ascAppId = process.env.EXPO_ASC_APP_ID;
+            fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\n");
+          '
+
       - name: Prepare App Store Connect API key (optional)
         env:
           EXPO_ASC_API_KEY_BASE64: ${{ secrets.EXPO_ASC_API_KEY_BASE64 }}
@@ -98,7 +113,7 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3; do
             echo "Submit attempt ${attempt}/3"
-            if eas submit --platform ios --latest --profile production --asc-app-id "${EXPO_ASC_APP_ID}" --non-interactive; then
+            if eas submit --platform ios --latest --profile production --non-interactive; then
               echo "Submit succeeded"
               exit 0
             fi
