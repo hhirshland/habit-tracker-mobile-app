@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ActivityIndicator,
   Keyboard,
   TouchableWithoutFeedback,
   ScrollView,
@@ -13,12 +12,8 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/lib/theme';
-import { useAuth } from '@/contexts/AuthContext';
 import { EVENTS, captureEvent } from '@/lib/analytics';
-import { createHabit } from '@/lib/habits';
-import { supabase } from '@/lib/supabase';
 import HabitForm from '@/components/HabitForm';
-import { Habit } from '@/lib/types';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 interface PendingHabit {
@@ -30,10 +25,8 @@ interface PendingHabit {
 }
 
 export default function OnboardingScreen() {
-  const { user, refreshProfile } = useAuth();
   const [habits, setHabits] = useState<PendingHabit[]>([]);
   const [showForm, setShowForm] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     captureEvent(EVENTS.ONBOARDING_STARTED);
@@ -62,40 +55,18 @@ export default function OnboardingScreen() {
     setHabits((prev) => prev.filter((h) => h.id !== id));
   };
 
-  const handleFinish = async () => {
-    if (!user) return;
+  const handleFinish = () => {
     if (habits.length === 0) {
       Alert.alert('Add a Habit', 'Please add at least one habit to get started.');
       return;
     }
 
-    setSaving(true);
-    try {
-      // Create all habits
-      for (const habit of habits) {
-        await createHabit(user.id, {
-          name: habit.name,
-          description: habit.description || undefined,
-          frequency_per_week: habit.frequency_per_week,
-          specific_days: habit.specific_days,
-        });
-      }
-
-      // Mark onboarding as complete
-      await supabase
-        .from('profiles')
-        .update({ has_onboarded: true })
-        .eq('user_id', user.id);
-
-      await refreshProfile();
-      captureEvent(EVENTS.ONBOARDING_COMPLETED, { habits_count: habits.length });
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Error saving habits:', error);
-      Alert.alert('Error', 'Failed to save habits. Please try again.');
-    } finally {
-      setSaving(false);
-    }
+    router.push({
+      pathname: '/(onboarding)/features',
+      params: {
+        habits: JSON.stringify(habits),
+      },
+    });
   };
 
   const getDaysLabel = (habit: PendingHabit) => {
@@ -168,18 +139,13 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.finishButton, saving && styles.buttonDisabled]}
+              style={styles.finishButton}
               onPress={handleFinish}
-              disabled={saving}
               activeOpacity={0.8}
             >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.finishButtonText}>
-                  Start Tracking ({habits.length} habit{habits.length !== 1 ? 's' : ''})
-                </Text>
-              )}
+              <Text style={styles.finishButtonText}>
+                Continue ({habits.length} habit{habits.length !== 1 ? 's' : ''})
+              </Text>
             </TouchableOpacity>
           </View>
         </>
@@ -292,9 +258,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     ...theme.shadow.md,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
   },
   finishButtonText: {
     color: '#fff',

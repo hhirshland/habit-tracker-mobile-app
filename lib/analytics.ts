@@ -44,7 +44,11 @@ type EventPropertiesMap = {
     has_health_metric: boolean;
     position: number;
   };
-  onboarding_completed: { habits_count: number };
+  onboarding_completed: {
+    habits_count: number;
+    top3_todos_enabled: boolean;
+    journal_enabled: boolean;
+  };
   habit_created: {
     habit_name: string;
     frequency_per_week: number;
