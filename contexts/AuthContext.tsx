@@ -26,13 +26,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const appState = useRef(AppState.currentState);
+  const loadingRef = useRef(loading);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+      }
+
+      // Keep previous profile on transient errors; only clear when profile truly doesn't exist.
+      if (!error && data) {
+        setProfile(data);
+        setUserProperties({
+          name: data.full_name,
+          has_onboarded: data.has_onboarded,
+          created_at: data.created_at,
+        });
+      } else if (error?.code === 'PGRST116') {
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshSessionAndProfile = async () => {
+    try {
+      setLoading(true);
+      const {
+        data: { session: latestSession },
+      } = await supabase.auth.getSession();
+
+      setSession(latestSession);
+      setUser(latestSession?.user ?? null);
+
+      if (latestSession?.user) {
+        await fetchProfile(latestSession.user.id);
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
+    } catch {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
 
     // Safety timeout: if auth takes too long, stop loading
     const timeout = setTimeout(() => {
-      if (mounted && loading) {
+      if (mounted && loadingRef.current) {
         console.warn('[Auth] Loading timed out, clearing loading state');
         setLoading(false);
       }
@@ -54,11 +110,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!mounted) return;
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
+          // Avoid global loading flips on token refresh; they remount navigation.
+          // Only show blocking loading for true auth transitions.
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            setLoading(true);
+          }
           identifyUser(session.user.id, {
             email: session.user.email ?? null,
             created_at: session.user.created_at ?? null,
@@ -78,12 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       'change',
       (nextState: AppStateStatus) => {
         if (appState.current.match(/inactive|background/) && nextState === 'active') {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!mounted) return;
-            if (session) {
-              setSession(session);
-              setUser(session.user);
-            }
+          refreshSessionAndProfile().catch(() => {
+            // no-op: loading fallback is handled in refreshSessionAndProfile
           });
         }
         appState.current = nextState;
@@ -97,32 +154,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       appStateSubscription.remove();
     };
   }, []);
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-      }
-      setProfile(data);
-      if (data) {
-        setUserProperties({
-          name: data.full_name,
-          has_onboarded: data.has_onboarded,
-          created_at: data.created_at,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const refreshProfile = async () => {
     if (user) {

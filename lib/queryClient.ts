@@ -34,4 +34,12 @@ export const queryKeys = {
     metrics: ['health', 'metrics'] as const,
     history: (type: string, days: number) => ['health', 'history', type, days] as const,
   },
+  dailyTodos: {
+    forDate: (date: string) => ['dailyTodos', date] as const,
+    forRange: (start: string, end: string) => ['dailyTodos', 'range', start, end] as const,
+  },
+  dailyJournal: {
+    forDate: (date: string) => ['dailyJournal', date] as const,
+    forRange: (start: string, end: string) => ['dailyJournal', 'range', start, end] as const,
+  },
 } as const;

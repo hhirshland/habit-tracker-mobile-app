@@ -23,12 +23,13 @@ export function getAuthRedirectTarget({
   }
 
   // Only route to onboarding when onboarding status is explicitly false.
-  // If profile is still loading and onboardingState is undefined, do not redirect.
+  // If profile is still loading and onboardingState is undefined, keep users out of
+  // auth/onboarding groups and let them land on tabs.
   if (onboardingState === false) {
     return inOnboardingGroup ? null : '/(onboarding)';
   }
 
-  if (onboardingState === true) {
+  if (onboardingState === true || onboardingState === undefined) {
     return inAuthGroup || inOnboardingGroup ? '/(tabs)' : null;
   }
 

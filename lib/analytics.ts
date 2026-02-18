@@ -20,6 +20,13 @@ export const EVENTS = {
   GOAL_ENTRY_ADDED: 'goal_entry_added',
   HEALTH_CONNECTED: 'health_connected',
   HEALTH_PERMISSIONS_REQUESTED: 'health_permissions_requested',
+  TODO_CREATED: 'todo_created',
+  TODO_COMPLETED: 'todo_completed',
+  TODO_UNCOMPLETED: 'todo_uncompleted',
+  TODO_DELETED: 'todo_deleted',
+  TOP3_TODOS_TOGGLED: 'top3_todos_toggled',
+  JOURNAL_SUBMITTED: 'journal_submitted',
+  JOURNAL_TOGGLED: 'journal_toggled',
   SCREEN_VIEWED: 'screen_viewed',
   AVATAR_UPLOADED: 'avatar_uploaded',
   PROFILE_UPDATED: 'profile_updated',
@@ -86,6 +93,31 @@ type EventPropertiesMap = {
     goal_id: string;
     goal_type?: string;
     value: number;
+  };
+  todo_created: {
+    position: number;
+    day_of_week: number;
+  };
+  todo_completed: {
+    todo_id: string;
+    position: number;
+  };
+  todo_uncompleted: {
+    todo_id: string;
+    position: number;
+  };
+  todo_deleted: {
+    todo_id: string;
+  };
+  top3_todos_toggled: {
+    enabled: boolean;
+  };
+  journal_submitted: {
+    is_edit: boolean;
+    date: string;
+  };
+  journal_toggled: {
+    enabled: boolean;
   };
   health_connected: undefined;
   health_permissions_requested: {

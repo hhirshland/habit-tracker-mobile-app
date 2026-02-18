@@ -155,6 +155,28 @@ export const GOAL_TYPE_COLORS: Record<GoalType, string> = {
   custom: '#6C63FF',
 };
 
+export interface DailyJournalEntry {
+  id: string;
+  user_id: string;
+  journal_date: string; // YYYY-MM-DD
+  win: string;
+  tension: string;
+  gratitude: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyTodo {
+  id: string;
+  user_id: string;
+  todo_date: string; // YYYY-MM-DD
+  text: string;
+  is_completed: boolean;
+  position: number; // 1, 2, or 3
+  created_at: string;
+  updated_at: string;
+}
+
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export const DAY_LABELS: Record<DayOfWeek, string> = {

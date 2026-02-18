@@ -22,7 +22,7 @@ import {
   getStreak,
   getCompletionsForDateRange,
 } from '@/lib/habits';
-import { Habit, HabitCompletion, HabitSnooze, DayOfWeek } from '@/lib/types';
+import { Habit, DayOfWeek, DailyTodo } from '@/lib/types';
 import { useHealth } from '@/contexts/HealthContext';
 import {
   useHabits,
@@ -37,10 +37,26 @@ import {
   useUnsnoozeHabit,
   useRefreshAllHabitData,
 } from '@/hooks/useHabitsQuery';
+import {
+  useDailyTodos,
+  useDailyTodosForRange,
+  useUpsertDailyTodo,
+  useToggleDailyTodo,
+  useDeleteDailyTodo,
+} from '@/hooks/useDailyTodosQuery';
+import {
+  useDailyJournal,
+  useDailyJournalForRange,
+  useUpsertJournalEntry,
+} from '@/hooks/useDailyJournalQuery';
+import { useTop3TodosSetting } from '@/hooks/useTop3TodosSetting';
+import { useJournalSetting } from '@/hooks/useJournalSetting';
 import { queryKeys } from '@/lib/queryClient';
-import PriorityItem from '@/components/PriorityItemVariantA';
+import PriorityItem from '@/components/PriorityItemVariantB';
 import CalendarStrip from '@/components/CalendarStrip';
 import ThriveLogo from '@/components/ThriveLogo';
+import Top3TodosSection from '@/components/Top3TodosSection';
+import DailyJournalSection from '@/components/DailyJournalSection';
 
 const CALENDAR_BUFFER = 30; // days in each direction
 
@@ -105,11 +121,31 @@ export default function HomeScreen() {
     calendarRange.end
   );
 
+  // ── Top 3 Todos ──
+  const { enabled: top3Enabled } = useTop3TodosSetting();
+  const { data: dailyTodos = [] } = useDailyTodos(selectedDate);
+  const { data: calendarTodos = [] } = useDailyTodosForRange(
+    calendarRange.start,
+    calendarRange.end
+  );
+
+  // ── Daily Journal ──
+  const { enabled: journalEnabled } = useJournalSetting();
+  const { data: journalEntry = null } = useDailyJournal(selectedDate);
+  const { data: calendarJournals = [] } = useDailyJournalForRange(
+    calendarRange.start,
+    calendarRange.end
+  );
+
   // ── Mutations ──
   const toggleMutation = useToggleCompletion();
   const snoozeMutation = useSnoozeHabit();
   const unsnoozeMutation = useUnsnoozeHabit();
   const refreshAll = useRefreshAllHabitData();
+  const upsertTodoMutation = useUpsertDailyTodo();
+  const toggleTodoMutation = useToggleDailyTodo();
+  const deleteTodoMutation = useDeleteDailyTodo();
+  const upsertJournalMutation = useUpsertJournalEntry();
 
   // ── Auto-complete from health data ──
   useFocusEffect(
@@ -164,14 +200,33 @@ export default function HomeScreen() {
     });
   };
 
+  const handleSaveTodo = (position: number, text: string) => {
+    if (!user) return;
+    upsertTodoMutation.mutate({ userId: user.id, date: selectedDate, position, text });
+  };
+
+  const handleToggleTodo = (todo: DailyTodo) => {
+    toggleTodoMutation.mutate({ todoId: todo.id, isCompleted: todo.is_completed, date: selectedDate, position: todo.position });
+  };
+
+  const handleDeleteTodo = (todo: DailyTodo) => {
+    deleteTodoMutation.mutate({ todoId: todo.id, date: selectedDate });
+  };
+
+  const handleSubmitJournal = (win: string, tension: string, gratitude: string) => {
+    if (!user) return;
+    upsertJournalMutation.mutate({ userId: user.id, date: selectedDate, win, tension, gratitude });
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     refreshAll();
-    // Wait a tick for queries to start, then let RefreshControl handle the spinner
+    queryClient.invalidateQueries({ queryKey: ['dailyTodos'] });
+    queryClient.invalidateQueries({ queryKey: ['dailyJournal'] });
     setTimeout(() => setRefreshing(false), 600);
   };
 
-  // Calculate day progress for the calendar strip
+  // Calculate day progress for the calendar strip (habits + todos)
   const dayProgress = useMemo(() => {
     const progress: Record<string, { completed: number; total: number }> = {};
 
@@ -196,16 +251,30 @@ export default function HomeScreen() {
         (c) => c.completed_date === dateStr
       );
       const completedHabitIds = new Set(dayCompletions.map((c) => c.habit_id));
-      const completedCount = unsnoozedHabits.filter((h) => completedHabitIds.has(h.id)).length;
+      let completedCount = unsnoozedHabits.filter((h) => completedHabitIds.has(h.id)).length;
+      let total = unsnoozedHabits.length;
 
-      progress[dateStr] = {
-        completed: completedCount,
-        total: unsnoozedHabits.length,
-      };
+      if (top3Enabled) {
+        const dayTodos = calendarTodos.filter((t) => t.todo_date === dateStr);
+        if (dayTodos.length > 0) {
+          total += dayTodos.length;
+          completedCount += dayTodos.filter((t) => t.is_completed).length;
+        }
+      }
+
+      if (journalEnabled) {
+        total += 1;
+        const dayJournal = calendarJournals.find((j) => j.journal_date === dateStr);
+        if (dayJournal && dayJournal.win.trim() && dayJournal.tension.trim() && dayJournal.gratitude.trim()) {
+          completedCount += 1;
+        }
+      }
+
+      progress[dateStr] = { completed: completedCount, total };
     }
 
     return progress;
-  }, [habits, calendarCompletions, calendarSnoozes]);
+  }, [habits, calendarCompletions, calendarSnoozes, top3Enabled, calendarTodos, journalEnabled, calendarJournals]);
 
   const selectedDayHabits = getHabitsForDay(habits, selectedDayOfWeek)
     .filter((h) => h.created_at.slice(0, 10) <= selectedDate);
@@ -255,35 +324,56 @@ export default function HomeScreen() {
     );
   }
 
+  const journalCompleted = journalEnabled && journalEntry !== null &&
+    journalEntry.win.trim() !== '' && journalEntry.tension.trim() !== '' && journalEntry.gratitude.trim() !== '';
+
+  const allDone =
+    incompleteHabits.length === 0 &&
+    (completedHabits.length > 0 || journalCompleted) &&
+    (!top3Enabled || dailyTodos.every((t) => t.is_completed)) &&
+    (!journalEnabled || journalCompleted);
+
   type ListItem =
     | { type: 'habit'; habit: Habit; state: 'incomplete' | 'completed' | 'snoozed' }
-    | { type: 'label'; label: string };
+    | { type: 'label'; label: string }
+    | { type: 'todosSection' }
+    | { type: 'journalSection' }
+    | { type: 'completedJournal' };
 
   const buildListData = (): ListItem[] => {
     const items: ListItem[] = [];
 
-    // To Do section
+    // Top 3 Todos section
+    if (top3Enabled) {
+      items.push({ type: 'todosSection' });
+    }
+
+    // Daily Habits section
     if (incompleteHabits.length > 0) {
-      items.push({ type: 'label', label: 'To Do' });
+      items.push({ type: 'label', label: 'Daily Habits' });
       incompleteHabits.forEach((h) =>
         items.push({ type: 'habit', habit: h, state: 'incomplete' })
       );
-    } else if (
-      completedHabits.length > 0 &&
-      incompleteHabits.length === 0 &&
-      snoozedHabits.length === 0
-    ) {
-      items.push({ type: 'label', label: 'All Done! 🎉' });
-    } else if (incompleteHabits.length === 0 && snoozedHabits.length > 0) {
-      items.push({ type: 'label', label: 'All Done! 🎉' });
+    } else if (allDone && snoozedHabits.length === 0) {
+      items.push({ type: 'label', label: 'All Done! \u{1F389}' });
+    } else if (incompleteHabits.length === 0 && snoozedHabits.length > 0 && !top3Enabled && !journalEnabled) {
+      items.push({ type: 'label', label: 'All Done! \u{1F389}' });
+    }
+
+    // Daily Journal section (incomplete) — below habits, above completed
+    if (journalEnabled && !journalCompleted) {
+      items.push({ type: 'journalSection' });
     }
 
     // Completed section
-    if (completedHabits.length > 0) {
+    if (completedHabits.length > 0 || journalCompleted) {
       items.push({ type: 'label', label: 'Completed' });
       completedHabits.forEach((h) =>
         items.push({ type: 'habit', habit: h, state: 'completed' })
       );
+      if (journalCompleted) {
+        items.push({ type: 'completedJournal' });
+      }
     }
 
     // Snoozed section
@@ -302,6 +392,35 @@ export default function HomeScreen() {
   const renderItem = ({ item }: { item: ListItem }) => {
     if (item.type === 'label') {
       return <Text style={styles.sectionLabel}>{item.label}</Text>;
+    }
+
+    if (item.type === 'todosSection') {
+      return (
+        <Top3TodosSection
+          todos={dailyTodos}
+          onSave={handleSaveTodo}
+          onToggle={handleToggleTodo}
+          onDelete={handleDeleteTodo}
+        />
+      );
+    }
+
+    if (item.type === 'journalSection') {
+      return (
+        <DailyJournalSection
+          entry={journalEntry}
+          onSubmit={handleSubmitJournal}
+        />
+      );
+    }
+
+    if (item.type === 'completedJournal') {
+      return (
+        <DailyJournalSection
+          entry={journalEntry}
+          onSubmit={handleSubmitJournal}
+        />
+      );
     }
 
     const { habit, state } = item;
@@ -368,7 +487,7 @@ export default function HomeScreen() {
       />
 
 
-      {selectedDayHabits.length === 0 ? (
+      {selectedDayHabits.length === 0 && !top3Enabled && !journalEnabled ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>🌟</Text>
           <Text style={styles.emptyTitle}>No habits for this day</Text>
@@ -379,9 +498,13 @@ export default function HomeScreen() {
       ) : (
         <FlatList
           data={listData}
-          keyExtractor={(item, index) =>
-            item.type === 'label' ? `label-${item.label}-${index}` : `habit-${item.habit.id}`
-          }
+          keyExtractor={(item, index) => {
+            if (item.type === 'label') return `label-${item.label}-${index}`;
+            if (item.type === 'todosSection') return 'todos-section';
+            if (item.type === 'journalSection') return 'journal-section';
+            if (item.type === 'completedJournal') return 'completed-journal';
+            return `habit-${item.habit.id}`;
+          }}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}

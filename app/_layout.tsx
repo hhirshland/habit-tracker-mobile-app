@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
 import { Href, Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -78,6 +78,13 @@ function RootLayoutNav() {
   const pathname = usePathname();
   const router = useRouter();
   const lastTrackedPath = useRef<string | null>(null);
+  const [hasHydratedAuth, setHasHydratedAuth] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !hasHydratedAuth) {
+      setHasHydratedAuth(true);
+    }
+  }, [loading, hasHydratedAuth]);
 
   useEffect(() => {
     if (loading) return;
@@ -107,7 +114,9 @@ function RootLayoutNav() {
     trackScreen(pathname);
   }, [pathname]);
 
-  if (loading) {
+  // Keep initial blocking loader, but avoid remounting root navigation during
+  // periodic background auth refreshes (e.g. token refresh).
+  if (loading && !hasHydratedAuth) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
         <ActivityIndicator size="large" color={theme.colors.primary} />

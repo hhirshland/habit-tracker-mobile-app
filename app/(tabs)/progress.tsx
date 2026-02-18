@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   Linking,
 } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -23,7 +24,7 @@ import {
 } from '@/lib/health';
 import { getWeekRange } from '@/lib/habits';
 import { getGoalCurrentValue } from '@/lib/goals';
-import { Goal } from '@/lib/types';
+import { Goal, Habit } from '@/lib/types';
 import {
   ALL_METRICS,
   DEFAULT_VISIBLE_KEYS,
@@ -46,6 +47,11 @@ import {
   useRefreshGoals,
 } from '@/hooks/useGoalsQuery';
 import { useRefreshAllHabitData, useWeeklyAdherence } from '@/hooks/useHabitsQuery';
+import { useDailyTodosForRange } from '@/hooks/useDailyTodosQuery';
+import { useDailyJournalForRange } from '@/hooks/useDailyJournalQuery';
+import { useTop3TodosSetting } from '@/hooks/useTop3TodosSetting';
+import { useJournalSetting } from '@/hooks/useJournalSetting';
+import type { HabitWeeklyStats } from '@/lib/habits';
 import GoalCard from '@/components/GoalCard';
 import GoalDetailModal from '@/components/GoalDetailModal';
 import AddGoalSheet from '@/components/AddGoalSheet';
@@ -54,6 +60,7 @@ import MetricDetailModal from '@/components/MetricDetailModal';
 import EditMetricsSheet from '@/components/EditMetricsSheet';
 import WeeklyAdherenceSummary from '@/components/WeeklyAdherenceSummary';
 import HabitAdherenceRow from '@/components/HabitAdherenceRow';
+import JournalHistorySection from '@/components/JournalHistorySection';
 
 const METRIC_PREFS_KEY = '@metric_preferences';
 
@@ -215,6 +222,72 @@ export default function ProgressScreen() {
     isLoading: weeklyAdherenceLoading,
   } = useWeeklyAdherence(weekRange.start, weekRange.end);
 
+  // Top 3 Todos for weekly adherence
+  const { enabled: top3Enabled } = useTop3TodosSetting();
+  const { data: weekTodos = [] } = useDailyTodosForRange(weekRange.start, weekRange.end);
+
+  // Daily Journal
+  const { enabled: journalEnabled } = useJournalSetting();
+  const journalHistoryRange = React.useMemo(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 90);
+    return {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
+    };
+  }, []);
+  const { data: journalEntries = [] } = useDailyJournalForRange(
+    journalHistoryRange.start,
+    journalHistoryRange.end
+  );
+
+  const top3TodoWeeklyStat = React.useMemo((): HabitWeeklyStats | null => {
+    if (!top3Enabled || weekTodos.length === 0) return null;
+
+    const todosByDate = new Map<string, number>();
+    const completedByDate = new Map<string, number>();
+    for (const todo of weekTodos) {
+      todosByDate.set(todo.todo_date, (todosByDate.get(todo.todo_date) ?? 0) + 1);
+      if (todo.is_completed) {
+        completedByDate.set(todo.todo_date, (completedByDate.get(todo.todo_date) ?? 0) + 1);
+      }
+    }
+
+    let daysCompleted = 0;
+    for (const [date, total] of todosByDate) {
+      if (total === 3 && (completedByDate.get(date) ?? 0) === 3) {
+        daysCompleted++;
+      }
+    }
+
+    const targetDays = 7;
+    const today = new Date().toISOString().slice(0, 10);
+    const weekEnded = weekRange.end < today;
+
+    let status: HabitWeeklyStats['status'];
+    if (weekEnded) {
+      status = daysCompleted >= targetDays ? 'met' : 'missed';
+    } else {
+      const d1 = new Date(`${today}T12:00:00`);
+      const d2 = new Date(`${weekRange.end}T12:00:00`);
+      const remainingDays = Math.max(Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1, 0);
+      const remaining = targetDays - daysCompleted;
+      if (remaining <= 0) status = 'on_track';
+      else if (remaining > remainingDays) status = 'behind';
+      else if (remaining === remainingDays) status = 'at_risk';
+      else status = 'on_track';
+    }
+
+    return {
+      habit: { id: '__top3_todos__', name: 'Finish top 3 todos' } as Habit,
+      completedDays: daysCompleted,
+      targetDays,
+      adherencePercent: Math.min(100, Math.round((daysCompleted / targetDays) * 100)),
+      status,
+    };
+  }, [top3Enabled, weekTodos, weekRange.end]);
+
   // Current values for each goal (loaded in parallel)
   const [goalCurrentValues, setGoalCurrentValues] = useState<Record<string, number | null>>({});
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
@@ -268,12 +341,15 @@ export default function ProgressScreen() {
     }, [isAuthorized, refresh])
   );
 
+  const queryClient = useQueryClient();
   const handleRefresh = async () => {
     setRefreshing(true);
-    refreshHabitData(); // Invalidate habit + completion cache
-    refreshHealthHistory(); // Invalidate cached history so queries refetch
-    refreshGoals(); // Invalidate cached goals
-    await refresh(); // Refresh today's metrics from HealthContext
+    refreshHabitData();
+    refreshHealthHistory();
+    refreshGoals();
+    queryClient.invalidateQueries({ queryKey: ['dailyTodos'] });
+    queryClient.invalidateQueries({ queryKey: ['dailyJournal'] });
+    await refresh();
     setRefreshing(false);
   };
 
@@ -428,9 +504,13 @@ export default function ProgressScreen() {
         <WeeklyAdherenceSummary
           weekLabel={weekRange.label}
           weekOffset={weekOffset}
-          adherencePercent={weeklyAdherence?.adherencePercent ?? 0}
-          completedTotal={weeklyAdherence?.completedTotal ?? 0}
-          targetTotal={weeklyAdherence?.targetTotal ?? 0}
+          adherencePercent={(() => {
+            const ct = (weeklyAdherence?.completedTotal ?? 0) + (top3TodoWeeklyStat?.completedDays ?? 0);
+            const tt = (weeklyAdherence?.targetTotal ?? 0) + (top3TodoWeeklyStat?.targetDays ?? 0);
+            return tt > 0 ? Math.min(100, Math.round((ct / tt) * 100)) : 0;
+          })()}
+          completedTotal={(weeklyAdherence?.completedTotal ?? 0) + (top3TodoWeeklyStat?.completedDays ?? 0)}
+          targetTotal={(weeklyAdherence?.targetTotal ?? 0) + (top3TodoWeeklyStat?.targetDays ?? 0)}
           disableNextWeek={weekOffset === 0}
           onPrevWeek={() => setWeekOffset((prev) => prev - 1)}
           onNextWeek={() => setWeekOffset((prev) => Math.min(prev + 1, 0))}
@@ -441,11 +521,14 @@ export default function ProgressScreen() {
           <View style={styles.habitAdherenceLoading}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
           </View>
-        ) : weeklyAdherence && weeklyAdherence.stats.length > 0 ? (
+        ) : (weeklyAdherence && weeklyAdherence.stats.length > 0) || top3TodoWeeklyStat ? (
           <View style={styles.habitRows}>
-            {weeklyAdherence.stats.map((stat) => (
+            {weeklyAdherence?.stats.map((stat) => (
               <HabitAdherenceRow key={stat.habit.id} stat={stat} />
             ))}
+            {top3TodoWeeklyStat && (
+              <HabitAdherenceRow stat={top3TodoWeeklyStat} />
+            )}
           </View>
         ) : (
           <View style={styles.emptyHabitsCard}>
@@ -454,6 +537,11 @@ export default function ProgressScreen() {
               No active habits yet. Add habits in the Habits tab to start tracking weekly adherence.
             </Text>
           </View>
+        )}
+
+        {/* Journal History Section */}
+        {journalEnabled && (
+          <JournalHistorySection entries={journalEntries} />
         )}
 
         {/* Goals Section */}

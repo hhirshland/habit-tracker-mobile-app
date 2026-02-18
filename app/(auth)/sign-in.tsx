@@ -54,7 +54,6 @@ export default function SignInScreen() {
             <ThriveLogo size={40} style={{ marginRight: 10 }} />
             <Text style={styles.wordmark}>Thrive</Text>
           </View>
-          <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Sign in to continue tracking your habits</Text>
         </View>
 

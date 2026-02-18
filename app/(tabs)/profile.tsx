@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,10 +19,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useHealth } from '@/contexts/HealthContext';
 import { HEALTH_METRIC_DISPLAY_NAMES } from '@/lib/health';
 import { supabase } from '@/lib/supabase';
+import { useTop3TodosSetting } from '@/hooks/useTop3TodosSetting';
+import { useJournalSetting } from '@/hooks/useJournalSetting';
 
 export default function ProfileScreen() {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
+  const { enabled: top3TodosEnabled, toggle: toggleTop3Todos } = useTop3TodosSetting();
+  const { enabled: journalEnabled, toggle: toggleJournal } = useJournalSetting();
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -194,6 +199,51 @@ export default function ProfileScreen() {
               <Text style={styles.saveButtonText}>Save Changes</Text>
             )}
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Features */}
+        <View style={styles.healthSection}>
+          <Text style={styles.sectionLabel}>Features</Text>
+          <View style={styles.healthCard}>
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLight + '30' }]}>
+                <FontAwesome name="list-ol" size={18} color={theme.colors.primary} />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>Top 3 Todos</Text>
+                <Text style={styles.healthStatus}>
+                  Set your top 3 priorities each day
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={top3TodosEnabled}
+              onValueChange={toggleTop3Todos}
+              trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
+              thumbColor={top3TodosEnabled ? theme.colors.primary : '#f4f3f4'}
+            />
+          </View>
+          <View style={[styles.healthCard, { marginTop: theme.spacing.sm }]}>
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLight + '30' }]}>
+                <FontAwesome name="book" size={18} color={theme.colors.primary} />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>Daily Journal</Text>
+                <Text style={styles.healthStatus}>
+                  Reflect on wins, tensions & gratitude
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={journalEnabled}
+              onValueChange={toggleJournal}
+              trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
+              thumbColor={journalEnabled ? theme.colors.primary : '#f4f3f4'}
+            />
+          </View>
         </View>
 
         <View style={styles.divider} />
@@ -449,6 +499,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.md,
+    flex: 1,
   },
   healthIconContainer: {
     width: 40,
