@@ -1,25 +1,118 @@
-export const theme = {
-  colors: {
-    primary: '#6C63FF',
-    primaryLight: '#8B85FF',
-    primaryDark: '#5A52E0',
-    secondary: '#4ECDC4',
-    success: '#2ECC71',
-    successLight: '#E8F8F0',
-    warning: '#F39C12',
-    danger: '#E74C3C',
-    background: '#F8F9FA',
-    surface: '#FFFFFF',
-    card: '#FFFFFF',
-    textPrimary: '#1A1A2E',
-    textSecondary: '#6B7280',
-    textMuted: '#9CA3AF',
-    border: '#E5E7EB',
-    borderLight: '#F3F4F6',
-    overlay: 'rgba(0, 0, 0, 0.5)',
-    completed: '#D1FAE5',
-    completedText: '#065F46',
-  },
+import { DynamicColorIOS, Platform } from 'react-native';
+
+export type ThemeColors = {
+  primary: string;
+  primaryLight: string;
+  primaryDark: string;
+  secondary: string;
+  success: string;
+  successLight: string;
+  warning: string;
+  danger: string;
+  background: string;
+  surface: string;
+  card: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  border: string;
+  borderLight: string;
+  overlay: string;
+  completed: string;
+  completedText: string;
+  warningBackground: string;
+  warningBorder: string;
+  warningText: string;
+  primaryLightOverlay30: string;
+  primaryLightOverlay25: string;
+  primaryLightOverlay15: string;
+  primaryOverlay60: string;
+  primaryOverlay40: string;
+  warningOverlay18: string;
+  textMutedOverlay18: string;
+};
+
+const lightColors: ThemeColors = {
+  primary: '#6C63FF',
+  primaryLight: '#8B85FF',
+  primaryDark: '#5A52E0',
+  secondary: '#4ECDC4',
+  success: '#2ECC71',
+  successLight: '#E8F8F0',
+  warning: '#F39C12',
+  danger: '#E74C3C',
+  background: '#F8F9FA',
+  surface: '#FFFFFF',
+  card: '#FFFFFF',
+  textPrimary: '#1A1A2E',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
+  border: '#E5E7EB',
+  borderLight: '#F3F4F6',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  completed: '#D1FAE5',
+  completedText: '#065F46',
+  warningBackground: '#FFF8E1',
+  warningBorder: '#FFE082',
+  warningText: '#E65100',
+  primaryLightOverlay30: '#8B85FF30',
+  primaryLightOverlay25: '#8B85FF25',
+  primaryLightOverlay15: '#8B85FF15',
+  primaryOverlay60: '#6C63FF60',
+  primaryOverlay40: '#6C63FF40',
+  warningOverlay18: '#F39C1218',
+  textMutedOverlay18: '#9CA3AF18',
+};
+
+const darkColors: ThemeColors = {
+  primary: '#8D86FF',
+  primaryLight: '#A29DFF',
+  primaryDark: '#746CF5',
+  secondary: '#52D7CE',
+  success: '#38D47B',
+  successLight: '#173125',
+  warning: '#FFB54C',
+  danger: '#FF776A',
+  background: '#0E1016',
+  surface: '#171A22',
+  card: '#171A22',
+  textPrimary: '#F3F4F8',
+  textSecondary: '#B2B8C5',
+  textMuted: '#8D95A6',
+  border: '#2A2E39',
+  borderLight: '#202532',
+  overlay: 'rgba(0, 0, 0, 0.65)',
+  completed: '#164332',
+  completedText: '#9CF0CA',
+  warningBackground: '#3A2A13',
+  warningBorder: '#5A3D1E',
+  warningText: '#FFCC80',
+  primaryLightOverlay30: '#A29DFF33',
+  primaryLightOverlay25: '#A29DFF2B',
+  primaryLightOverlay15: '#A29DFF1A',
+  primaryOverlay60: '#8D86FF66',
+  primaryOverlay40: '#8D86FF44',
+  warningOverlay18: '#FFB54C24',
+  textMutedOverlay18: '#8D95A630',
+};
+
+export type ThemeMode = 'light' | 'dark';
+
+const adaptiveColor = (light: string, dark: string) => {
+  if (Platform.OS === 'ios') {
+    return DynamicColorIOS({ light, dark });
+  }
+  return light;
+};
+
+const adaptiveColors = Object.fromEntries(
+  Object.entries(lightColors).map(([key, lightValue]) => {
+    const darkValue = darkColors[key as keyof ThemeColors];
+    return [key, adaptiveColor(lightValue, darkValue)];
+  })
+) as ThemeColors;
+
+const sharedTheme = {
   spacing: {
     xs: 4,
     sm: 8,
@@ -76,3 +169,20 @@ export const theme = {
     },
   },
 };
+
+export const lightTheme = {
+  ...sharedTheme,
+  colors: lightColors,
+};
+
+export const darkTheme = {
+  ...sharedTheme,
+  colors: darkColors,
+};
+
+export const theme = {
+  ...sharedTheme,
+  colors: adaptiveColors,
+};
+
+export type Theme = typeof lightTheme;

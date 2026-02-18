@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
 import { Href, Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,6 +13,7 @@ import { PostHogProvider } from 'posthog-react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { HealthProvider } from '@/contexts/HealthContext';
+import { ThemeProvider, useThemePreference } from '@/contexts/ThemeContext';
 import { setSuperProperties, trackScreen } from '@/lib/analytics';
 import { getAuthRedirectTarget } from '@/lib/authRouting';
 import { posthogClient } from '@/lib/posthog';
@@ -53,18 +55,22 @@ export default function RootLayout() {
         <PostHogProvider client={posthogClient}>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <HealthProvider>
-                <RootLayoutNav />
-              </HealthProvider>
+              <ThemeProvider>
+                <HealthProvider>
+                  <RootLayoutNav />
+                </HealthProvider>
+              </ThemeProvider>
             </AuthProvider>
           </QueryClientProvider>
         </PostHogProvider>
       ) : (
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <HealthProvider>
-              <RootLayoutNav />
-            </HealthProvider>
+            <ThemeProvider>
+              <HealthProvider>
+                <RootLayoutNav />
+              </HealthProvider>
+            </ThemeProvider>
           </AuthProvider>
         </QueryClientProvider>
       )}
@@ -74,6 +80,7 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const { session, profile, loading } = useAuth();
+  const { resolvedTheme } = useThemePreference();
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
@@ -125,10 +132,13 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(onboarding)" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <>
+      <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(onboarding)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </>
   );
 }

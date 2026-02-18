@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.primaryLight + '30',
+    backgroundColor: theme.colors.primaryLightOverlay30,
   },
   featureTitle: {
     flex: 1,

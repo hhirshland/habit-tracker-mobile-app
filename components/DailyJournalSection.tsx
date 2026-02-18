@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconCircleIncomplete: {
-    backgroundColor: theme.colors.primaryLight + '25',
+    backgroundColor: theme.colors.primaryLightOverlay25,
   },
   iconCircleCompleted: {
     backgroundColor: theme.colors.primary,

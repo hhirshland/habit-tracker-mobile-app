@@ -638,7 +638,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.primary + '40',
+    borderColor: theme.colors.primaryOverlay40,
     borderStyle: 'dashed',
     paddingVertical: theme.spacing.md,
     gap: theme.spacing.sm,

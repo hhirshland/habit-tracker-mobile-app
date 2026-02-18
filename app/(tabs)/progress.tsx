@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.warning + '18',
+    backgroundColor: theme.colors.warningOverlay18,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: theme.spacing.sm,
@@ -977,7 +977,7 @@ const styles = StyleSheet.create({
   hintCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: theme.colors.primaryLight + '15',
+    backgroundColor: theme.colors.primaryLightOverlay15,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     marginTop: theme.spacing.lg,

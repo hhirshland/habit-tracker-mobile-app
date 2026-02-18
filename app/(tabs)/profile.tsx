@@ -17,14 +17,17 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHealth } from '@/contexts/HealthContext';
+import { ThemePreference, useThemePreference } from '@/contexts/ThemeContext';
 import { HEALTH_METRIC_DISPLAY_NAMES } from '@/lib/health';
 import { supabase } from '@/lib/supabase';
 import { useTop3TodosSetting } from '@/hooks/useTop3TodosSetting';
 import { useJournalSetting } from '@/hooks/useJournalSetting';
+import { EVENTS, captureEvent } from '@/lib/analytics';
 
 export default function ProfileScreen() {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
+  const { preference, setPreference } = useThemePreference();
   const { enabled: top3TodosEnabled, toggle: toggleTop3Todos } = useTop3TodosSetting();
   const { enabled: journalEnabled, toggle: toggleJournal } = useJournalSetting();
   const [fullName, setFullName] = useState('');
@@ -32,6 +35,7 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [updatingAppearance, setUpdatingAppearance] = useState(false);
 
   const handleConnectHealth = async () => {
     setConnecting(true);
@@ -131,6 +135,20 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleAppearanceChange = async (nextPreference: ThemePreference) => {
+    if (nextPreference === preference || updatingAppearance) return;
+    setUpdatingAppearance(true);
+    try {
+      await setPreference(nextPreference);
+      captureEvent(EVENTS.PROFILE_UPDATED);
+    } catch (error) {
+      console.error('Error updating appearance:', error);
+      Alert.alert('Error', 'Failed to update appearance setting.');
+    } finally {
+      setUpdatingAppearance(false);
+    }
+  };
+
   const getInitials = () => {
     if (!fullName) return '?';
     return fullName
@@ -208,7 +226,7 @@ export default function ProfileScreen() {
           <Text style={styles.sectionLabel}>Features</Text>
           <View style={styles.healthCard}>
             <View style={styles.healthCardLeft}>
-              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLight + '30' }]}>
+              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLightOverlay30 }]}>
                 <FontAwesome name="list-ol" size={18} color={theme.colors.primary} />
               </View>
               <View style={styles.healthInfo}>
@@ -227,7 +245,7 @@ export default function ProfileScreen() {
           </View>
           <View style={[styles.healthCard, { marginTop: theme.spacing.sm }]}>
             <View style={styles.healthCardLeft}>
-              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLight + '30' }]}>
+              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLightOverlay30 }]}>
                 <FontAwesome name="book" size={18} color={theme.colors.primary} />
               </View>
               <View style={styles.healthInfo}>
@@ -243,6 +261,43 @@ export default function ProfileScreen() {
               trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
               thumbColor={journalEnabled ? theme.colors.primary : '#f4f3f4'}
             />
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.appearanceSection}>
+          <Text style={styles.sectionLabel}>Appearance</Text>
+          <View style={styles.appearanceCard}>
+            {([
+              { key: 'system', label: 'System' },
+              { key: 'light', label: 'Light' },
+              { key: 'dark', label: 'Dark' },
+            ] as const).map((option) => {
+              const isSelected = preference === option.key;
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.appearanceOption,
+                    isSelected && styles.appearanceOptionSelected,
+                    updatingAppearance && styles.buttonDisabled,
+                  ]}
+                  onPress={() => handleAppearanceChange(option.key)}
+                  disabled={updatingAppearance}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.appearanceOptionText,
+                      isSelected && styles.appearanceOptionTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -535,20 +590,20 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
   },
   authFailedBox: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: theme.colors.warningBackground,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     marginTop: theme.spacing.sm,
   },
   authFailedText: {
     fontSize: theme.fontSize.sm,
-    color: '#E65100',
+    color: theme.colors.warningText,
     lineHeight: 20,
   },
   missingPermissionsCard: {
-    backgroundColor: '#FFF8E1',
+    backgroundColor: theme.colors.warningBackground,
     borderWidth: 1,
-    borderColor: '#FFE082',
+    borderColor: theme.colors.warningBorder,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     marginTop: theme.spacing.sm,
@@ -562,7 +617,7 @@ const styles = StyleSheet.create({
   missingPermissionsTitle: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: '#E65100',
+    color: theme.colors.warningText,
   },
   missingPermissionsBody: {
     fontSize: theme.fontSize.xs,
@@ -580,6 +635,37 @@ const styles = StyleSheet.create({
   grantAccessButtonText: {
     color: '#fff',
     fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  appearanceSection: {
+    paddingHorizontal: theme.spacing.lg,
+  },
+  appearanceCard: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.xs,
+    gap: theme.spacing.xs,
+  },
+  appearanceOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+  },
+  appearanceOptionSelected: {
+    backgroundColor: theme.colors.primaryLightOverlay30,
+  },
+  appearanceOptionText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+  },
+  appearanceOptionTextSelected: {
+    color: theme.colors.primary,
     fontWeight: theme.fontWeight.semibold,
   },
 });

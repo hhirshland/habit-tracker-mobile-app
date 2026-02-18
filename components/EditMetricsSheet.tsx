@@ -117,7 +117,7 @@ export default function EditMetricsSheet({
                 <View
                   style={[
                     styles.metricIcon,
-                    { backgroundColor: (item.visible ? item.metric.color : theme.colors.textMuted) + '18' },
+                    { backgroundColor: item.visible ? `${item.metric.color}18` : theme.colors.textMutedOverlay18 },
                   ]}
                 >
                   <FontAwesome
@@ -179,7 +179,7 @@ export default function EditMetricsSheet({
                   onValueChange={() => toggleVisibility(item.metric.key)}
                   trackColor={{
                     false: theme.colors.borderLight,
-                    true: theme.colors.primary + '60',
+                    true: theme.colors.primaryOverlay60,
                   }}
                   thumbColor={item.visible ? theme.colors.primary : '#f4f3f4'}
                   ios_backgroundColor={theme.colors.borderLight}

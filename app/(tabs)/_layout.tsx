@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../contexts/AuthContext';
+import { theme } from '@/lib/theme';
 
 const TAB_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
   index: 'home',
@@ -56,7 +57,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           };
 
           const iconName = TAB_ICONS[route.name] ?? 'circle';
-          const color = isFocused ? '#1A1A1A' : '#B0B0B0';
+          const color = isFocused ? theme.colors.textPrimary : theme.colors.textMuted;
 
           return (
             <TouchableOpacity
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
   },
   tabBarPill: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 32,
     paddingVertical: 8,
     paddingHorizontal: 6,
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     bottom: -2,
     left: 1,
     right: 1,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: theme.colors.borderLight,
     borderRadius: 24,
   },
   profilePic: {
