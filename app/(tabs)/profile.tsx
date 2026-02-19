@@ -17,25 +17,27 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHealth } from '@/contexts/HealthContext';
-import { ThemePreference, useThemePreference } from '@/contexts/ThemeContext';
+import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { HEALTH_METRIC_DISPLAY_NAMES } from '@/lib/health';
 import { supabase } from '@/lib/supabase';
-import { useTop3TodosSetting } from '@/hooks/useTop3TodosSetting';
-import { useJournalSetting } from '@/hooks/useJournalSetting';
+import { useNotificationsSetting } from '@/hooks/useNotificationsSetting';
 import { EVENTS, captureEvent } from '@/lib/analytics';
+import type { ThemePreference } from '@/lib/userSettings';
 
 export default function ProfileScreen() {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
-  const { preference, setPreference } = useThemePreference();
-  const { enabled: top3TodosEnabled, toggle: toggleTop3Todos } = useTop3TodosSetting();
-  const { enabled: journalEnabled, toggle: toggleJournal } = useJournalSetting();
+  const { settings, setThemePreference, updateSettings } = useUserSettings();
+  const { enabled: notificationsEnabled, toggle: toggleNotifications } = useNotificationsSetting();
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [updatingAppearance, setUpdatingAppearance] = useState(false);
+  const top3TodosEnabled = settings.top3_todos_enabled;
+  const journalEnabled = settings.journal_enabled;
+  const preference = settings.theme_preference;
 
   const handleConnectHealth = async () => {
     setConnecting(true);
@@ -139,7 +141,7 @@ export default function ProfileScreen() {
     if (nextPreference === preference || updatingAppearance) return;
     setUpdatingAppearance(true);
     try {
-      await setPreference(nextPreference);
+      await setThemePreference(nextPreference);
       captureEvent(EVENTS.PROFILE_UPDATED);
     } catch (error) {
       console.error('Error updating appearance:', error);
@@ -147,6 +149,18 @@ export default function ProfileScreen() {
     } finally {
       setUpdatingAppearance(false);
     }
+  };
+
+  const handleToggleTop3Todos = async () => {
+    const nextEnabled = !top3TodosEnabled;
+    await updateSettings({ top3_todos_enabled: nextEnabled });
+    captureEvent(EVENTS.TOP3_TODOS_TOGGLED, { enabled: nextEnabled });
+  };
+
+  const handleToggleJournal = async () => {
+    const nextEnabled = !journalEnabled;
+    await updateSettings({ journal_enabled: nextEnabled });
+    captureEvent(EVENTS.JOURNAL_TOGGLED, { enabled: nextEnabled });
   };
 
   const getInitials = () => {
@@ -238,7 +252,7 @@ export default function ProfileScreen() {
             </View>
             <Switch
               value={top3TodosEnabled}
-              onValueChange={toggleTop3Todos}
+              onValueChange={handleToggleTop3Todos}
               trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
               thumbColor={top3TodosEnabled ? theme.colors.primary : '#f4f3f4'}
             />
@@ -257,9 +271,34 @@ export default function ProfileScreen() {
             </View>
             <Switch
               value={journalEnabled}
-              onValueChange={toggleJournal}
+              onValueChange={handleToggleJournal}
               trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
               thumbColor={journalEnabled ? theme.colors.primary : '#f4f3f4'}
+            />
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.healthSection}>
+          <Text style={styles.sectionLabel}>Notifications</Text>
+          <View style={styles.healthCard}>
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLightOverlay30 }]}>
+                <FontAwesome name="bell" size={18} color={theme.colors.primary} />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>Daily Reminders</Text>
+                <Text style={styles.healthStatus}>
+                  8am Top 3 todos and 8pm habits check-in
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={toggleNotifications}
+              trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
+              thumbColor={notificationsEnabled ? theme.colors.primary : '#f4f3f4'}
             />
           </View>
         </View>

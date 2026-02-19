@@ -49,8 +49,7 @@ import {
 import { useRefreshAllHabitData, useWeeklyAdherence } from '@/hooks/useHabitsQuery';
 import { useDailyTodosForRange } from '@/hooks/useDailyTodosQuery';
 import { useDailyJournalForRange } from '@/hooks/useDailyJournalQuery';
-import { useTop3TodosSetting } from '@/hooks/useTop3TodosSetting';
-import { useJournalSetting } from '@/hooks/useJournalSetting';
+import { useUserSettings } from '@/contexts/UserSettingsContext';
 import type { HabitWeeklyStats } from '@/lib/habits';
 import GoalCard from '@/components/GoalCard';
 import GoalDetailModal from '@/components/GoalDetailModal';
@@ -198,6 +197,7 @@ function NotAvailable() {
 export default function ProgressScreen() {
   const { user } = useAuth();
   const { isAvailable, isAuthorized, loading, metrics, connect, refresh, authFailed, missingMetrics } = useHealth();
+  const { settings } = useUserSettings();
   const [refreshing, setRefreshing] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
 
@@ -223,11 +223,11 @@ export default function ProgressScreen() {
   } = useWeeklyAdherence(weekRange.start, weekRange.end);
 
   // Top 3 Todos for weekly adherence
-  const { enabled: top3Enabled } = useTop3TodosSetting();
+  const top3Enabled = settings.top3_todos_enabled;
   const { data: weekTodos = [] } = useDailyTodosForRange(weekRange.start, weekRange.end);
 
   // Daily Journal
-  const { enabled: journalEnabled } = useJournalSetting();
+  const journalEnabled = settings.journal_enabled;
   const journalHistoryRange = React.useMemo(() => {
     const end = new Date();
     const start = new Date();

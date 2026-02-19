@@ -9,12 +9,12 @@ import {
   Switch,
   ScrollView,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/lib/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import { createHabit } from '@/lib/habits';
 import { supabase } from '@/lib/supabase';
@@ -26,9 +26,6 @@ interface PendingHabit {
   frequency_per_week: number;
   specific_days: number[] | null;
 }
-
-const TOP3_STORAGE_KEY = '@top_3_todos_enabled';
-const JOURNAL_STORAGE_KEY = '@daily_journal_enabled';
 
 function parseHabitsParam(rawHabits: string | string[] | undefined): PendingHabit[] {
   if (!rawHabits) return [];
@@ -46,6 +43,7 @@ function parseHabitsParam(rawHabits: string | string[] | undefined): PendingHabi
 
 export default function OnboardingFeaturesScreen() {
   const { user, refreshProfile } = useAuth();
+  const { updateSettings } = useUserSettings();
   const params = useLocalSearchParams<{ habits?: string | string[] }>();
   const habits = useMemo(() => parseHabitsParam(params.habits), [params.habits]);
 
@@ -63,10 +61,10 @@ export default function OnboardingFeaturesScreen() {
 
     setSaving(true);
     try {
-      await AsyncStorage.multiSet([
-        [TOP3_STORAGE_KEY, top3TodosEnabled ? 'true' : 'false'],
-        [JOURNAL_STORAGE_KEY, journalEnabled ? 'true' : 'false'],
-      ]);
+      await updateSettings({
+        top3_todos_enabled: top3TodosEnabled,
+        journal_enabled: journalEnabled,
+      });
 
       for (const habit of habits) {
         await createHabit(user.id, {

@@ -27,6 +27,7 @@ export const EVENTS = {
   TOP3_TODOS_TOGGLED: 'top3_todos_toggled',
   JOURNAL_SUBMITTED: 'journal_submitted',
   JOURNAL_TOGGLED: 'journal_toggled',
+  NOTIFICATIONS_TOGGLED: 'notifications_toggled',
   SCREEN_VIEWED: 'screen_viewed',
   AVATAR_UPLOADED: 'avatar_uploaded',
   PROFILE_UPDATED: 'profile_updated',
@@ -121,6 +122,9 @@ type EventPropertiesMap = {
     date: string;
   };
   journal_toggled: {
+    enabled: boolean;
+  };
+  notifications_toggled: {
     enabled: boolean;
   };
   health_connected: undefined;

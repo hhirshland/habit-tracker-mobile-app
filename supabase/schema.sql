@@ -14,10 +14,15 @@ create table public.profiles (
   user_id uuid references auth.users(id) on delete cascade not null unique,
   full_name text,
   avatar_url text,
+  settings jsonb,
   has_onboarded boolean default false not null,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
+
+alter table public.profiles
+  add constraint profiles_settings_is_object
+  check (settings is null or jsonb_typeof(settings) = 'object');
 
 -- Enable RLS
 alter table public.profiles enable row level security;

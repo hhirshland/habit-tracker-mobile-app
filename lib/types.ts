@@ -1,8 +1,11 @@
+import type { UserSettings } from '@/lib/userSettings';
+
 export interface Profile {
   id: string;
   user_id: string;
   full_name: string | null;
   avatar_url: string | null;
+  settings: UserSettings | null;
   has_onboarded: boolean;
   created_at: string;
   updated_at: string;

@@ -49,8 +49,7 @@ import {
   useDailyJournalForRange,
   useUpsertJournalEntry,
 } from '@/hooks/useDailyJournalQuery';
-import { useTop3TodosSetting } from '@/hooks/useTop3TodosSetting';
-import { useJournalSetting } from '@/hooks/useJournalSetting';
+import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { queryKeys } from '@/lib/queryClient';
 import PriorityItem from '@/components/PriorityItemVariantB';
 import CalendarStrip from '@/components/CalendarStrip';
@@ -122,7 +121,8 @@ export default function HomeScreen() {
   );
 
   // ── Top 3 Todos ──
-  const { enabled: top3Enabled } = useTop3TodosSetting();
+  const { settings } = useUserSettings();
+  const top3Enabled = settings.top3_todos_enabled;
   const { data: dailyTodos = [] } = useDailyTodos(selectedDate);
   const { data: calendarTodos = [] } = useDailyTodosForRange(
     calendarRange.start,
@@ -130,7 +130,7 @@ export default function HomeScreen() {
   );
 
   // ── Daily Journal ──
-  const { enabled: journalEnabled } = useJournalSetting();
+  const journalEnabled = settings.journal_enabled;
   const { data: journalEntry = null } = useDailyJournal(selectedDate);
   const { data: calendarJournals = [] } = useDailyJournalForRange(
     calendarRange.start,
