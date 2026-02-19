@@ -5,7 +5,7 @@ import { Href, Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { PostHogProvider } from 'posthog-react-native';
@@ -19,7 +19,6 @@ import { getAuthRedirectTarget } from '@/lib/authRouting';
 import { rescheduleNotifications } from '@/lib/notifications';
 import { posthogClient } from '@/lib/posthog';
 import { queryClient } from '@/lib/queryClient';
-import { theme } from '@/lib/theme';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -39,12 +38,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (error) throw error;
   }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
 
   if (!loaded) {
     return null;
@@ -95,6 +88,14 @@ function RootLayoutNav() {
   }, [loading, hasHydratedAuth]);
 
   useEffect(() => {
+    if (!hasHydratedAuth) return;
+
+    SplashScreen.hideAsync().catch((error) => {
+      console.error('Error hiding splash screen:', error);
+    });
+  }, [hasHydratedAuth]);
+
+  useEffect(() => {
     if (loading) return;
 
     const redirectTarget = getAuthRedirectTarget({
@@ -129,16 +130,6 @@ function RootLayoutNav() {
       console.error('Error rescheduling notifications on app launch:', error);
     });
   }, [hasHydratedAuth]);
-
-  // Keep initial blocking loader, but avoid remounting root navigation during
-  // periodic background auth refreshes (e.g. token refresh).
-  if (loading && !hasHydratedAuth) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
 
   return (
     <>

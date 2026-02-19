@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session, User } from '@supabase/supabase-js';
 import { EVENTS, captureEvent, identifyUser, resetUser, setUserProperties } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
@@ -19,6 +20,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_TIMEOUT_MS = 10000;
+const PROFILE_CACHE_KEY = '@cached_profile';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -31,6 +33,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadingRef.current = loading;
   }, [loading]);
+
+  const cacheProfile = async (nextProfile: Profile | null) => {
+    try {
+      if (nextProfile) {
+        await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(nextProfile));
+      } else {
+        await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
+      }
+    } catch (error) {
+      console.warn('Error persisting cached profile:', error);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -47,6 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Keep previous profile on transient errors; only clear when profile truly doesn't exist.
       if (!error && data) {
         setProfile(data);
+        cacheProfile(data).catch(() => {
+          // no-op: cacheProfile already logs details
+        });
         setUserProperties({
           name: data.full_name,
           has_onboarded: data.has_onboarded,
@@ -54,6 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } else if (error?.code === 'PGRST116') {
         setProfile(null);
+        cacheProfile(null).catch(() => {
+          // no-op: cacheProfile already logs details
+        });
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -64,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSessionAndProfile = async () => {
     try {
-      setLoading(true);
       const {
         data: { session: latestSession },
       } = await supabase.auth.getSession();
@@ -94,20 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, AUTH_TIMEOUT_MS);
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    }).catch(() => {
-      if (mounted) setLoading(false);
-    });
-
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -117,22 +122,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           // Avoid global loading flips on token refresh; they remount navigation.
           // Only show blocking loading for true auth transitions.
-          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          if (event === 'SIGNED_IN') {
             setLoading(true);
           }
           identifyUser(session.user.id, {
             email: session.user.email ?? null,
             created_at: session.user.created_at ?? null,
           });
-          await fetchProfile(session.user.id);
+          fetchProfile(session.user.id).catch(() => {
+            // no-op: fetchProfile already logs details
+          });
         } else {
           captureEvent(EVENTS.USER_SIGNED_OUT);
           resetUser();
           setProfile(null);
+          cacheProfile(null).catch(() => {
+            // no-op: cacheProfile already logs details
+          });
           setLoading(false);
         }
       }
     );
+
+    const hydrateFromCache = async () => {
+      try {
+        const [
+          { data: { session: existingSession } },
+          cachedProfileRaw,
+        ] = await Promise.all([
+          supabase.auth.getSession(),
+          AsyncStorage.getItem(PROFILE_CACHE_KEY),
+        ]);
+
+        if (!mounted) return;
+
+        setSession(existingSession);
+        setUser(existingSession?.user ?? null);
+
+        if (!existingSession?.user) {
+          setProfile(null);
+          cacheProfile(null).catch(() => {
+            // no-op: cacheProfile already logs details
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (!cachedProfileRaw) {
+          return;
+        }
+
+        const parsedProfile = JSON.parse(cachedProfileRaw) as Profile;
+
+        if (parsedProfile?.user_id === existingSession.user.id) {
+          setProfile(parsedProfile);
+          setUserProperties({
+            name: parsedProfile.full_name,
+            has_onboarded: parsedProfile.has_onboarded,
+            created_at: parsedProfile.created_at,
+          });
+          setLoading(false);
+          return;
+        }
+
+        cacheProfile(null).catch(() => {
+          // no-op: cacheProfile already logs details
+        });
+      } catch (error) {
+        if (!mounted) return;
+        console.warn('Error hydrating auth from cache:', error);
+      }
+    };
+
+    hydrateFromCache().catch(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    });
 
     // Refresh session when app returns to foreground
     const appStateSubscription = AppState.addEventListener(
@@ -194,6 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     resetUser();
     setProfile(null);
+    await cacheProfile(null);
   };
 
   return (
