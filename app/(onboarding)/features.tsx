@@ -12,7 +12,8 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '@/lib/theme';
+import { theme, ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { EVENTS, captureEvent } from '@/lib/analytics';
@@ -42,6 +43,8 @@ function parseHabitsParam(rawHabits: string | string[] | undefined): PendingHabi
 }
 
 export default function OnboardingFeaturesScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, refreshProfile } = useAuth();
   const { updateSettings } = useUserSettings();
   const params = useLocalSearchParams<{ habits?: string | string[] }>();
@@ -115,15 +118,15 @@ export default function OnboardingFeaturesScreen() {
           <View style={styles.featureTopRow}>
             <View style={styles.featureTitleRow}>
               <View style={styles.featureIcon}>
-                <FontAwesome name="list-ol" size={18} color={theme.colors.primary} />
+                <FontAwesome name="list-ol" size={18} color={colors.primary} />
               </View>
               <Text style={styles.featureTitle}>Daily Top 3 Priorities</Text>
             </View>
             <Switch
               value={top3TodosEnabled}
               onValueChange={setTop3TodosEnabled}
-              trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
-              thumbColor={top3TodosEnabled ? theme.colors.primary : '#f4f3f4'}
+              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
+              thumbColor={top3TodosEnabled ? colors.primary : '#f4f3f4'}
             />
           </View>
           <Text style={styles.featureDescription}>
@@ -136,15 +139,15 @@ export default function OnboardingFeaturesScreen() {
           <View style={styles.featureTopRow}>
             <View style={styles.featureTitleRow}>
               <View style={styles.featureIcon}>
-                <FontAwesome name="book" size={18} color={theme.colors.primary} />
+                <FontAwesome name="book" size={18} color={colors.primary} />
               </View>
               <Text style={styles.featureTitle}>Daily Journal</Text>
             </View>
             <Switch
               value={journalEnabled}
               onValueChange={setJournalEnabled}
-              trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
-              thumbColor={journalEnabled ? theme.colors.primary : '#f4f3f4'}
+              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
+              thumbColor={journalEnabled ? colors.primary : '#f4f3f4'}
             />
           </View>
           <Text style={styles.featureDescription}>
@@ -181,10 +184,10 @@ export default function OnboardingFeaturesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
     paddingHorizontal: theme.spacing.lg,
   },
   header: {
@@ -199,13 +202,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: theme.fontSize.xxl,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: theme.spacing.xs,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -217,10 +220,10 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.sm,
   },
   featureCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     padding: theme.spacing.md,
     gap: theme.spacing.sm,
   },
@@ -242,17 +245,17 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.primaryLightOverlay30,
+    backgroundColor: colors.primaryLightOverlay30,
   },
   featureTitle: {
     flex: 1,
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   featureDescription: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 20,
   },
   actions: {
@@ -264,20 +267,20 @@ const styles = StyleSheet.create({
   backButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: theme.borderRadius.md,
     paddingVertical: 16,
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
   },
   backButtonText: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
   },
   continueButton: {
     flex: 2,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.md,
     paddingVertical: 16,
     alignItems: 'center',

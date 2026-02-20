@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import HabitForm from '@/components/HabitForm';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -25,8 +26,123 @@ interface PendingHabit {
 }
 
 export default function OnboardingScreen() {
+  const colors = useThemeColors();
   const [habits, setHabits] = useState<PendingHabit[]>([]);
   const [showForm, setShowForm] = useState(true);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+          paddingHorizontal: theme.spacing.lg,
+        },
+        header: {
+          alignItems: 'center',
+          paddingTop: theme.spacing.xl,
+          marginBottom: theme.spacing.lg,
+        },
+        emoji: {
+          fontSize: 48,
+          marginBottom: theme.spacing.md,
+        },
+        title: {
+          fontSize: theme.fontSize.xxl,
+          fontWeight: theme.fontWeight.bold,
+          color: colors.textPrimary,
+          marginBottom: theme.spacing.xs,
+        },
+        subtitle: {
+          fontSize: theme.fontSize.md,
+          color: colors.textSecondary,
+          textAlign: 'center',
+          lineHeight: 22,
+        },
+        sectionTitle: {
+          fontSize: theme.fontSize.sm,
+          fontWeight: theme.fontWeight.semibold,
+          color: colors.textSecondary,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+          marginBottom: theme.spacing.sm,
+        },
+        habitsList: {
+          flex: 1,
+          marginBottom: theme.spacing.md,
+        },
+        habitsScroll: {
+          flex: 1,
+        },
+        habitsScrollContent: {
+          paddingBottom: theme.spacing.sm,
+        },
+        habitCard: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: colors.surface,
+          borderRadius: theme.borderRadius.md,
+          padding: theme.spacing.md,
+          marginBottom: theme.spacing.sm,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        habitInfo: {
+          flex: 1,
+        },
+        habitNameRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+        },
+        habitName: {
+          fontSize: theme.fontSize.md,
+          fontWeight: theme.fontWeight.semibold,
+          color: colors.textPrimary,
+        },
+        habitFrequency: {
+          fontSize: theme.fontSize.sm,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+        formContainer: {
+          flex: 1,
+        },
+        actionsContainer: {
+          gap: theme.spacing.md,
+          paddingBottom: theme.spacing.md,
+        },
+        addMoreButton: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: theme.spacing.sm,
+          paddingVertical: 16,
+          borderRadius: theme.borderRadius.md,
+          borderWidth: 2,
+          borderColor: colors.primary,
+          borderStyle: 'dashed',
+        },
+        addMoreText: {
+          fontSize: theme.fontSize.md,
+          fontWeight: theme.fontWeight.semibold,
+          color: colors.primary,
+        },
+        finishButton: {
+          backgroundColor: colors.primary,
+          borderRadius: theme.borderRadius.md,
+          paddingVertical: 16,
+          alignItems: 'center',
+          ...theme.shadow.md,
+        },
+        finishButtonText: {
+          color: '#fff',
+          fontSize: theme.fontSize.lg,
+          fontWeight: theme.fontWeight.semibold,
+        },
+      }),
+    [colors]
+  );
 
   useEffect(() => {
     captureEvent(EVENTS.ONBOARDING_STARTED);
@@ -120,7 +236,7 @@ export default function OnboardingScreen() {
                       onPress={() => handleRemoveHabit(habit.id)}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <FontAwesome name="times-circle" size={22} color={theme.colors.textMuted} />
+                      <FontAwesome name="times-circle" size={22} color={colors.textMuted} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -134,7 +250,7 @@ export default function OnboardingScreen() {
               onPress={() => setShowForm(true)}
               activeOpacity={0.8}
             >
-              <FontAwesome name="plus" size={16} color={theme.colors.primary} />
+              <FontAwesome name="plus" size={16} color={colors.primary} />
               <Text style={styles.addMoreText}>Add Another Habit</Text>
             </TouchableOpacity>
 
@@ -156,112 +272,3 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
-  },
-  emoji: {
-    fontSize: 48,
-    marginBottom: theme.spacing.md,
-  },
-  title: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
-  },
-  subtitle: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  sectionTitle: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: theme.spacing.sm,
-  },
-  habitsList: {
-    flex: 1,
-    marginBottom: theme.spacing.md,
-  },
-  habitsScroll: {
-    flex: 1,
-  },
-  habitsScrollContent: {
-    paddingBottom: theme.spacing.sm,
-  },
-  habitCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  habitInfo: {
-    flex: 1,
-  },
-  habitNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  habitName: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
-  },
-  habitFrequency: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
-  },
-  formContainer: {
-    flex: 1,
-  },
-  actionsContainer: {
-    gap: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-  },
-  addMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    paddingVertical: 16,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderStyle: 'dashed',
-  },
-  addMoreText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.primary,
-  },
-  finishButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    ...theme.shadow.md,
-  },
-  finishButtonText: {
-    color: '#fff',
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
-  },
-});

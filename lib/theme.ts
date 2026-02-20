@@ -1,4 +1,4 @@
-import { DynamicColorIOS, Platform } from 'react-native';
+import { Appearance } from 'react-native';
 
 export type ThemeColors = {
   primary: string;
@@ -98,19 +98,13 @@ const darkColors: ThemeColors = {
 
 export type ThemeMode = 'light' | 'dark';
 
-const adaptiveColor = (light: string, dark: string) => {
-  if (Platform.OS === 'ios') {
-    return DynamicColorIOS({ light, dark });
-  }
-  return light;
-};
+export function colorsForMode(mode: ThemeMode): ThemeColors {
+  return mode === 'dark' ? darkColors : lightColors;
+}
 
-const adaptiveColors = Object.fromEntries(
-  Object.entries(lightColors).map(([key, lightValue]) => {
-    const darkValue = darkColors[key as keyof ThemeColors];
-    return [key, adaptiveColor(lightValue, darkValue)];
-  })
-) as ThemeColors;
+const initialColors = colorsForMode(
+  (Appearance.getColorScheme() as ThemeMode) ?? 'light',
+);
 
 const sharedTheme = {
   spacing: {
@@ -182,7 +176,7 @@ export const darkTheme = {
 
 export const theme = {
   ...sharedTheme,
-  colors: adaptiveColors,
+  colors: initialColors,
 };
 
 export type Theme = typeof lightTheme;

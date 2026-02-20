@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,21 +12,89 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { DailyJournalEntry } from '@/lib/types';
 
 interface DailyJournalSectionProps {
+  date: string;
   entry: DailyJournalEntry | null;
   onSubmit: (win: string, tension: string, gratitude: string) => void;
 }
 
+type Draft = { win: string; tension: string; gratitude: string };
+
+const pendingDrafts = new Map<string, Draft>();
+
 export default function DailyJournalSection({
+  date,
   entry,
   onSubmit,
 }: DailyJournalSectionProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [modalVisible, setModalVisible] = useState(false);
   const [win, setWin] = useState('');
   const [tension, setTension] = useState('');
   const [gratitude, setGratitude] = useState('');
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const fieldOffsets = useRef<Record<string, number>>({});
+  const fields = useRef({ win: '', tension: '', gratitude: '' });
+
+  useEffect(() => {
+    const draft = pendingDrafts.get(date);
+    if (draft) {
+      setWin(draft.win);
+      setTension(draft.tension);
+      setGratitude(draft.gratitude);
+      fields.current = { ...draft };
+    } else {
+      const w = entry?.win ?? '';
+      const t = entry?.tension ?? '';
+      const g = entry?.gratitude ?? '';
+      setWin(w);
+      setTension(t);
+      setGratitude(g);
+      fields.current = { win: w, tension: t, gratitude: g };
+    }
+  }, [date, entry]);
+
+  const saveDraft = useCallback(() => {
+    const { win: w, tension: t, gratitude: g } = fields.current;
+    const saved = { win: entry?.win ?? '', tension: entry?.tension ?? '', gratitude: entry?.gratitude ?? '' };
+    if (w !== saved.win || t !== saved.tension || g !== saved.gratitude) {
+      pendingDrafts.set(date, { win: w, tension: t, gratitude: g });
+    } else {
+      pendingDrafts.delete(date);
+    }
+  }, [date, entry]);
+
+  const updateWin = useCallback((text: string) => {
+    setWin(text);
+    fields.current.win = text;
+    saveDraft();
+  }, [saveDraft]);
+
+  const updateTension = useCallback((text: string) => {
+    setTension(text);
+    fields.current.tension = text;
+    saveDraft();
+  }, [saveDraft]);
+
+  const updateGratitude = useCallback((text: string) => {
+    setGratitude(text);
+    fields.current.gratitude = text;
+    saveDraft();
+  }, [saveDraft]);
+
+  const scrollToField = useCallback((field: string) => {
+    setTimeout(() => {
+      const y = fieldOffsets.current[field];
+      if (y != null) {
+        scrollViewRef.current?.scrollTo({ y, animated: true });
+      }
+    }, 350);
+  }, []);
 
   const isCompleted =
     entry !== null &&
@@ -35,15 +103,6 @@ export default function DailyJournalSection({
     entry.gratitude.trim() !== '';
 
   const handleOpen = () => {
-    if (entry) {
-      setWin(entry.win);
-      setTension(entry.tension);
-      setGratitude(entry.gratitude);
-    } else {
-      setWin('');
-      setTension('');
-      setGratitude('');
-    }
     setModalVisible(true);
   };
 
@@ -51,6 +110,7 @@ export default function DailyJournalSection({
 
   const handleSubmit = () => {
     if (!canSave) return;
+    pendingDrafts.delete(date);
     onSubmit(win.trim(), tension.trim(), gratitude.trim());
     setModalVisible(false);
   };
@@ -73,7 +133,7 @@ export default function DailyJournalSection({
             {isCompleted ? (
               <FontAwesome name="check" size={10} color="#fff" />
             ) : (
-              <FontAwesome name="book" size={11} color={theme.colors.primary} />
+              <FontAwesome name="book" size={11} color={colors.primary} />
             )}
           </View>
           <View style={styles.textContainer}>
@@ -91,7 +151,7 @@ export default function DailyJournalSection({
           <FontAwesome
             name="chevron-right"
             size={12}
-            color={theme.colors.textMuted}
+            color={colors.textMuted}
           />
         </View>
       </TouchableOpacity>
@@ -104,7 +164,7 @@ export default function DailyJournalSection({
       >
         <KeyboardAvoidingView
           style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'android' ? 'height' : undefined}
         >
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -124,12 +184,19 @@ export default function DailyJournalSection({
           </View>
 
           <ScrollView
+            ref={scrollViewRef}
             style={styles.modalBody}
             contentContainerStyle={styles.modalBodyContent}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets
           >
-            <View style={styles.promptGroup}>
+            <View
+              style={styles.promptGroup}
+              onLayout={(e) => {
+                fieldOffsets.current.win = e.nativeEvent.layout.y;
+              }}
+            >
               <View style={styles.promptLabelRow}>
                 <Text style={styles.promptEmoji}>🏆</Text>
                 <Text style={styles.promptLabel}>One Win</Text>
@@ -138,16 +205,23 @@ export default function DailyJournalSection({
               <TextInput
                 style={styles.promptInput}
                 value={win}
-                onChangeText={setWin}
+                onChangeText={updateWin}
                 placeholder="I accomplished..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 multiline
+                scrollEnabled={false}
                 maxLength={500}
                 textAlignVertical="top"
+                onFocus={() => scrollToField('win')}
               />
             </View>
 
-            <View style={styles.promptGroup}>
+            <View
+              style={styles.promptGroup}
+              onLayout={(e) => {
+                fieldOffsets.current.tension = e.nativeEvent.layout.y;
+              }}
+            >
               <View style={styles.promptLabelRow}>
                 <Text style={styles.promptEmoji}>🔥</Text>
                 <Text style={styles.promptLabel}>One Point of Tension</Text>
@@ -158,16 +232,23 @@ export default function DailyJournalSection({
               <TextInput
                 style={styles.promptInput}
                 value={tension}
-                onChangeText={setTension}
+                onChangeText={updateTension}
                 placeholder="I struggled with..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 multiline
+                scrollEnabled={false}
                 maxLength={500}
                 textAlignVertical="top"
+                onFocus={() => scrollToField('tension')}
               />
             </View>
 
-            <View style={styles.promptGroup}>
+            <View
+              style={styles.promptGroup}
+              onLayout={(e) => {
+                fieldOffsets.current.gratitude = e.nativeEvent.layout.y;
+              }}
+            >
               <View style={styles.promptLabelRow}>
                 <Text style={styles.promptEmoji}>🙏</Text>
                 <Text style={styles.promptLabel}>One Gratitude</Text>
@@ -178,12 +259,14 @@ export default function DailyJournalSection({
               <TextInput
                 style={styles.promptInput}
                 value={gratitude}
-                onChangeText={setGratitude}
+                onChangeText={updateGratitude}
                 placeholder="I'm grateful for..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 multiline
+                scrollEnabled={false}
                 maxLength={500}
                 textAlignVertical="top"
+                onFocus={() => scrollToField('gratitude')}
               />
             </View>
           </ScrollView>
@@ -193,131 +276,134 @@ export default function DailyJournalSection({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: theme.spacing.xs,
-  },
-  sectionLabel: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-  },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    ...theme.shadow.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircleIncomplete: {
-    backgroundColor: theme.colors.primaryLightOverlay25,
-  },
-  iconCircleCompleted: {
-    backgroundColor: theme.colors.primary,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.textPrimary,
-  },
-  titleCompleted: {
-    color: theme.colors.textMuted,
-    textDecorationLine: 'line-through',
-  },
-  subtitle: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textSecondary,
-    marginTop: 1,
-  },
+function createStyles(colors: import('@/lib/theme').ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      marginBottom: theme.spacing.xs,
+    },
+    sectionLabel: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: theme.fontWeight.semibold as any,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: theme.spacing.sm,
+      marginTop: theme.spacing.sm,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      ...theme.shadow.sm,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    iconCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconCircleIncomplete: {
+      backgroundColor: colors.primaryLightOverlay25,
+    },
+    iconCircleCompleted: {
+      backgroundColor: colors.primary,
+    },
+    textContainer: {
+      flex: 1,
+    },
+    title: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.semibold as any,
+      color: colors.textPrimary,
+    },
+    titleCompleted: {
+      color: colors.textMuted,
+      textDecorationLine: 'line-through',
+    },
+    subtitle: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textSecondary,
+      marginTop: 1,
+    },
 
-  // Modal
-  modalContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  modalCancel: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
-  },
-  modalTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.textPrimary,
-  },
-  modalDone: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.primary,
-  },
-  modalDoneDisabled: {
-    color: theme.colors.textMuted,
-  },
-  modalBody: {
-    flex: 1,
-  },
-  modalBodyContent: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.lg,
-  },
-  promptGroup: {
-    gap: theme.spacing.xs,
-  },
-  promptLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  promptEmoji: {
-    fontSize: 20,
-  },
-  promptLabel: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.textPrimary,
-  },
-  promptHint: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
-  },
-  promptInput: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textPrimary,
-    minHeight: 80,
-    lineHeight: 22,
-  },
-});
+    // Modal
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    modalCancel: {
+      fontSize: theme.fontSize.md,
+      color: colors.textSecondary,
+    },
+    modalTitle: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.semibold as any,
+      color: colors.textPrimary,
+    },
+    modalDone: {
+      fontSize: theme.fontSize.md,
+      fontWeight: theme.fontWeight.semibold as any,
+      color: colors.primary,
+    },
+    modalDoneDisabled: {
+      color: colors.textMuted,
+    },
+    modalBody: {
+      flex: 1,
+    },
+    modalBodyContent: {
+      padding: theme.spacing.lg,
+      paddingBottom: theme.spacing.xxl * 3,
+      gap: theme.spacing.lg,
+    },
+    promptGroup: {
+      gap: theme.spacing.xs,
+    },
+    promptLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    promptEmoji: {
+      fontSize: 20,
+    },
+    promptLabel: {
+      fontSize: theme.fontSize.md,
+      fontWeight: theme.fontWeight.semibold as any,
+      color: colors.textPrimary,
+    },
+    promptHint: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+      marginBottom: theme.spacing.xs,
+    },
+    promptInput: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: theme.borderRadius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      fontSize: theme.fontSize.md,
+      color: colors.textPrimary,
+      minHeight: 80,
+      lineHeight: 22,
+    },
+  });
+}

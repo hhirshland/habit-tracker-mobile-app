@@ -15,7 +15,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, type ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHealth } from '@/contexts/HealthContext';
 import {
@@ -75,9 +76,10 @@ interface MetricCardProps {
   color: string;
   sparklineData?: number[];
   onPress?: () => void;
+  styles: ReturnType<typeof createStyles>;
 }
 
-function MetricCard({ title, value, subtitle, icon, color, sparklineData, onPress }: MetricCardProps) {
+function MetricCard({ title, value, subtitle, icon, color, sparklineData, onPress, styles }: MetricCardProps) {
   const Wrapper = onPress ? TouchableOpacity : View;
   const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
 
@@ -102,14 +104,14 @@ function MetricCard({ title, value, subtitle, icon, color, sparklineData, onPres
 // Workout Row Component
 // ─────────────────────────────────────────────────
 
-function WorkoutRow({ workout }: { workout: WorkoutSummary }) {
+function WorkoutRow({ workout, styles, colors }: { workout: WorkoutSummary; styles: ReturnType<typeof createStyles>; colors: ThemeColors }) {
   const date = new Date(workout.date);
   const dayStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   return (
     <View style={styles.workoutRow}>
       <View style={styles.workoutIcon}>
-        <FontAwesome name="bolt" size={14} color={theme.colors.warning} />
+        <FontAwesome name="bolt" size={14} color={colors.warning} />
       </View>
       <View style={styles.workoutInfo}>
         <Text style={styles.workoutTitle}>{workout.activityName ?? 'Workout'} · {dayStr}</Text>
@@ -129,15 +131,19 @@ function ConnectHealthCTA({
   onConnect,
   connecting,
   authFailed,
+  styles,
+  colors,
 }: {
   onConnect: () => void;
   connecting: boolean;
   authFailed: boolean;
+  styles: ReturnType<typeof createStyles>;
+  colors: ThemeColors;
 }) {
   return (
     <View style={styles.ctaContainer}>
       <View style={styles.ctaIconContainer}>
-        <FontAwesome name="heartbeat" size={48} color={theme.colors.primary} />
+        <FontAwesome name="heartbeat" size={48} color={colors.primary} />
       </View>
       <Text style={styles.ctaTitle}>Connect Apple Health</Text>
       <Text style={styles.ctaDescription}>
@@ -176,11 +182,11 @@ function ConnectHealthCTA({
 // Not Available on Android
 // ─────────────────────────────────────────────────
 
-function NotAvailable() {
+function NotAvailable({ styles, colors }: { styles: ReturnType<typeof createStyles>; colors: ThemeColors }) {
   return (
     <View style={styles.ctaContainer}>
       <View style={styles.ctaIconContainer}>
-        <FontAwesome name="heartbeat" size={48} color={theme.colors.textMuted} />
+        <FontAwesome name="heartbeat" size={48} color={colors.textMuted} />
       </View>
       <Text style={styles.ctaTitle}>Health Data</Text>
       <Text style={styles.ctaDescription}>
@@ -195,6 +201,8 @@ function NotAvailable() {
 // ─────────────────────────────────────────────────
 
 export default function ProgressScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const { isAvailable, isAuthorized, loading, metrics, connect, refresh, authFailed, missingMetrics } = useHealth();
   const { settings } = useUserSettings();
@@ -430,7 +438,7 @@ export default function ProgressScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Progress</Text>
         </View>
-        <NotAvailable />
+        <NotAvailable styles={styles} colors={colors} />
       </SafeAreaView>
     );
   }
@@ -442,7 +450,7 @@ export default function ProgressScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Progress</Text>
         </View>
-        <ConnectHealthCTA onConnect={handleConnect} connecting={connecting} authFailed={authFailed} />
+        <ConnectHealthCTA onConnect={handleConnect} connecting={connecting} authFailed={authFailed} styles={styles} colors={colors} />
       </SafeAreaView>
     );
   }
@@ -455,7 +463,7 @@ export default function ProgressScreen() {
           <Text style={styles.headerTitle}>Progress</Text>
         </View>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -475,7 +483,7 @@ export default function ProgressScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={theme.colors.primary}
+            tintColor={colors.primary}
           />
         }
       >
@@ -519,7 +527,7 @@ export default function ProgressScreen() {
 
         {weeklyAdherenceLoading ? (
           <View style={styles.habitAdherenceLoading}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : (weeklyAdherence && weeklyAdherence.stats.length > 0) || top3TodoWeeklyStat ? (
           <View style={styles.habitRows}>
@@ -532,7 +540,7 @@ export default function ProgressScreen() {
           </View>
         ) : (
           <View style={styles.emptyHabitsCard}>
-            <FontAwesome name="check-square-o" size={20} color={theme.colors.textMuted} />
+            <FontAwesome name="check-square-o" size={20} color={colors.textMuted} />
             <Text style={styles.emptyHabitsText}>
               No active habits yet. Add habits in the Habits tab to start tracking weekly adherence.
             </Text>
@@ -552,7 +560,7 @@ export default function ProgressScreen() {
             onPress={() => setShowAddGoal(true)}
             activeOpacity={0.7}
           >
-            <FontAwesome name="plus" size={12} color={theme.colors.primary} />
+            <FontAwesome name="plus" size={12} color={colors.primary} />
             <Text style={styles.addGoalButtonText}>Add</Text>
           </TouchableOpacity>
         </View>
@@ -574,12 +582,12 @@ export default function ProgressScreen() {
             onPress={() => setShowAddGoal(true)}
             activeOpacity={0.7}
           >
-            <FontAwesome name="bullseye" size={24} color={theme.colors.textMuted} />
+            <FontAwesome name="bullseye" size={24} color={colors.textMuted} />
             <Text style={styles.emptyGoalsText}>
               Set goals to track your progress toward what matters most
             </Text>
             <View style={styles.emptyGoalsButton}>
-              <FontAwesome name="plus" size={12} color={theme.colors.primary} />
+              <FontAwesome name="plus" size={12} color={colors.primary} />
               <Text style={styles.emptyGoalsButtonText}>Add Goal</Text>
             </View>
           </TouchableOpacity>
@@ -593,7 +601,7 @@ export default function ProgressScreen() {
             onPress={() => setShowEditMetrics(true)}
             activeOpacity={0.7}
           >
-            <FontAwesome name="pencil" size={12} color={theme.colors.primary} />
+            <FontAwesome name="pencil" size={12} color={colors.primary} />
             <Text style={styles.editMetricsButtonText}>Edit</Text>
           </TouchableOpacity>
         </View>
@@ -611,6 +619,7 @@ export default function ProgressScreen() {
                 color={metric.color}
                 sparklineData={sparklineDataMap[key]}
                 onPress={() => setSelectedMetric(metric)}
+                styles={styles}
               />
             );
           })}
@@ -622,7 +631,7 @@ export default function ProgressScreen() {
             <Text style={styles.sectionLabel}>Recent Workouts</Text>
             <View style={styles.workoutsCard}>
               {metrics.workoutsThisWeek.slice(0, 5).map((workout) => (
-                <WorkoutRow key={workout.id} workout={workout} />
+                <WorkoutRow key={workout.id} workout={workout} styles={styles} colors={colors} />
               ))}
             </View>
           </>
@@ -630,7 +639,7 @@ export default function ProgressScreen() {
 
         {/* Hint about linking */}
         <View style={styles.hintCard}>
-          <FontAwesome name="lightbulb-o" size={16} color={theme.colors.primary} />
+          <FontAwesome name="lightbulb-o" size={16} color={colors.primary} />
           <Text style={styles.hintText}>
             Link habits to health metrics to auto-complete them when you hit your targets. Edit a
             habit and toggle "Link to Health Metric."
@@ -682,10 +691,11 @@ export default function ProgressScreen() {
 // Styles
 // ─────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   centered: {
     flex: 1,
@@ -700,7 +710,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: theme.fontSize.xxl,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   scrollView: {
     flex: 1,
@@ -712,7 +722,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: theme.spacing.sm,
@@ -727,7 +737,7 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: '48.5%' as any,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
     ...theme.shadow.sm,
@@ -748,23 +758,23 @@ const styles = StyleSheet.create({
   metricValue: {
     fontSize: theme.fontSize.xl,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   metricTitle: {
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
   },
   metricSubtitle: {
     fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
 
   // Workouts
   workoutsCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.sm,
     ...theme.shadow.sm,
@@ -779,7 +789,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.warningOverlay18,
+    backgroundColor: colors.warningOverlay18,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: theme.spacing.sm,
@@ -790,11 +800,11 @@ const styles = StyleSheet.create({
   workoutTitle: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   workoutDetails: {
     fontSize: theme.fontSize.xs,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 1,
   },
 
@@ -812,13 +822,13 @@ const styles = StyleSheet.create({
   ctaTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   ctaDescription: {
     fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: theme.spacing.lg,
@@ -838,7 +848,7 @@ const styles = StyleSheet.create({
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.md,
     paddingVertical: 14,
     paddingHorizontal: theme.spacing.xl,
@@ -900,7 +910,7 @@ const styles = StyleSheet.create({
   editMetricsButtonText: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
 
   // Goals
@@ -914,7 +924,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
   },
   emptyHabitsCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
@@ -924,7 +934,7 @@ const styles = StyleSheet.create({
   },
   emptyHabitsText: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -945,10 +955,10 @@ const styles = StyleSheet.create({
   addGoalButtonText: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
   emptyGoalsCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
@@ -957,7 +967,7 @@ const styles = StyleSheet.create({
   },
   emptyGoalsText: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -970,14 +980,14 @@ const styles = StyleSheet.create({
   emptyGoalsButtonText: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
 
   // Hint
   hintCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: theme.colors.primaryLightOverlay15,
+    backgroundColor: colors.primaryLightOverlay15,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     marginTop: theme.spacing.lg,
@@ -986,7 +996,8 @@ const styles = StyleSheet.create({
   hintText: {
     flex: 1,
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 20,
   },
-});
+  });
+}

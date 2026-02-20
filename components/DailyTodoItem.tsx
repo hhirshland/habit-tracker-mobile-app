@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { DailyTodo } from '@/lib/types';
 
 interface DailyTodoItemProps {
@@ -25,6 +26,8 @@ export default function DailyTodoItem({
   onToggle,
   onDelete,
 }: DailyTodoItemProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(todo?.text ?? '');
 
@@ -73,7 +76,7 @@ export default function DailyTodoItem({
           value={text}
           onChangeText={setText}
           placeholder="What's your priority?"
-          placeholderTextColor={theme.colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           autoFocus
           onSubmitEditing={handleSubmit}
           onBlur={handleCancel}
@@ -117,77 +120,79 @@ export default function DailyTodoItem({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: theme.spacing.md,
-    gap: theme.spacing.sm,
-  },
-  emptyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: theme.spacing.md,
-    gap: theme.spacing.sm,
-  },
-  editRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: theme.spacing.md,
-    gap: theme.spacing.sm,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 2,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxCompleted: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  emptyCheckbox: {
-    width: 22,
-    height: 22,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  positionNumber: {
-    fontSize: 11,
-    fontWeight: theme.fontWeight.bold as any,
-    color: theme.colors.textMuted,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  todoText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium as any,
-    color: theme.colors.textPrimary,
-  },
-  todoTextCompleted: {
-    textDecorationLine: 'line-through',
-    color: theme.colors.textMuted,
-  },
-  placeholder: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textMuted,
-    fontStyle: 'italic',
-  },
-  input: {
-    flex: 1,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textPrimary,
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.primary,
-  },
-});
+function createStyles(colors: import('@/lib/theme').ThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    emptyRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    editRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 6,
+      paddingHorizontal: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    checkbox: {
+      width: 22,
+      height: 22,
+      borderRadius: theme.borderRadius.full,
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxCompleted: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    emptyCheckbox: {
+      width: 22,
+      height: 22,
+      borderRadius: theme.borderRadius.full,
+      backgroundColor: colors.borderLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    positionNumber: {
+      fontSize: 11,
+      fontWeight: theme.fontWeight.bold as any,
+      color: colors.textMuted,
+    },
+    textContainer: {
+      flex: 1,
+    },
+    todoText: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.medium as any,
+      color: colors.textPrimary,
+    },
+    todoTextCompleted: {
+      textDecorationLine: 'line-through',
+      color: colors.textMuted,
+    },
+    placeholder: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textMuted,
+      fontStyle: 'italic',
+    },
+    input: {
+      flex: 1,
+      fontSize: theme.fontSize.sm,
+      color: colors.textPrimary,
+      paddingVertical: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.primary,
+    },
+  });
+}

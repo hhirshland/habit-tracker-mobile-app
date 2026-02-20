@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, type ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Habit, HealthMetricType } from '@/lib/types';
 import {
@@ -25,6 +26,8 @@ import HabitItem from '@/components/HabitItem';
 import HabitForm from '@/components/HabitForm';
 
 export default function HabitsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -127,7 +130,7 @@ export default function HabitsScreen() {
   if (loading && habits.length === 0) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -190,7 +193,7 @@ export default function HabitsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={theme.colors.primary}
+              tintColor={colors.primary}
             />
           }
         />
@@ -207,7 +210,7 @@ export default function HabitsScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>New Habit</Text>
             <TouchableOpacity onPress={() => setShowForm(false)}>
-              <FontAwesome name="times" size={22} color={theme.colors.textSecondary} />
+              <FontAwesome name="times" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
           <View style={styles.modalContent}>
@@ -231,7 +234,7 @@ export default function HabitsScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Edit Habit</Text>
             <TouchableOpacity onPress={() => setEditingHabit(null)}>
-              <FontAwesome name="times" size={22} color={theme.colors.textSecondary} />
+              <FontAwesome name="times" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
           <View style={styles.modalContent}>
@@ -258,105 +261,107 @@ export default function HabitsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-  },
-  title: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadow.md,
-  },
-  list: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.tabBarClearance,
-  },
-  itemWrapper: {
-    marginBottom: theme.spacing.sm,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.xl,
-  },
-  emptyEmoji: {
-    fontSize: 56,
-    marginBottom: theme.spacing.md,
-  },
-  emptyTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
-  },
-  emptySubtitle: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  addHabitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.md,
-    marginTop: theme.spacing.lg,
-    ...theme.shadow.md,
-  },
-  addHabitButtonText: {
-    color: '#fff',
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  modalTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.md,
+    },
+    title: {
+      fontSize: theme.fontSize.xxl,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+    },
+    addButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...theme.shadow.md,
+    },
+    list: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingBottom: theme.spacing.tabBarClearance,
+    },
+    itemWrapper: {
+      marginBottom: theme.spacing.sm,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing.xl,
+    },
+    emptyEmoji: {
+      fontSize: 56,
+      marginBottom: theme.spacing.md,
+    },
+    emptyTitle: {
+      fontSize: theme.fontSize.xl,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+      marginBottom: theme.spacing.xs,
+    },
+    emptySubtitle: {
+      fontSize: theme.fontSize.md,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    addHabitButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      borderRadius: theme.borderRadius.md,
+      marginTop: theme.spacing.lg,
+      ...theme.shadow.md,
+    },
+    addHabitButtonText: {
+      color: '#fff',
+      fontSize: theme.fontSize.md,
+      fontWeight: theme.fontWeight.semibold,
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: theme.fontSize.xl,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+    },
+    modalContent: {
+      flex: 1,
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.lg,
+    },
+  });
+}

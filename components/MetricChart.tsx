@@ -11,6 +11,8 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
+import type { ThemeColors } from '@/lib/theme';
 import { MetricDataPoint } from '@/lib/health';
 
 interface MetricChartProps {
@@ -25,9 +27,12 @@ export default function MetricChart({
   data,
   width = 320,
   height = 200,
-  color = theme.colors.primary,
+  color: colorProp,
   unit = '',
 }: MetricChartProps) {
+  const colors = useThemeColors();
+  const color = colorProp ?? colors.primary;
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const padding = { top: 16, right: 16, bottom: 28, left: 48 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
@@ -136,7 +141,7 @@ export default function MetricChart({
             y1={tick.y}
             x2={width - padding.right}
             y2={tick.y}
-            stroke={theme.colors.borderLight}
+            stroke={colors.borderLight}
             strokeWidth={1}
           />
         ))}
@@ -174,7 +179,7 @@ export default function MetricChart({
             y={tick.y + 4}
             textAnchor="end"
             fontSize={10}
-            fill={theme.colors.textMuted}
+            fill={colors.textMuted}
           >
             {formatTickValue(tick.value, unit)}
           </SvgText>
@@ -188,7 +193,7 @@ export default function MetricChart({
             y={height - 6}
             textAnchor="middle"
             fontSize={10}
-            fill={theme.colors.textMuted}
+            fill={colors.textMuted}
           >
             {tick.label}
           </SvgText>
@@ -207,18 +212,20 @@ function formatTickValue(value: number, unit: string): string {
   return value.toFixed(1);
 }
 
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: theme.borderRadius.md,
-    overflow: 'hidden',
-  },
-  noData: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noDataText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textMuted,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      borderRadius: theme.borderRadius.md,
+      overflow: 'hidden',
+    },
+    noData: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    noDataText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textMuted,
+    },
+  });
+}

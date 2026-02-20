@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Polyline, Line, Circle, Polygon, Text as SvgText } from 'react-native-svg';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
+import type { ThemeColors } from '@/lib/theme';
 import { MetricDataPoint } from '@/lib/health';
 import {
   TrajectoryPoint,
@@ -41,13 +43,18 @@ export default function GoalChart({
   projection = [],
   width = 320,
   height = 200,
-  actualColor = theme.colors.primary,
-  goalColor = theme.colors.success,
-  projectionColor = theme.colors.primaryLight,
+  actualColor,
+  goalColor,
+  projectionColor,
   unit = '',
   goalStartDate,
   goalEndDate,
 }: GoalChartProps) {
+  const colors = useThemeColors();
+  const resolvedActualColor = actualColor ?? colors.primary;
+  const resolvedGoalColor = goalColor ?? colors.success;
+  const resolvedProjectionColor = projectionColor ?? colors.primaryLight;
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const padding = { top: 16, right: 16, bottom: 28, left: 48 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
@@ -202,7 +209,7 @@ export default function GoalChart({
             y1={tick.y}
             x2={width - padding.right}
             y2={tick.y}
-            stroke={theme.colors.borderLight}
+            stroke={colors.borderLight}
             strokeWidth={1}
           />
         ))}
@@ -211,7 +218,7 @@ export default function GoalChart({
         {projBandPoints && (
           <Polygon
             points={projBandPoints}
-            fill={projectionColor}
+            fill={resolvedProjectionColor}
             opacity={0.25}
           />
         )}
@@ -221,7 +228,7 @@ export default function GoalChart({
           <Polyline
             points={projLinePoints}
             fill="none"
-            stroke={projectionColor}
+            stroke={resolvedProjectionColor}
             strokeWidth={1.5}
             strokeLinecap="round"
             opacity={0.5}
@@ -233,7 +240,7 @@ export default function GoalChart({
           <Polyline
             points={trajectorySvgPoints}
             fill="none"
-            stroke={goalColor}
+            stroke={resolvedGoalColor}
             strokeWidth={2}
             strokeDasharray="6,4"
             strokeLinecap="round"
@@ -245,7 +252,7 @@ export default function GoalChart({
           <Polyline
             points={actualSvgPoints}
             fill="none"
-            stroke={actualColor}
+            stroke={resolvedActualColor}
             strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -258,7 +265,7 @@ export default function GoalChart({
             cx={xScale(actualPoints[actualPoints.length - 1].dateMs)}
             cy={yScale(actualPoints[actualPoints.length - 1].value)}
             r={4}
-            fill={actualColor}
+            fill={resolvedActualColor}
           />
         )}
 
@@ -270,7 +277,7 @@ export default function GoalChart({
             y={tick.y + 4}
             textAnchor="end"
             fontSize={10}
-            fill={theme.colors.textMuted}
+            fill={colors.textMuted}
           >
             {formatTickValue(tick.value, unit)}
           </SvgText>
@@ -284,7 +291,7 @@ export default function GoalChart({
             y={height - 6}
             textAnchor="middle"
             fontSize={10}
-            fill={theme.colors.textMuted}
+            fill={colors.textMuted}
           >
             {tick.label}
           </SvgText>
@@ -302,18 +309,20 @@ function formatTickValue(value: number, unit: string): string {
   return value.toFixed(1);
 }
 
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: theme.borderRadius.md,
-    overflow: 'hidden',
-  },
-  noData: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noDataText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textMuted,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      borderRadius: theme.borderRadius.md,
+      overflow: 'hidden',
+    },
+    noData: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    noDataText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textMuted,
+    },
+  });
+}

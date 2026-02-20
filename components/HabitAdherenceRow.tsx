@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { theme } from '@/lib/theme';
+import { theme, type ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { HabitWeeklyStats } from '@/lib/habits';
 
 interface HabitAdherenceRowProps {
   stat: HabitWeeklyStats;
 }
 
-function getStatusColor(status: HabitWeeklyStats['status']): string {
-  if (status === 'behind' || status === 'missed') return theme.colors.danger;
-  if (status === 'at_risk') return theme.colors.warning;
-  return theme.colors.success;
+function getStatusColor(status: HabitWeeklyStats['status'], colors: ThemeColors): string {
+  if (status === 'behind' || status === 'missed') return colors.danger;
+  if (status === 'at_risk') return colors.warning;
+  return colors.success;
 }
 
 function getStatusLabel(status: HabitWeeklyStats['status']): string {
@@ -29,8 +30,10 @@ function getStatusLabel(status: HabitWeeklyStats['status']): string {
 }
 
 export default function HabitAdherenceRow({ stat }: HabitAdherenceRowProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const progress = stat.targetDays > 0 ? Math.min(100, Math.round((stat.completedDays / stat.targetDays) * 100)) : 0;
-  const statusColor = getStatusColor(stat.status);
+  const statusColor = getStatusColor(stat.status, colors);
 
   return (
     <View style={styles.row}>
@@ -56,9 +59,10 @@ export default function HabitAdherenceRow({ stat }: HabitAdherenceRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   row: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     ...theme.shadow.sm,
@@ -85,7 +89,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   statusText: {
     fontSize: theme.fontSize.xs,
@@ -102,7 +106,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 6,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.borderLight,
+    backgroundColor: colors.borderLight,
     overflow: 'hidden',
   },
   fill: {
@@ -114,6 +118,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
   },
-});
+  });
+}

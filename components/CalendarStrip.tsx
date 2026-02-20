@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { formatDate } from '@/lib/habits';
 import { DAY_LABELS, DayOfWeek } from '@/lib/types';
 
@@ -64,9 +65,11 @@ function generateDays(centerDate: Date): DayData[] {
 function ProgressRing({
   progress,
   isFuture,
+  colors,
 }: {
   progress: number; // 0 to 1
   isFuture: boolean;
+  colors: import('@/lib/theme').ThemeColors;
 }) {
   const size = DAY_ITEM_SIZE;
   const center = size / 2;
@@ -76,12 +79,12 @@ function ProgressRing({
   const strokeDashoffset = circumference - progress * circumference;
 
   // Progress ring color
-  let ringColor = theme.colors.primary;
+  let ringColor = colors.primary;
   if (progress >= 1) {
-    ringColor = theme.colors.success;
+    ringColor = colors.success;
   }
 
-  const trackColor = isFuture ? 'transparent' : theme.colors.borderLight;
+  const trackColor = isFuture ? 'transparent' : colors.borderLight;
 
   return (
     <Svg width={size} height={size}>
@@ -119,6 +122,8 @@ export default function CalendarStrip({
   onSelectDate,
   dayProgress,
 }: CalendarStripProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView>(null);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -186,6 +191,7 @@ export default function CalendarStrip({
                 <ProgressRing
                   progress={progress}
                   isFuture={day.isFuture}
+                  colors={colors}
                 />
                 <View style={styles.dayNumberOverlay}>
                   <Text
@@ -208,72 +214,74 @@ export default function CalendarStrip({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: theme.spacing.xs,
-  },
-  scrollContent: {
-    paddingHorizontal: theme.spacing.sm,
-  },
-  // Base day container — rectangular with rounded corners
-  dayContainer: {
-    alignItems: 'center',
-    marginHorizontal: DAY_ITEM_MARGIN,
-    width: DAY_CONTAINER_WIDTH,
-    paddingVertical: 6,
-    borderRadius: theme.borderRadius.md,
-  },
-  // Selected day — prominent background
-  dayContainerSelected: {
-    backgroundColor: 'rgba(108, 99, 255, 0.12)',
-  },
-  // Today (not selected) — subtle background
-  dayContainerToday: {
-    backgroundColor: theme.colors.borderLight,
-  },
-  dayLabel: {
-    fontSize: 11,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
-    marginBottom: 4,
-    textTransform: 'capitalize',
-  },
-  dayLabelSelected: {
-    color: theme.colors.primary,
-    fontWeight: theme.fontWeight.bold,
-  },
-  dayLabelToday: {
-    color: theme.colors.textPrimary,
-    fontWeight: theme.fontWeight.semibold,
-  },
-  dayLabelFuture: {
-    color: theme.colors.textMuted,
-  },
-  ringContainer: {
-    width: DAY_ITEM_SIZE,
-    height: DAY_ITEM_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayNumberOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayNumber: {
-    fontSize: 16,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
-  },
-  dayNumberSelected: {
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.primary,
-  },
-  dayNumberToday: {
-    color: theme.colors.textPrimary,
-    fontWeight: theme.fontWeight.bold,
-  },
-  dayNumberFuture: {
-    color: theme.colors.textMuted,
-  },
-});
+function createStyles(colors: import('@/lib/theme').ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      paddingVertical: theme.spacing.xs,
+    },
+    scrollContent: {
+      paddingHorizontal: theme.spacing.sm,
+    },
+    // Base day container — rectangular with rounded corners
+    dayContainer: {
+      alignItems: 'center',
+      marginHorizontal: DAY_ITEM_MARGIN,
+      width: DAY_CONTAINER_WIDTH,
+      paddingVertical: 6,
+      borderRadius: theme.borderRadius.md,
+    },
+    // Selected day — prominent background
+    dayContainerSelected: {
+      backgroundColor: colors.primaryLightOverlay15,
+    },
+    // Today (not selected) — subtle background
+    dayContainerToday: {
+      backgroundColor: colors.borderLight,
+    },
+    dayLabel: {
+      fontSize: 11,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textSecondary,
+      marginBottom: 4,
+      textTransform: 'capitalize',
+    },
+    dayLabelSelected: {
+      color: colors.primary,
+      fontWeight: theme.fontWeight.bold,
+    },
+    dayLabelToday: {
+      color: colors.textPrimary,
+      fontWeight: theme.fontWeight.semibold,
+    },
+    dayLabelFuture: {
+      color: colors.textMuted,
+    },
+    ringContainer: {
+      width: DAY_ITEM_SIZE,
+      height: DAY_ITEM_SIZE,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayNumberOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayNumber: {
+      fontSize: 16,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.textPrimary,
+    },
+    dayNumberSelected: {
+      fontWeight: theme.fontWeight.bold,
+      color: colors.primary,
+    },
+    dayNumberToday: {
+      color: colors.textPrimary,
+      fontWeight: theme.fontWeight.bold,
+    },
+    dayNumberFuture: {
+      color: colors.textMuted,
+    },
+  });
+}

@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
+import type { ThemeColors } from '@/lib/theme';
 import { HealthMetrics } from '@/lib/health';
 import { MetricDefinition } from '@/lib/metricsConfig';
 import { useMetricHistory } from '@/hooks/useHealthQuery';
@@ -39,6 +41,8 @@ export default function MetricDetailModal({
   metrics,
   onClose,
 }: MetricDetailModalProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [timeRange, setTimeRange] = useState<TimeRange>('week');
 
   const days = TIME_RANGES.find((r) => r.key === timeRange)!.days;
@@ -149,7 +153,7 @@ export default function MetricDetailModal({
               />
             ) : (
               <View style={styles.loadingContainer}>
-                <FontAwesome name="line-chart" size={24} color={theme.colors.textMuted} />
+                <FontAwesome name="line-chart" size={24} color={colors.textMuted} />
                 <Text style={styles.loadingText}>No data for this period</Text>
               </View>
             )}
@@ -180,7 +184,7 @@ export default function MetricDetailModal({
           {/* Data info */}
           {stats && (
             <View style={styles.dataInfo}>
-              <FontAwesome name="database" size={12} color={theme.colors.textMuted} />
+              <FontAwesome name="database" size={12} color={colors.textMuted} />
               <Text style={styles.dataInfoText}>
                 {stats.count} data point{stats.count !== 1 ? 's' : ''} in the last{' '}
                 {days === 7 ? '7 days' : days === 28 ? '28 days' : '6 months'}
@@ -203,164 +207,166 @@ function formatStatValue(value: number, unit: string): string {
   return value.toFixed(1);
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  headerButton: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.primary,
-    fontWeight: theme.fontWeight.medium,
-    minWidth: 44,
-  },
-  headerCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: theme.borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: 120,
-  },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    headerButton: {
+      fontSize: theme.fontSize.md,
+      color: colors.primary,
+      fontWeight: theme.fontWeight.medium,
+      minWidth: 44,
+    },
+    headerCenter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    headerIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: theme.borderRadius.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitle: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: theme.spacing.lg,
+      paddingBottom: 120,
+    },
 
-  // Current value
-  currentValueCard: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.lg,
-  },
-  currentValueLabel: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  currentValueText: {
-    fontSize: 42,
-    fontWeight: theme.fontWeight.bold,
-  },
-  currentValueSubtitle: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    marginTop: 4,
-  },
+    // Current value
+    currentValueCard: {
+      alignItems: 'center',
+      paddingVertical: theme.spacing.lg,
+    },
+    currentValueLabel: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 4,
+    },
+    currentValueText: {
+      fontSize: 42,
+      fontWeight: theme.fontWeight.bold,
+    },
+    currentValueSubtitle: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
 
-  // Time range
-  timeRangeContainer: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    padding: 4,
-    marginBottom: theme.spacing.md,
-    ...theme.shadow.sm,
-  },
-  timeRangeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: theme.borderRadius.sm,
-  },
-  timeRangeButtonActive: {
-    borderRadius: theme.borderRadius.sm,
-  },
-  timeRangeText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textMuted,
-  },
-  timeRangeTextActive: {
-    fontWeight: theme.fontWeight.bold,
-  },
+    // Time range
+    timeRangeContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.md,
+      padding: 4,
+      marginBottom: theme.spacing.md,
+      ...theme.shadow.sm,
+    },
+    timeRangeButton: {
+      flex: 1,
+      paddingVertical: 10,
+      alignItems: 'center',
+      borderRadius: theme.borderRadius.sm,
+    },
+    timeRangeButtonActive: {
+      borderRadius: theme.borderRadius.sm,
+    },
+    timeRangeText: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textMuted,
+    },
+    timeRangeTextActive: {
+      fontWeight: theme.fontWeight.bold,
+    },
 
-  // Chart
-  chartCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    minHeight: 220,
-    ...theme.shadow.sm,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.xxl,
-    gap: theme.spacing.sm,
-  },
-  loadingText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textMuted,
-  },
+    // Chart
+    chartCard: {
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      marginBottom: theme.spacing.md,
+      minHeight: 220,
+      ...theme.shadow.sm,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: theme.spacing.xxl,
+      gap: theme.spacing.sm,
+    },
+    loadingText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textMuted,
+    },
 
-  // Stats
-  statsCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.shadow.sm,
-  },
-  statsRow: {
-    flexDirection: 'row',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: theme.colors.borderLight,
-    marginVertical: 4,
-  },
+    // Stats
+    statsCard: {
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      marginBottom: theme.spacing.md,
+      ...theme.shadow.sm,
+    },
+    statsRow: {
+      flexDirection: 'row',
+    },
+    statItem: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    statLabel: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textMuted,
+      marginBottom: 4,
+    },
+    statValue: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+    },
+    statDivider: {
+      width: 1,
+      backgroundColor: colors.borderLight,
+      marginVertical: 4,
+    },
 
-  // Data info
-  dataInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
-  },
-  dataInfoText: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
-  },
-});
+    // Data info
+    dataInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.xs,
+      paddingVertical: theme.spacing.sm,
+    },
+    dataInfoText: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textMuted,
+    },
+  });
+}

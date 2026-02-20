@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, type ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { Goal, GOAL_TYPE_ICONS, GOAL_TYPE_COLORS } from '@/lib/types';
 import { computeProgressPercent } from '@/lib/goalMath';
 
@@ -12,7 +13,9 @@ interface GoalCardProps {
 }
 
 export default function GoalCard({ goal, currentValue, onPress }: GoalCardProps) {
-  const color = GOAL_TYPE_COLORS[goal.goal_type] ?? theme.colors.primary;
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const color = GOAL_TYPE_COLORS[goal.goal_type] ?? colors.primary;
   const icon = GOAL_TYPE_ICONS[goal.goal_type] ?? 'star';
   const progress = computeProgressPercent(goal.start_value, currentValue, goal.target_value);
 
@@ -61,7 +64,7 @@ export default function GoalCard({ goal, currentValue, onPress }: GoalCardProps)
 
       <View style={styles.valueRow}>
         <Text style={styles.currentValue}>{formatValue(currentValue)}</Text>
-        <FontAwesome name="long-arrow-right" size={10} color={theme.colors.textMuted} style={styles.arrow} />
+        <FontAwesome name="long-arrow-right" size={10} color={colors.textMuted} style={styles.arrow} />
         <Text style={styles.targetValue}>{formatValue(goal.target_value)} {goal.unit !== 'mm:ss' ? goal.unit : ''}</Text>
       </View>
 
@@ -72,9 +75,10 @@ export default function GoalCard({ goal, currentValue, onPress }: GoalCardProps)
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
     width: '100%' as any,
@@ -101,7 +105,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     width: 40,
     height: 4,
-    backgroundColor: theme.colors.borderLight,
+    backgroundColor: colors.borderLight,
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -112,12 +116,12 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 10,
     fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   title: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   valueRow: {
@@ -127,7 +131,7 @@ const styles = StyleSheet.create({
   currentValue: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   arrow: {
     marginHorizontal: 6,
@@ -135,11 +139,12 @@ const styles = StyleSheet.create({
   targetValue: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
   },
   subtitle: {
     fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     marginTop: 2,
   },
-});
+  });
+}

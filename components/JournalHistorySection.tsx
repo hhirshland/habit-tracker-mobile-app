@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, type ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { DailyJournalEntry } from '@/lib/types';
 
 interface JournalHistorySectionProps {
@@ -22,7 +23,7 @@ function formatJournalDate(dateStr: string): string {
   });
 }
 
-function JournalEntryCard({ entry }: { entry: DailyJournalEntry }) {
+function JournalEntryCard({ entry, styles, colors }: { entry: DailyJournalEntry; styles: ReturnType<typeof createStyles>; colors: ThemeColors }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -34,14 +35,14 @@ function JournalEntryCard({ entry }: { entry: DailyJournalEntry }) {
       <View style={styles.entryHeader}>
         <View style={styles.entryDateRow}>
           <View style={styles.entryIconCircle}>
-            <FontAwesome name="book" size={11} color={theme.colors.primary} />
+            <FontAwesome name="book" size={11} color={colors.primary} />
           </View>
           <Text style={styles.entryDate}>{formatJournalDate(entry.journal_date)}</Text>
         </View>
         <FontAwesome
           name={expanded ? 'chevron-up' : 'chevron-down'}
           size={12}
-          color={theme.colors.textMuted}
+          color={colors.textMuted}
         />
       </View>
 
@@ -84,6 +85,8 @@ const INITIAL_SHOW = 7;
 const LOAD_MORE_COUNT = 14;
 
 export default function JournalHistorySection({ entries }: JournalHistorySectionProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [showCount, setShowCount] = useState(INITIAL_SHOW);
 
   const visibleEntries = entries.slice(0, showCount);
@@ -94,7 +97,7 @@ export default function JournalHistorySection({ entries }: JournalHistorySection
       <>
         <Text style={styles.sectionLabel}>Journal</Text>
         <View style={styles.emptyCard}>
-          <FontAwesome name="book" size={20} color={theme.colors.textMuted} />
+          <FontAwesome name="book" size={20} color={colors.textMuted} />
           <Text style={styles.emptyText}>
             No journal entries yet. Enable the Daily Journal in your profile and start reflecting each day.
           </Text>
@@ -108,7 +111,7 @@ export default function JournalHistorySection({ entries }: JournalHistorySection
       <Text style={styles.sectionLabel}>Journal</Text>
       <View style={styles.entriesList}>
         {visibleEntries.map((entry) => (
-          <JournalEntryCard key={entry.id} entry={entry} />
+          <JournalEntryCard key={entry.id} entry={entry} styles={styles} colors={colors} />
         ))}
       </View>
       {hasMore && (
@@ -126,11 +129,12 @@ export default function JournalHistorySection({ entries }: JournalHistorySection
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   sectionLabel: {
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: theme.spacing.sm,
@@ -140,7 +144,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   entryCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
     ...theme.shadow.sm,
@@ -159,18 +163,18 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: theme.colors.primaryLightOverlay25,
+    backgroundColor: colors.primaryLightOverlay25,
     alignItems: 'center',
     justifyContent: 'center',
   },
   entryDate: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   entryPreview: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: theme.spacing.xs,
     marginLeft: 32,
   },
@@ -192,18 +196,18 @@ const styles = StyleSheet.create({
   promptTitle: {
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
     marginBottom: 2,
   },
   promptText: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     lineHeight: 20,
   },
   emptyCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
@@ -212,7 +216,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -224,6 +228,7 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.primary,
+    color: colors.primary,
   },
-});
+  });
+}

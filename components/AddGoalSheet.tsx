@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
+import type { ThemeColors } from '@/lib/theme';
 import { GoalType, GOAL_TYPE_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_COLORS } from '@/lib/types';
 
 // ──────────────────────────────────────────────
@@ -224,6 +226,8 @@ export default function AddGoalSheet({
   currentLeanMass,
   currentRHR,
 }: AddGoalSheetProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [step, setStep] = useState<'pick' | 'form'>('pick');
   const [selectedTemplate, setSelectedTemplate] = useState<GoalTemplate | null>(null);
 
@@ -382,7 +386,7 @@ export default function AddGoalSheet({
                   <Text style={styles.templateLabel}>{tmpl.label}</Text>
                   <Text style={styles.templateDesc}>{tmpl.description}</Text>
                 </View>
-                <FontAwesome name="chevron-right" size={12} color={theme.colors.textMuted} />
+                <FontAwesome name="chevron-right" size={12} color={colors.textMuted} />
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -428,7 +432,7 @@ export default function AddGoalSheet({
                   value={title}
                   onChangeText={setTitle}
                   placeholder="e.g. Max Bench Press"
-                  placeholderTextColor={theme.colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                 />
               </View>
             )}
@@ -442,7 +446,7 @@ export default function AddGoalSheet({
                   value={unit}
                   onChangeText={setUnit}
                   placeholder="e.g. lbs, reps, minutes"
-                  placeholderTextColor={theme.colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                 />
               </View>
             )}
@@ -456,7 +460,7 @@ export default function AddGoalSheet({
                   value={startValue}
                   onChangeText={setStartValue}
                   placeholder="Auto-filled from Apple Health"
-                  placeholderTextColor={theme.colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
                 />
                 {startValue && (
@@ -476,7 +480,7 @@ export default function AddGoalSheet({
                   value={startValue}
                   onChangeText={setStartValue}
                   placeholder="Where you're at now"
-                  placeholderTextColor={theme.colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
                 />
               </View>
@@ -491,7 +495,7 @@ export default function AddGoalSheet({
                   value={startValue}
                   onChangeText={setStartValue}
                   placeholder="e.g. 24.5 (for 24:30)"
-                  placeholderTextColor={theme.colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
                 />
               </View>
@@ -513,7 +517,7 @@ export default function AddGoalSheet({
                     ? '10000'
                     : `Target ${selectedTemplate?.defaultUnit ?? ''}`
                 }
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -585,7 +589,7 @@ export default function AddGoalSheet({
                     if (parsed) setStartDate(parsed);
                   }}
                   placeholder="MM/DD/YYYY"
-                  placeholderTextColor={theme.colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numbers-and-punctuation"
                   maxLength={10}
                 />
@@ -615,143 +619,145 @@ export default function AddGoalSheet({
 // Styles
 // ──────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  modalHeaderButton: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.primary,
-    fontWeight: theme.fontWeight.medium,
-    minWidth: 60,
-  },
-  modalTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-  },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    modalHeaderButton: {
+      fontSize: theme.fontSize.md,
+      color: colors.primary,
+      fontWeight: theme.fontWeight.medium,
+      minWidth: 60,
+    },
+    modalTitle: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+    },
 
-  // Template picker
-  templateList: {
-    flex: 1,
-  },
-  templateListContent: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.sm,
-  },
-  templateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    ...theme.shadow.sm,
-  },
-  templateIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: theme.spacing.md,
-  },
-  templateInfo: {
-    flex: 1,
-  },
-  templateLabel: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
-    marginBottom: 2,
-  },
-  templateDesc: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textSecondary,
-    lineHeight: 16,
-  },
+    // Template picker
+    templateList: {
+      flex: 1,
+    },
+    templateListContent: {
+      padding: theme.spacing.lg,
+      gap: theme.spacing.sm,
+    },
+    templateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      ...theme.shadow.sm,
+    },
+    templateIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: theme.borderRadius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: theme.spacing.md,
+    },
+    templateInfo: {
+      flex: 1,
+    },
+    templateLabel: {
+      fontSize: theme.fontSize.md,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginBottom: 2,
+    },
+    templateDesc: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textSecondary,
+      lineHeight: 16,
+    },
 
-  // Form
-  formContainer: {
-    flex: 1,
-  },
-  formContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-  },
-  formSection: {
-    marginBottom: theme.spacing.lg,
-  },
-  formLabel: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-  },
-  formHint: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
-    marginTop: 4,
-  },
-  textInput: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 12,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textPrimary,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  chip: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 8,
-  },
-  chipSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  chipText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    fontWeight: theme.fontWeight.medium,
-  },
-  chipTextSelected: {
-    color: '#fff',
-  },
-  submitButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: theme.spacing.md,
-    ...theme.shadow.md,
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
-  },
-});
+    // Form
+    formContainer: {
+      flex: 1,
+    },
+    formContent: {
+      padding: theme.spacing.lg,
+      paddingBottom: theme.spacing.xxl,
+    },
+    formSection: {
+      marginBottom: theme.spacing.lg,
+    },
+    formLabel: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginBottom: theme.spacing.sm,
+    },
+    formHint: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textMuted,
+      marginTop: 4,
+    },
+    textInput: {
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: 12,
+      fontSize: theme.fontSize.md,
+      color: colors.textPrimary,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    chip: {
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: 8,
+    },
+    chipSelected: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    chipText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+      fontWeight: theme.fontWeight.medium,
+    },
+    chipTextSelected: {
+      color: '#fff',
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginTop: theme.spacing.md,
+      ...theme.shadow.md,
+    },
+    submitButtonDisabled: {
+      opacity: 0.5,
+    },
+    submitButtonText: {
+      color: '#fff',
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.semibold,
+    },
+  });
+}

@@ -1,8 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { Habit } from '@/lib/types';
 
 /**
@@ -34,6 +35,8 @@ export default function PriorityItemVariantB({
   onUnsnooze,
 }: PriorityItemProps) {
   const swipeableRef = useRef<Swipeable>(null);
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
@@ -61,15 +64,17 @@ export default function PriorityItemVariantB({
     );
   };
 
+  const containerColors = { backgroundColor: colors.surface, borderColor: colors.border };
+
   if (isSnoozed) {
     return (
       <TouchableOpacity
-        style={[styles.container, styles.containerSnoozed]}
+        style={[styles.container, containerColors, styles.containerSnoozed]}
         onPress={onUnsnooze}
         activeOpacity={0.7}
       >
         <View style={styles.snoozeIcon}>
-          <FontAwesome name="clock-o" size={16} color={theme.colors.warning} />
+          <FontAwesome name="clock-o" size={16} color={colors.warning} />
         </View>
         <View style={styles.content}>
           <Text style={[styles.name, styles.nameSnoozed]} numberOfLines={1}>
@@ -85,6 +90,7 @@ export default function PriorityItemVariantB({
     <TouchableOpacity
       style={[
         styles.container,
+        containerColors,
         isRequired && !isCompleted && styles.containerRequired,
         isCompleted && styles.containerCompleted,
       ]}
@@ -126,7 +132,7 @@ export default function PriorityItemVariantB({
       </View>
 
       {isCompleted && (
-        <FontAwesome name="check-circle" size={20} color={theme.colors.primary} />
+        <FontAwesome name="check-circle" size={20} color={colors.primary} />
       )}
     </TouchableOpacity>
   );
@@ -147,15 +153,15 @@ export default function PriorityItemVariantB({
   return card;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     gap: theme.spacing.md,
     overflow: 'hidden',
     ...theme.shadow.sm,
@@ -165,15 +171,15 @@ const styles = StyleSheet.create({
     paddingLeft: theme.spacing.md,
   },
   containerCompleted: {
-    backgroundColor: '#EEEAFF',
-    borderColor: '#D4CFFF',
+    backgroundColor: colors.primaryLightOverlay25,
+    borderColor: colors.primaryLightOverlay30,
     ...theme.shadow.sm,
     shadowOpacity: 0,
     elevation: 0,
   },
   containerSnoozed: {
-    backgroundColor: '#FFF8E1',
-    borderColor: '#FFE082',
+    backgroundColor: colors.warningBackground,
+    borderColor: colors.warningBorder,
     ...theme.shadow.sm,
     shadowOpacity: 0,
     elevation: 0,
@@ -184,7 +190,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 4,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderTopLeftRadius: theme.borderRadius.md,
     borderBottomLeftRadius: theme.borderRadius.md,
   },
@@ -193,13 +199,13 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   snoozeIcon: {
     width: 24,
@@ -218,21 +224,21 @@ const styles = StyleSheet.create({
   name: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     flex: 1,
   },
   nameCompleted: {
-    color: '#4A3F8F',
+    color: colors.primaryDark,
     textDecorationLine: 'line-through',
     opacity: 0.8,
   },
   nameSnoozed: {
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     fontStyle: 'italic',
   },
   unsnoozeTapLabel: {
     fontSize: theme.fontSize.xs,
-    color: theme.colors.warning,
+    color: colors.warning,
     fontWeight: theme.fontWeight.medium,
   },
   progressRow: {
@@ -244,30 +250,30 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 4,
-    backgroundColor: theme.colors.borderLight,
+    backgroundColor: colors.borderLight,
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 2,
   },
   progressFillCompleted: {
-    backgroundColor: '#B8B2FF',
+    backgroundColor: colors.primaryLight,
   },
   progressComplete: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
   },
   progressText: {
     fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     fontWeight: theme.fontWeight.medium,
     minWidth: 28,
     textAlign: 'right',
   },
   progressTextCompleted: {
-    color: '#4A3F8F',
+    color: colors.primaryDark,
     opacity: 0.7,
   },
   snoozeAction: {
@@ -278,7 +284,7 @@ const styles = StyleSheet.create({
   snoozeButton: {
     flex: 1,
     width: '100%',
-    backgroundColor: theme.colors.warning,
+    backgroundColor: colors.warning,
     borderRadius: theme.borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',

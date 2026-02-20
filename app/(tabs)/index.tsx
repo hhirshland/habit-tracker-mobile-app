@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   getHabitsForDay,
@@ -60,6 +61,8 @@ import DailyJournalSection from '@/components/DailyJournalSection';
 const CALENDAR_BUFFER = 30; // days in each direction
 
 export default function HomeScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const { isAuthorized: healthAuthorized } = useHealth();
   const queryClient = useQueryClient();
@@ -319,7 +322,7 @@ export default function HomeScreen() {
   if (habitsLoading && habits.length === 0) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -408,6 +411,7 @@ export default function HomeScreen() {
     if (item.type === 'journalSection') {
       return (
         <DailyJournalSection
+          date={selectedDate}
           entry={journalEntry}
           onSubmit={handleSubmitJournal}
         />
@@ -417,6 +421,7 @@ export default function HomeScreen() {
     if (item.type === 'completedJournal') {
       return (
         <DailyJournalSection
+          date={selectedDate}
           entry={journalEntry}
           onSubmit={handleSubmitJournal}
         />
@@ -512,7 +517,7 @@ export default function HomeScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={theme.colors.primary}
+              tintColor={colors.primary}
             />
           }
         />
@@ -521,110 +526,112 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.background,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xs,
-    paddingBottom: theme.spacing.xs,
-  },
-  wordmarkContainer: {
-    flexDirection: 'column',
-  },
-  wordmarkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  wordmark: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.primary,
-    letterSpacing: -0.5,
-  },
-  wordmarkSubtext: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textMuted,
-    marginTop: -2,
-  },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.full,
-    gap: 4,
-  },
-  streakBadgeActive: {
-    backgroundColor: '#FFF3E0',
-  },
-  streakBadgeInactive: {
-    backgroundColor: theme.colors.borderLight,
-  },
-  streakEmoji: {
-    fontSize: 16,
-  },
-  streakEmojiInactive: {
-    opacity: 0.35,
-  },
-  streakCount: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.bold,
-  },
-  streakCountActive: {
-    color: '#E65100',
-  },
-  streakCountInactive: {
-    color: theme.colors.textMuted,
-  },
-  list: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.tabBarClearance,
-  },
-  sectionLabel: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-  },
-  itemWrapper: {
-    marginBottom: theme.spacing.sm,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.xl,
-  },
-  emptyEmoji: {
-    fontSize: 56,
-    marginBottom: theme.spacing.md,
-  },
-  emptyTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
-  },
-  emptySubtitle: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-});
+function createStyles(colors: import('@/lib/theme').ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+    },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.xs,
+      paddingBottom: theme.spacing.xs,
+    },
+    wordmarkContainer: {
+      flexDirection: 'column',
+    },
+    wordmarkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    wordmark: {
+      fontSize: theme.fontSize.xxl,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.primary,
+      letterSpacing: -0.5,
+    },
+    wordmarkSubtext: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textMuted,
+      marginTop: -2,
+    },
+    streakBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: theme.borderRadius.full,
+      gap: 4,
+    },
+    streakBadgeActive: {
+      backgroundColor: colors.warningBackground,
+    },
+    streakBadgeInactive: {
+      backgroundColor: colors.borderLight,
+    },
+    streakEmoji: {
+      fontSize: 16,
+    },
+    streakEmojiInactive: {
+      opacity: 0.35,
+    },
+    streakCount: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.bold,
+    },
+    streakCountActive: {
+      color: colors.warningText,
+    },
+    streakCountInactive: {
+      color: colors.textMuted,
+    },
+    list: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingBottom: theme.spacing.tabBarClearance,
+    },
+    sectionLabel: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: theme.spacing.sm,
+      marginTop: theme.spacing.sm,
+    },
+    itemWrapper: {
+      marginBottom: theme.spacing.sm,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing.xl,
+    },
+    emptyEmoji: {
+      fontSize: 56,
+      marginBottom: theme.spacing.md,
+    },
+    emptyTitle: {
+      fontSize: theme.fontSize.xl,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+      marginBottom: theme.spacing.xs,
+    },
+    emptySubtitle: {
+      fontSize: theme.fontSize.md,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+  });
+}

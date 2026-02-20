@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Svg, { Circle } from 'react-native-svg';
-import { theme } from '@/lib/theme';
+import { theme, type ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 
 interface WeeklyAdherenceSummaryProps {
   weekLabel: string;
@@ -16,10 +17,10 @@ interface WeeklyAdherenceSummaryProps {
   onJumpToCurrentWeek: () => void;
 }
 
-function getAdherenceColor(adherencePercent: number): string {
-  if (adherencePercent >= 80) return theme.colors.success;
-  if (adherencePercent >= 50) return theme.colors.warning;
-  return theme.colors.danger;
+function getAdherenceColor(adherencePercent: number, colors: ThemeColors): string {
+  if (adherencePercent >= 80) return colors.success;
+  if (adherencePercent >= 50) return colors.warning;
+  return colors.danger;
 }
 
 export default function WeeklyAdherenceSummary({
@@ -33,13 +34,15 @@ export default function WeeklyAdherenceSummary({
   onNextWeek,
   onJumpToCurrentWeek,
 }: WeeklyAdherenceSummaryProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const size = 76;
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = Math.min(100, Math.max(0, adherencePercent));
   const progressLength = (progress / 100) * circumference;
-  const color = getAdherenceColor(progress);
+  const color = getAdherenceColor(progress, colors);
 
   return (
     <View style={styles.card}>
@@ -47,7 +50,7 @@ export default function WeeklyAdherenceSummary({
         <Text style={styles.title}>Habits This Week</Text>
         <View style={styles.weekNav}>
           <TouchableOpacity style={styles.navButton} onPress={onPrevWeek} activeOpacity={0.7}>
-            <FontAwesome name="chevron-left" size={12} color={theme.colors.textSecondary} />
+            <FontAwesome name="chevron-left" size={12} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={styles.weekLabel}>{weekLabel}</Text>
           <TouchableOpacity
@@ -59,7 +62,7 @@ export default function WeeklyAdherenceSummary({
             <FontAwesome
               name="chevron-right"
               size={12}
-              color={disableNextWeek ? theme.colors.textMuted : theme.colors.textSecondary}
+              color={disableNextWeek ? colors.textMuted : colors.textSecondary}
             />
           </TouchableOpacity>
         </View>
@@ -84,7 +87,7 @@ export default function WeeklyAdherenceSummary({
               cx={size / 2}
               cy={size / 2}
               r={radius}
-              stroke={theme.colors.borderLight}
+              stroke={colors.borderLight}
               strokeWidth={strokeWidth}
               fill="none"
             />
@@ -107,9 +110,10 @@ export default function WeeklyAdherenceSummary({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
     ...theme.shadow.sm,
@@ -123,7 +127,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -145,7 +149,7 @@ const styles = StyleSheet.create({
   weekLabel: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     minWidth: 110,
     textAlign: 'center',
   },
@@ -160,18 +164,18 @@ const styles = StyleSheet.create({
   },
   kicker: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   copyValue: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   backToCurrent: {
     marginTop: 6,
     fontSize: theme.fontSize.sm,
-    color: theme.colors.primary,
+    color: colors.primary,
     fontWeight: theme.fontWeight.semibold,
   },
   ringWrap: {
@@ -184,6 +188,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
-});
+  });
+}

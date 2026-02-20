@@ -5,7 +5,7 @@
 - [X] Goals -- create goals that you want to achieve.  For example, goal weights (and how fast you want to get there), goal PRs like a 3 mile run time, or max benchpress, etc.
 - [ ] Identity statements -- add in identity statements, and tie habits to identity statements.  This should help users stick with their habits.
 - [X] Integrate with apple health data
-- [ ] Reminders
+- [X] Reminders
 - [ ] Weekly reviews (& notification)
 - [X] Logo
 
@@ -15,11 +15,11 @@
 - [ ] 
 
 ## Improvements
-- [ ] Add step in onboarding for turning on/off features (daily prios & journal)
+- [X] Add step in onboarding for turning on/off features (daily prios & journal)
 - [X] Fast loading -- TanStack React Query added for stale-while-revalidate caching across all tabs
 - [X] Make the streak relate to how many days in a row you have logged a habit (triggered the event) not how many days have a habit filled out.  This should be similar, but basically if you backlog a bunch of habits that shouldn't increase your streak.
 - [X] Add event tracking with Posthog.  Create a rule to define how to implement event tracking.
-- [ ] Dark mode
+- [X] Dark mode
 - [X] cl/ci automations to allow for auto builds.  When I push / commit to github, automatically make a build for the new beta so I can test.
 
 ## Ideas

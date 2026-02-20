@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import {
@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 
 const TAB_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
   index: 'home',
@@ -23,6 +24,8 @@ const TAB_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { profile } = useAuth();
 
   return (
@@ -57,7 +60,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           };
 
           const iconName = TAB_ICONS[route.name] ?? 'circle';
-          const color = isFocused ? theme.colors.textPrimary : theme.colors.textMuted;
+          const color = isFocused ? colors.textPrimary : colors.textMuted;
 
           return (
             <TouchableOpacity
@@ -76,7 +79,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                   source={{ uri: profile.avatar_url }}
                   style={[
                     styles.profilePic,
-                    { borderColor: isFocused ? '#1A1A1A' : '#B0B0B0' },
+                    { borderColor: isFocused ? colors.textPrimary : colors.textMuted },
                   ]}
                 />
               ) : (
@@ -117,55 +120,57 @@ export default function TabLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabBarWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: 'transparent',
-  },
-  tabBarPill: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    borderRadius: 32,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    position: 'relative',
-  },
-  activeHighlight: {
-    position: 'absolute',
-    top: -2,
-    bottom: -2,
-    left: 1,
-    right: 1,
-    backgroundColor: theme.colors.borderLight,
-    borderRadius: 24,
-  },
-  profilePic: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1.5,
-    zIndex: 1,
-  },
-  tabLabel: {
-    fontSize: 10,
-    marginTop: 3,
-    zIndex: 1,
-  },
-});
+function createStyles(colors: import('@/lib/theme').ThemeColors) {
+  return StyleSheet.create({
+    tabBarWrapper: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      backgroundColor: 'transparent',
+    },
+    tabBarPill: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: 32,
+      paddingVertical: 8,
+      paddingHorizontal: 6,
+      width: '100%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    tabItem: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 6,
+      position: 'relative',
+    },
+    activeHighlight: {
+      position: 'absolute',
+      top: -2,
+      bottom: -2,
+      left: 1,
+      right: 1,
+      backgroundColor: colors.borderLight,
+      borderRadius: 24,
+    },
+    profilePic: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      borderWidth: 1.5,
+      zIndex: 1,
+    },
+    tabLabel: {
+      fontSize: 10,
+      marginTop: 3,
+      zIndex: 1,
+    },
+  });
+}

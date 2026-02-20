@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { DailyTodo } from '@/lib/types';
 import DailyTodoItem from './DailyTodoItem';
 
@@ -17,6 +18,8 @@ export default function Top3TodosSection({
   onToggle,
   onDelete,
 }: Top3TodosSectionProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const todoByPosition = new Map(todos.map((t) => [t.position, t]));
 
   const handleDelete = (todo: DailyTodo) => {
@@ -45,23 +48,25 @@ export default function Top3TodosSection({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: theme.spacing.xs,
-  },
-  sectionLabel: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold as any,
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-  },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.xs,
-    ...theme.shadow.sm,
-  },
-});
+function createStyles(colors: import('@/lib/theme').ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      marginBottom: theme.spacing.xs,
+    },
+    sectionLabel: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: theme.fontWeight.semibold as any,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: theme.spacing.sm,
+      marginTop: theme.spacing.sm,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      paddingVertical: theme.spacing.xs,
+      ...theme.shadow.sm,
+    },
+  });
+}

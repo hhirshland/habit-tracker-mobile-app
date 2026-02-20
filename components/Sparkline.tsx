@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Polyline, Circle } from 'react-native-svg';
-import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 
 interface SparklineProps {
   data: number[];
@@ -16,10 +16,12 @@ export default function Sparkline({
   data,
   width = 120,
   height = 40,
-  color = theme.colors.primary,
+  color: colorProp,
   strokeWidth = 2,
   showEndDot = true,
 }: SparklineProps) {
+  const colors = useThemeColors();
+  const color = colorProp ?? colors.primary;
   if (data.length < 2) {
     return <View style={{ width, height }} />;
   }

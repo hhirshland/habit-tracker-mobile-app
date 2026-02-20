@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { Habit, DAY_LABELS, DayOfWeek } from '@/lib/types';
 
 interface HabitItemProps {
@@ -11,6 +12,8 @@ interface HabitItemProps {
 }
 
 export default function HabitItem({ habit, onEdit, onDelete }: HabitItemProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const getDaysLabel = () => {
     if (habit.specific_days && habit.specific_days.length > 0) {
       return habit.specific_days.map((d) => DAY_LABELS[d as DayOfWeek]).join(', ');
@@ -35,7 +38,7 @@ export default function HabitItem({ habit, onEdit, onDelete }: HabitItemProps) {
         ) : null}
 
         <View style={styles.scheduleRow}>
-          <FontAwesome name="calendar" size={12} color={theme.colors.textMuted} />
+          <FontAwesome name="calendar" size={12} color={colors.textMuted} />
           <Text style={styles.scheduleText}>{getDaysLabel()}</Text>
         </View>
       </View>
@@ -46,29 +49,29 @@ export default function HabitItem({ habit, onEdit, onDelete }: HabitItemProps) {
           onPress={onEdit}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <FontAwesome name="pencil" size={16} color={theme.colors.textSecondary} />
+          <FontAwesome name="pencil" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={onDelete}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <FontAwesome name="trash-o" size={16} color={theme.colors.danger} />
+          <FontAwesome name="trash-o" size={16} color={colors.danger} />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     ...theme.shadow.sm,
   },
   content: {
@@ -82,12 +85,12 @@ const styles = StyleSheet.create({
   name: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     flex: 1,
   },
   description: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 4,
     lineHeight: 20,
   },
@@ -99,7 +102,7 @@ const styles = StyleSheet.create({
   },
   scheduleText: {
     fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
+    color: colors.textMuted,
   },
   actions: {
     flexDirection: 'row',

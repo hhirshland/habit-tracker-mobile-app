@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { ALL_METRICS, MetricDefinition } from '@/lib/metricsConfig';
 
 interface EditMetricsSheetProps {
@@ -30,6 +31,7 @@ export default function EditMetricsSheet({
   onClose,
   onSave,
 }: EditMetricsSheetProps) {
+  const colors = useThemeColors();
   // Build the ordered list: visible keys in order first, then hidden ones
   const [items, setItems] = useState<MetricItem[]>(() => buildItemList(visibleKeys));
 
@@ -178,11 +180,11 @@ export default function EditMetricsSheet({
                   value={item.visible}
                   onValueChange={() => toggleVisibility(item.metric.key)}
                   trackColor={{
-                    false: theme.colors.borderLight,
-                    true: theme.colors.primaryOverlay60,
+                    false: colors.borderLight,
+                    true: colors.primaryOverlay60,
                   }}
-                  thumbColor={item.visible ? theme.colors.primary : '#f4f3f4'}
-                  ios_backgroundColor={theme.colors.borderLight}
+                  thumbColor={item.visible ? colors.primary : '#f4f3f4'}
+                  ios_backgroundColor={colors.borderLight}
                 />
               </View>
             </View>

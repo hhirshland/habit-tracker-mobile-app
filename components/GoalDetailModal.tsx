@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
+import type { ThemeColors } from '@/lib/theme';
 import { Goal, GOAL_TYPE_COLORS, GOAL_TYPE_ICONS } from '@/lib/types';
 import { MetricDataPoint } from '@/lib/health';
 import { getGoalHistoryData, getGoalCurrentValue } from '@/lib/goals';
@@ -48,6 +50,8 @@ export default function GoalDetailModal({
   onDelete,
   onLogEntry,
 }: GoalDetailModalProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(false);
   const [historyData, setHistoryData] = useState<MetricDataPoint[]>([]);
   const [currentValue, setCurrentValue] = useState<number | null>(null);
@@ -196,7 +200,7 @@ export default function GoalDetailModal({
 
   if (!goal) return null;
 
-  const color = GOAL_TYPE_COLORS[goal.goal_type] ?? theme.colors.primary;
+  const color = GOAL_TYPE_COLORS[goal.goal_type] ?? colors.primary;
   const icon = GOAL_TYPE_ICONS[goal.goal_type] ?? 'star';
   const progress = computeProgressPercent(goal.start_value, currentValue, goal.target_value);
 
@@ -271,7 +275,7 @@ export default function GoalDetailModal({
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>{goal.title}</Text>
           <TouchableOpacity onPress={handleDelete}>
-            <FontAwesome name="trash-o" size={18} color={theme.colors.danger} />
+            <FontAwesome name="trash-o" size={18} color={colors.danger} />
           </TouchableOpacity>
         </View>
 
@@ -288,7 +292,7 @@ export default function GoalDetailModal({
         >
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : (
             <>
@@ -317,7 +321,7 @@ export default function GoalDetailModal({
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Progress</Text>
-                  <Text style={[styles.statValue, { color: progress >= 100 ? theme.colors.success : color }]}>
+                  <Text style={[styles.statValue, { color: progress >= 100 ? colors.success : color }]}>
                     {progress}%
                   </Text>
                 </View>
@@ -343,12 +347,12 @@ export default function GoalDetailModal({
                     <Text style={styles.legendText}>Actual</Text>
                   </View>
                   <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: theme.colors.success, borderRadius: 0, height: 2 }]} />
+                    <View style={[styles.legendDot, { backgroundColor: colors.success, borderRadius: 0, height: 2 }]} />
                     <Text style={styles.legendText}>Goal</Text>
                   </View>
                   {projection.length > 0 && (
                     <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, { backgroundColor: theme.colors.primaryLight, opacity: 0.5 }]} />
+                      <View style={[styles.legendDot, { backgroundColor: colors.primaryLight, opacity: 0.5 }]} />
                       <Text style={styles.legendText}>Projection</Text>
                     </View>
                   )}
@@ -370,7 +374,7 @@ export default function GoalDetailModal({
               <View style={styles.insightsContainer}>
                 {goal.rate && goal.rate_unit && (
                   <View style={styles.insightRow}>
-                    <FontAwesome name="line-chart" size={14} color={theme.colors.textMuted} />
+                    <FontAwesome name="line-chart" size={14} color={colors.textMuted} />
                     <Text style={styles.insightText}>
                       Goal rate: {goal.rate} {goal.rate_unit}
                     </Text>
@@ -379,7 +383,7 @@ export default function GoalDetailModal({
 
                 {estimatedDate && (
                   <View style={styles.insightRow}>
-                    <FontAwesome name="calendar" size={14} color={theme.colors.textMuted} />
+                    <FontAwesome name="calendar" size={14} color={colors.textMuted} />
                     <Text style={styles.insightText}>
                       Est. completion: {formatDisplayDate(estimatedDate)}
                     </Text>
@@ -391,12 +395,12 @@ export default function GoalDetailModal({
                     <FontAwesome
                       name={improving ? 'arrow-up' : 'arrow-down'}
                       size={14}
-                      color={improving ? theme.colors.success : theme.colors.danger}
+                      color={improving ? colors.success : colors.danger}
                     />
                     <Text
                       style={[
                         styles.insightText,
-                        { color: improving ? theme.colors.success : theme.colors.danger },
+                        { color: improving ? colors.success : colors.danger },
                       ]}
                     >
                       {improving ? 'Trending in the right direction' : 'Off track — keep going!'}
@@ -406,7 +410,7 @@ export default function GoalDetailModal({
 
                 {historyData.length > 0 && (
                   <View style={styles.insightRow}>
-                    <FontAwesome name="database" size={14} color={theme.colors.textMuted} />
+                    <FontAwesome name="database" size={14} color={colors.textMuted} />
                     <Text style={styles.insightText}>
                       {historyData.length} data points • Started{' '}
                       {formatDisplayDate(goal.start_date.split('T')[0])}
@@ -427,10 +431,10 @@ export default function GoalDetailModal({
                           onPress={() => shiftLogDate(-1)}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                          <FontAwesome name="chevron-left" size={14} color={theme.colors.primary} />
+                          <FontAwesome name="chevron-left" size={14} color={colors.primary} />
                         </TouchableOpacity>
                         <View style={styles.dateLabelWrap}>
-                          <FontAwesome name="calendar-o" size={13} color={theme.colors.textMuted} style={{ marginRight: 6 }} />
+                          <FontAwesome name="calendar-o" size={13} color={colors.textMuted} style={{ marginRight: 6 }} />
                           <Text style={styles.dateLabel}>{formatLogDate(logDate)}</Text>
                         </View>
                         <TouchableOpacity
@@ -439,7 +443,7 @@ export default function GoalDetailModal({
                           disabled={isToday}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                          <FontAwesome name="chevron-right" size={14} color={theme.colors.primary} />
+                          <FontAwesome name="chevron-right" size={14} color={colors.primary} />
                         </TouchableOpacity>
                       </View>
                       <TextInput
@@ -447,7 +451,7 @@ export default function GoalDetailModal({
                         value={logValue}
                         onChangeText={setLogValue}
                         placeholder={`Enter value (${goal.unit})`}
-                        placeholderTextColor={theme.colors.textMuted}
+                        placeholderTextColor={colors.textMuted}
                         keyboardType="decimal-pad"
                         autoFocus
                       />
@@ -473,7 +477,7 @@ export default function GoalDetailModal({
                       onPress={() => { setLogDate(new Date()); setShowLogForm(true); }}
                       activeOpacity={0.7}
                     >
-                      <FontAwesome name="plus" size={14} color={theme.colors.primary} />
+                      <FontAwesome name="plus" size={14} color={colors.primary} />
                       <Text style={styles.logEntryButtonText}>Log Entry</Text>
                     </TouchableOpacity>
                   )}
@@ -497,219 +501,221 @@ function formatDisplayDate(dateStr: string): string {
 // Styles
 // ──────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  headerButton: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.primary,
-    fontWeight: theme.fontWeight.medium,
-  },
-  headerTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: theme.spacing.sm,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: 120,
-  },
-  loadingContainer: {
-    paddingVertical: theme.spacing.xxl,
-    alignItems: 'center',
-  },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    headerButton: {
+      fontSize: theme.fontSize.md,
+      color: colors.primary,
+      fontWeight: theme.fontWeight.medium,
+    },
+    headerTitle: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+      flex: 1,
+      textAlign: 'center',
+      marginHorizontal: theme.spacing.sm,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: theme.spacing.lg,
+      paddingBottom: 120,
+    },
+    loadingContainer: {
+      paddingVertical: theme.spacing.xxl,
+      alignItems: 'center',
+    },
 
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    ...theme.shadow.sm,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: theme.colors.borderLight,
-    marginVertical: 4,
-  },
+    // Stats
+    statsRow: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      ...theme.shadow.sm,
+    },
+    statItem: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    statLabel: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textMuted,
+      marginBottom: 4,
+    },
+    statValue: {
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.bold,
+      color: colors.textPrimary,
+    },
+    statDivider: {
+      width: 1,
+      backgroundColor: colors.borderLight,
+      marginVertical: 4,
+    },
 
-  // Progress bar
-  progressBarContainer: {
-    marginTop: theme.spacing.md,
-  },
-  progressBarTrack: {
-    height: 6,
-    backgroundColor: theme.colors.borderLight,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
+    // Progress bar
+    progressBarContainer: {
+      marginTop: theme.spacing.md,
+    },
+    progressBarTrack: {
+      height: 6,
+      backgroundColor: colors.borderLight,
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: '100%',
+      borderRadius: 3,
+    },
 
-  // Chart
-  chartContainer: {
-    marginTop: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    ...theme.shadow.sm,
-  },
-  chartLegend: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textMuted,
-  },
+    // Chart
+    chartContainer: {
+      marginTop: theme.spacing.lg,
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      ...theme.shadow.sm,
+    },
+    chartLegend: {
+      flexDirection: 'row',
+      gap: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+    },
+    legendItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    legendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    legendText: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textMuted,
+    },
 
-  // Insights
-  insightsContainer: {
-    marginTop: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    gap: theme.spacing.sm,
-    ...theme.shadow.sm,
-  },
-  insightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  insightText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-  },
+    // Insights
+    insightsContainer: {
+      marginTop: theme.spacing.lg,
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      gap: theme.spacing.sm,
+      ...theme.shadow.sm,
+    },
+    insightRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    insightText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+    },
 
-  // Log entry
-  logSection: {
-    marginTop: theme.spacing.lg,
-  },
-  logEntryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.primaryOverlay40,
-    borderStyle: 'dashed',
-    paddingVertical: theme.spacing.md,
-    gap: theme.spacing.sm,
-  },
-  logEntryButtonText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.primary,
-  },
-  logForm: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    ...theme.shadow.sm,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  dateArrow: {
-    padding: 6,
-  },
-  dateLabelWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 130,
-    paddingHorizontal: theme.spacing.sm,
-  },
-  dateLabel: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textPrimary,
-  },
-  logInput: {
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 12,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-  },
-  logButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.sm,
-  },
-  logCancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-  },
-  logCancelText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    fontWeight: theme.fontWeight.medium,
-  },
-  logSubmitButton: {
-    paddingVertical: 8,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.md,
-  },
-  logSubmitText: {
-    fontSize: theme.fontSize.sm,
-    color: '#fff',
-    fontWeight: theme.fontWeight.semibold,
-  },
-});
+    // Log entry
+    logSection: {
+      marginTop: theme.spacing.lg,
+    },
+    logEntryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.primaryOverlay40,
+      borderStyle: 'dashed',
+      paddingVertical: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    logEntryButtonText: {
+      fontSize: theme.fontSize.md,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.primary,
+    },
+    logForm: {
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.lg,
+      padding: theme.spacing.md,
+      ...theme.shadow.sm,
+    },
+    dateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: theme.spacing.sm,
+    },
+    dateArrow: {
+      padding: 6,
+    },
+    dateLabelWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 130,
+      paddingHorizontal: theme.spacing.sm,
+    },
+    dateLabel: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textPrimary,
+    },
+    logInput: {
+      backgroundColor: colors.background,
+      borderRadius: theme.borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: 12,
+      fontSize: theme.fontSize.md,
+      color: colors.textPrimary,
+      marginBottom: theme.spacing.sm,
+    },
+    logButtons: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: theme.spacing.sm,
+    },
+    logCancelButton: {
+      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.md,
+      borderRadius: theme.borderRadius.md,
+    },
+    logCancelText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+      fontWeight: theme.fontWeight.medium,
+    },
+    logSubmitButton: {
+      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.md,
+      backgroundColor: colors.primary,
+      borderRadius: theme.borderRadius.md,
+    },
+    logSubmitText: {
+      fontSize: theme.fontSize.sm,
+      color: '#fff',
+      fontWeight: theme.fontWeight.semibold,
+    },
+  });
+}

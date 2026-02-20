@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,14 +16,110 @@ import { Link } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ThriveLogo from '@/components/ThriveLogo';
 
 export default function SignInScreen() {
+  const colors = useThemeColors();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        keyboardView: {
+          flex: 1,
+          justifyContent: 'center',
+          paddingHorizontal: theme.spacing.lg,
+        },
+        header: {
+          alignItems: 'center',
+          marginBottom: theme.spacing.xl,
+        },
+        wordmarkRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: theme.spacing.md,
+        },
+        wordmark: {
+          fontSize: theme.fontSize.xxxl,
+          fontWeight: theme.fontWeight.bold,
+          color: colors.primary,
+          letterSpacing: -0.5,
+        },
+        title: {
+          fontSize: theme.fontSize.xxxl,
+          fontWeight: theme.fontWeight.bold,
+          color: colors.textPrimary,
+          marginBottom: theme.spacing.xs,
+        },
+        subtitle: {
+          fontSize: theme.fontSize.md,
+          color: colors.textSecondary,
+          textAlign: 'center',
+        },
+        form: {
+          gap: theme.spacing.md,
+        },
+        inputContainer: {
+          gap: theme.spacing.xs,
+        },
+        label: {
+          fontSize: theme.fontSize.sm,
+          fontWeight: theme.fontWeight.medium,
+          color: colors.textPrimary,
+          marginLeft: theme.spacing.xs,
+        },
+        input: {
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: theme.borderRadius.md,
+          paddingHorizontal: theme.spacing.md,
+          paddingVertical: 14,
+          fontSize: theme.fontSize.md,
+          color: colors.textPrimary,
+        },
+        button: {
+          backgroundColor: colors.primary,
+          borderRadius: theme.borderRadius.md,
+          paddingVertical: 16,
+          alignItems: 'center',
+          marginTop: theme.spacing.sm,
+          ...theme.shadow.md,
+        },
+        buttonDisabled: {
+          opacity: 0.7,
+        },
+        buttonText: {
+          color: '#fff',
+          fontSize: theme.fontSize.lg,
+          fontWeight: theme.fontWeight.semibold,
+        },
+        footer: {
+          flexDirection: 'row',
+          justifyContent: 'center',
+          marginTop: theme.spacing.md,
+        },
+        footerText: {
+          fontSize: theme.fontSize.sm,
+          color: colors.textSecondary,
+        },
+        linkText: {
+          fontSize: theme.fontSize.sm,
+          color: colors.primary,
+          fontWeight: theme.fontWeight.semibold,
+        },
+      }),
+    [colors]
+  );
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -63,7 +159,7 @@ export default function SignInScreen() {
             <TextInput
               style={styles.input}
               placeholder="you@example.com"
-              placeholderTextColor={theme.colors.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -77,7 +173,7 @@ export default function SignInScreen() {
             <TextInput
               style={styles.input}
               placeholder="Your password"
-              placeholderTextColor={theme.colors.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -112,93 +208,3 @@ export default function SignInScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  keyboardView: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.xl,
-  },
-  wordmarkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  wordmark: {
-    fontSize: theme.fontSize.xxxl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.primary,
-    letterSpacing: -0.5,
-  },
-  title: {
-    fontSize: theme.fontSize.xxxl,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
-  },
-  subtitle: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
-  form: {
-    gap: theme.spacing.md,
-  },
-  inputContainer: {
-    gap: theme.spacing.xs,
-  },
-  label: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textPrimary,
-    marginLeft: theme.spacing.xs,
-  },
-  input: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 14,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textPrimary,
-  },
-  button: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
-    ...theme.shadow.md,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: theme.spacing.md,
-  },
-  footerText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-  },
-  linkText: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.primary,
-    fontWeight: theme.fontWeight.semibold,
-  },
-});

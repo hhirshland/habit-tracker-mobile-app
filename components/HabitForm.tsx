@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { theme } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import {
   DAY_LABELS,
   DayOfWeek,
@@ -44,6 +45,7 @@ export default function HabitForm({
   onCancel,
   submitLabel = 'Save Habit',
 }: HabitFormProps) {
+  const colors = useThemeColors();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized } = useHealth();
 
   const [name, setName] = useState(initialData?.name || '');
@@ -131,8 +133,8 @@ export default function HabitForm({
               setUseSpecificDays(val);
               if (!val) setSpecificDays([]);
             }}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
-            thumbColor={useSpecificDays ? theme.colors.primary : '#f4f3f4'}
+            trackColor={{ false: colors.border, true: colors.primaryLight }}
+            thumbColor={useSpecificDays ? colors.primary : '#f4f3f4'}
           />
         </View>
       </View>
@@ -211,8 +213,8 @@ export default function HabitForm({
                     setMetricThreshold(METRIC_TYPE_DEFAULTS['steps'].toString());
                   }
                 }}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
-                thumbColor={linkMetric ? theme.colors.primary : '#f4f3f4'}
+                trackColor={{ false: colors.border, true: colors.primaryLight }}
+                thumbColor={linkMetric ? colors.primary : '#f4f3f4'}
               />
             </View>
           </View>

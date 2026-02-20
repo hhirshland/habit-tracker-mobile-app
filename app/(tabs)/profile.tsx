@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, ThemeColors } from '@/lib/theme';
+import { useThemeColors } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHealth } from '@/contexts/HealthContext';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
@@ -25,6 +26,8 @@ import { EVENTS, captureEvent } from '@/lib/analytics';
 import type { ThemePreference } from '@/lib/userSettings';
 
 export default function ProfileScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, profile, signOut, refreshProfile } = useAuth();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
   const { settings, setThemePreference, updateSettings } = useUserSettings();
@@ -205,7 +208,7 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               placeholder="Enter your name"
-              placeholderTextColor={theme.colors.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
@@ -240,8 +243,8 @@ export default function ProfileScreen() {
           <Text style={styles.sectionLabel}>Features</Text>
           <View style={styles.healthCard}>
             <View style={styles.healthCardLeft}>
-              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLightOverlay30 }]}>
-                <FontAwesome name="list-ol" size={18} color={theme.colors.primary} />
+              <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                <FontAwesome name="list-ol" size={18} color={colors.primary} />
               </View>
               <View style={styles.healthInfo}>
                 <Text style={styles.healthTitle}>Top 3 Todos</Text>
@@ -251,16 +254,17 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Switch
+              style={styles.healthCardSwitch}
               value={top3TodosEnabled}
               onValueChange={handleToggleTop3Todos}
-              trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
-              thumbColor={top3TodosEnabled ? theme.colors.primary : '#f4f3f4'}
+              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
+              thumbColor={top3TodosEnabled ? colors.primary : '#f4f3f4'}
             />
           </View>
           <View style={[styles.healthCard, { marginTop: theme.spacing.sm }]}>
             <View style={styles.healthCardLeft}>
-              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLightOverlay30 }]}>
-                <FontAwesome name="book" size={18} color={theme.colors.primary} />
+              <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                <FontAwesome name="book" size={18} color={colors.primary} />
               </View>
               <View style={styles.healthInfo}>
                 <Text style={styles.healthTitle}>Daily Journal</Text>
@@ -270,10 +274,11 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Switch
+              style={styles.healthCardSwitch}
               value={journalEnabled}
               onValueChange={handleToggleJournal}
-              trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
-              thumbColor={journalEnabled ? theme.colors.primary : '#f4f3f4'}
+              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
+              thumbColor={journalEnabled ? colors.primary : '#f4f3f4'}
             />
           </View>
         </View>
@@ -284,8 +289,8 @@ export default function ProfileScreen() {
           <Text style={styles.sectionLabel}>Notifications</Text>
           <View style={styles.healthCard}>
             <View style={styles.healthCardLeft}>
-              <View style={[styles.healthIconContainer, { backgroundColor: theme.colors.primaryLightOverlay30 }]}>
-                <FontAwesome name="bell" size={18} color={theme.colors.primary} />
+              <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                <FontAwesome name="bell" size={18} color={colors.primary} />
               </View>
               <View style={styles.healthInfo}>
                 <Text style={styles.healthTitle}>Daily Reminders</Text>
@@ -295,10 +300,11 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Switch
+              style={styles.healthCardSwitch}
               value={notificationsEnabled}
               onValueChange={toggleNotifications}
-              trackColor={{ false: theme.colors.borderLight, true: theme.colors.primaryLight }}
-              thumbColor={notificationsEnabled ? theme.colors.primary : '#f4f3f4'}
+              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
+              thumbColor={notificationsEnabled ? colors.primary : '#f4f3f4'}
             />
           </View>
         </View>
@@ -350,12 +356,12 @@ export default function ProfileScreen() {
               <View style={styles.healthCardLeft}>
                 <View style={[
                   styles.healthIconContainer,
-                  { backgroundColor: healthAuthorized ? theme.colors.successLight : theme.colors.borderLight },
+                  { backgroundColor: healthAuthorized ? colors.successLight : colors.borderLight },
                 ]}>
                   <FontAwesome
                     name="heartbeat"
                     size={18}
-                    color={healthAuthorized ? theme.colors.success : theme.colors.textMuted}
+                    color={healthAuthorized ? colors.success : colors.textMuted}
                   />
                 </View>
                 <View style={styles.healthInfo}>
@@ -367,7 +373,7 @@ export default function ProfileScreen() {
               </View>
               {healthAuthorized ? (
                 <View style={styles.connectedBadge}>
-                  <FontAwesome name="check-circle" size={16} color={theme.colors.success} />
+                  <FontAwesome name="check-circle" size={16} color={colors.success} />
                 </View>
               ) : (
                 <TouchableOpacity
@@ -435,7 +441,7 @@ export default function ProfileScreen() {
           onPress={handleSignOut}
           activeOpacity={0.8}
         >
-          <FontAwesome name="sign-out" size={18} color={theme.colors.danger} />
+          <FontAwesome name="sign-out" size={18} color={colors.danger} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -443,10 +449,10 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     paddingHorizontal: theme.spacing.lg,
@@ -456,7 +462,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: theme.fontSize.xxl,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   avatarSection: {
     alignItems: 'center',
@@ -466,13 +472,13 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: theme.colors.borderLight,
+    backgroundColor: colors.borderLight,
   },
   avatarPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -488,11 +494,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: theme.colors.background,
+    borderColor: colors.background,
   },
   form: {
     paddingHorizontal: theme.spacing.lg,
@@ -504,29 +510,29 @@ const styles = StyleSheet.create({
   label: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
     marginLeft: theme.spacing.xs,
   },
   input: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: theme.borderRadius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: 14,
     fontSize: theme.fontSize.md,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   readOnlyInput: {
-    backgroundColor: theme.colors.borderLight,
+    backgroundColor: colors.borderLight,
     justifyContent: 'center',
   },
   readOnlyText: {
     fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
   },
   saveButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.md,
     paddingVertical: 16,
     alignItems: 'center',
@@ -543,7 +549,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: colors.border,
     marginHorizontal: theme.spacing.lg,
     marginVertical: theme.spacing.xl,
   },
@@ -559,13 +565,13 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.xxl,
     borderWidth: 1,
-    borderColor: theme.colors.danger,
+    borderColor: colors.danger,
     borderRadius: theme.borderRadius.md,
   },
   signOutText: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.danger,
+    color: colors.danger,
   },
   // Apple Health section
   healthSection: {
@@ -574,7 +580,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: theme.spacing.sm,
@@ -583,9 +589,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
   },
@@ -603,22 +609,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   healthInfo: {
+    flex: 1,
+    flexShrink: 1,
     gap: 2,
   },
   healthTitle: {
     fontSize: theme.fontSize.md,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
   healthStatus: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
+    flexShrink: 1,
+  },
+  healthCardSwitch: {
+    marginLeft: theme.spacing.md,
   },
   connectedBadge: {
     paddingHorizontal: theme.spacing.sm,
   },
   connectButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.sm,
     paddingVertical: theme.spacing.sm,
     paddingHorizontal: theme.spacing.md,
@@ -629,20 +641,20 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
   },
   authFailedBox: {
-    backgroundColor: theme.colors.warningBackground,
+    backgroundColor: colors.warningBackground,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     marginTop: theme.spacing.sm,
   },
   authFailedText: {
     fontSize: theme.fontSize.sm,
-    color: theme.colors.warningText,
+    color: colors.warningText,
     lineHeight: 20,
   },
   missingPermissionsCard: {
-    backgroundColor: theme.colors.warningBackground,
+    backgroundColor: colors.warningBackground,
     borderWidth: 1,
-    borderColor: theme.colors.warningBorder,
+    borderColor: colors.warningBorder,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     marginTop: theme.spacing.sm,
@@ -656,16 +668,16 @@ const styles = StyleSheet.create({
   missingPermissionsTitle: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.warningText,
+    color: colors.warningText,
   },
   missingPermissionsBody: {
     fontSize: theme.fontSize.xs,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 18,
     marginBottom: theme.spacing.xs,
   },
   grantAccessButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.sm,
     paddingVertical: theme.spacing.sm,
     alignItems: 'center',
@@ -681,9 +693,9 @@ const styles = StyleSheet.create({
   },
   appearanceCard: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: colors.border,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.xs,
     gap: theme.spacing.xs,
@@ -696,15 +708,15 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.sm,
   },
   appearanceOptionSelected: {
-    backgroundColor: theme.colors.primaryLightOverlay30,
+    backgroundColor: colors.primaryLightOverlay30,
   },
   appearanceOptionText: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
   },
   appearanceOptionTextSelected: {
-    color: theme.colors.primary,
+    color: colors.primary,
     fontWeight: theme.fontWeight.semibold,
   },
 });
