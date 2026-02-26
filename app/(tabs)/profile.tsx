@@ -30,8 +30,12 @@ export default function ProfileScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, profile, signOut, refreshProfile } = useAuth();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
-  const { settings, setThemePreference, updateSettings } = useUserSettings();
-  const { enabled: notificationsEnabled, toggle: toggleNotifications } = useNotificationsSetting();
+  const { settings, loaded: settingsLoaded, setThemePreference, updateSettings } = useUserSettings();
+  const {
+    enabled: notificationsEnabled,
+    loaded: notificationsLoaded,
+    toggle: toggleNotifications,
+  } = useNotificationsSetting();
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -176,6 +180,35 @@ export default function ProfileScreen() {
       .slice(0, 2);
   };
 
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7874/ingest/7cda9f39-7330-4a7a-82e2-d6f5bd886520',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a1c528'},body:JSON.stringify({sessionId:'a1c528',runId:'pre-fix-2',hypothesisId:'H3',location:'app/(tabs)/profile.tsx:switchProps',message:'daily reminders switch props computed',data:{notifications_enabled:notificationsEnabled,thumb_color:notificationsEnabled?colors.primary:'#f4f3f4',track_true:colors.primaryLight,theme_preference:preference},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    // #region agent log
+    console.log('[DBG-a1c528] H3 profile switch props', {
+      notificationsEnabled,
+      notificationsLoaded,
+      thumbColor: notificationsEnabled ? colors.primary : '#f4f3f4',
+      trackTrue: colors.primaryLight,
+      themePreference: preference,
+    });
+    // #endregion
+  }, [notificationsEnabled, notificationsLoaded, colors.primary, colors.primaryLight, preference]);
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7874/ingest/7cda9f39-7330-4a7a-82e2-d6f5bd886520',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a1c528'},body:JSON.stringify({sessionId:'a1c528',runId:'journal-pre-fix',hypothesisId:'J4',location:'app/(tabs)/profile.tsx:journalSwitchProps',message:'daily journal switch props computed',data:{settings_loaded:settingsLoaded,journal_enabled:journalEnabled,journal_thumb_color:journalEnabled?colors.primary:'#f4f3f4',journal_track_true:colors.primaryLight},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    // #region agent log
+    console.log('[DBG-a1c528] J4 journal switch props', {
+      settingsLoaded,
+      journalEnabled,
+      journalThumbColor: journalEnabled ? colors.primary : '#f4f3f4',
+      journalTrackTrue: colors.primaryLight,
+    });
+    // #endregion
+  }, [settingsLoaded, journalEnabled, colors.primary, colors.primaryLight]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.scrollContent}>
@@ -281,13 +314,7 @@ export default function ProfileScreen() {
               thumbColor={journalEnabled ? colors.primary : '#f4f3f4'}
             />
           </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.healthSection}>
-          <Text style={styles.sectionLabel}>Notifications</Text>
-          <View style={styles.healthCard}>
+          <View style={[styles.healthCard, { marginTop: theme.spacing.sm }]}>
             <View style={styles.healthCardLeft}>
               <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
                 <FontAwesome name="bell" size={18} color={colors.primary} />

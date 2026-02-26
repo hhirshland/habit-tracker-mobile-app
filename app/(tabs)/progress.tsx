@@ -58,8 +58,7 @@ import AddGoalSheet from '@/components/AddGoalSheet';
 import Sparkline from '@/components/Sparkline';
 import MetricDetailModal from '@/components/MetricDetailModal';
 import EditMetricsSheet from '@/components/EditMetricsSheet';
-import WeeklyAdherenceSummary from '@/components/WeeklyAdherenceSummary';
-import HabitAdherenceRow from '@/components/HabitAdherenceRow';
+import HabitsThisWeek from '@/components/HabitsThisWeek';
 import JournalHistorySection from '@/components/JournalHistorySection';
 
 const METRIC_PREFS_KEY = '@metric_preferences';
@@ -263,9 +262,11 @@ export default function ProgressScreen() {
     }
 
     let daysCompleted = 0;
+    const datesCompleted: string[] = [];
     for (const [date, total] of todosByDate) {
       if (total === 3 && (completedByDate.get(date) ?? 0) === 3) {
         daysCompleted++;
+        datesCompleted.push(date);
       }
     }
 
@@ -281,9 +282,7 @@ export default function ProgressScreen() {
       const d2 = new Date(`${weekRange.end}T12:00:00`);
       const remainingDays = Math.max(Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1, 0);
       const remaining = targetDays - daysCompleted;
-      if (remaining <= 0) status = 'on_track';
-      else if (remaining > remainingDays) status = 'behind';
-      else if (remaining === remainingDays) status = 'at_risk';
+      if (remaining > remainingDays) status = 'behind';
       else status = 'on_track';
     }
 
@@ -293,6 +292,7 @@ export default function ProgressScreen() {
       targetDays,
       adherencePercent: Math.min(100, Math.round((daysCompleted / targetDays) * 100)),
       status,
+      completedDates: datesCompleted,
     };
   }, [top3Enabled, weekTodos, weekRange.end]);
 
@@ -353,11 +353,13 @@ export default function ProgressScreen() {
   const handleRefresh = async () => {
     setRefreshing(true);
     refreshHabitData();
-    refreshHealthHistory();
     refreshGoals();
     queryClient.invalidateQueries({ queryKey: ['dailyTodos'] });
     queryClient.invalidateQueries({ queryKey: ['dailyJournal'] });
-    await refresh();
+    if (isAuthorized) {
+      refreshHealthHistory();
+      await refresh();
+    }
     setRefreshing(false);
   };
 
@@ -431,43 +433,7 @@ export default function ProgressScreen() {
     hrv: hrvHistory.map((p) => p.value),
   };
 
-  // Show non-iOS message
-  if (!isAvailable) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Progress</Text>
-        </View>
-        <NotAvailable styles={styles} colors={colors} />
-      </SafeAreaView>
-    );
-  }
-
-  // Show connect CTA
-  if (!isAuthorized) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Progress</Text>
-        </View>
-        <ConnectHealthCTA onConnect={handleConnect} connecting={connecting} authFailed={authFailed} styles={styles} colors={colors} />
-      </SafeAreaView>
-    );
-  }
-
-  // Show loading state only on very first load (no cached data)
-  if (loading && !metrics.steps && !refreshing) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Progress</Text>
-        </View>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const healthReady = isAvailable && isAuthorized;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -488,7 +454,7 @@ export default function ProgressScreen() {
         }
       >
         {/* Missing Permissions Banner */}
-        {missingMetrics.length > 0 && (
+        {healthReady && missingMetrics.length > 0 && (
           <TouchableOpacity
             style={styles.missingBanner}
             activeOpacity={0.8}
@@ -509,8 +475,9 @@ export default function ProgressScreen() {
         )}
 
         {/* Habit Adherence Section */}
-        <WeeklyAdherenceSummary
+        <HabitsThisWeek
           weekLabel={weekRange.label}
+          weekStart={weekRange.start}
           weekOffset={weekOffset}
           adherencePercent={(() => {
             const ct = (weeklyAdherence?.completedTotal ?? 0) + (top3TodoWeeklyStat?.completedDays ?? 0);
@@ -523,29 +490,10 @@ export default function ProgressScreen() {
           onPrevWeek={() => setWeekOffset((prev) => prev - 1)}
           onNextWeek={() => setWeekOffset((prev) => Math.min(prev + 1, 0))}
           onJumpToCurrentWeek={() => setWeekOffset(0)}
+          isLoading={weeklyAdherenceLoading}
+          stats={weeklyAdherence?.stats ?? []}
+          top3TodoWeeklyStat={top3TodoWeeklyStat}
         />
-
-        {weeklyAdherenceLoading ? (
-          <View style={styles.habitAdherenceLoading}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        ) : (weeklyAdherence && weeklyAdherence.stats.length > 0) || top3TodoWeeklyStat ? (
-          <View style={styles.habitRows}>
-            {weeklyAdherence?.stats.map((stat) => (
-              <HabitAdherenceRow key={stat.habit.id} stat={stat} />
-            ))}
-            {top3TodoWeeklyStat && (
-              <HabitAdherenceRow stat={top3TodoWeeklyStat} />
-            )}
-          </View>
-        ) : (
-          <View style={styles.emptyHabitsCard}>
-            <FontAwesome name="check-square-o" size={20} color={colors.textMuted} />
-            <Text style={styles.emptyHabitsText}>
-              No active habits yet. Add habits in the Habits tab to start tracking weekly adherence.
-            </Text>
-          </View>
-        )}
 
         {/* Journal History Section */}
         {journalEnabled && (
@@ -593,58 +541,66 @@ export default function ProgressScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Metrics Section */}
-        <View style={styles.metricsSectionHeader}>
-          <Text style={[styles.sectionLabel, { marginTop: 0, marginBottom: 0 }]}>Metrics</Text>
-          <TouchableOpacity
-            style={styles.editMetricsButton}
-            onPress={() => setShowEditMetrics(true)}
-            activeOpacity={0.7}
-          >
-            <FontAwesome name="pencil" size={12} color={colors.primary} />
-            <Text style={styles.editMetricsButtonText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.metricsGrid}>
-          {visibleMetricKeys.map((key) => {
-            const metric = getMetricByKey(key);
-            if (!metric) return null;
-            return (
-              <MetricCard
-                key={key}
-                title={metric.title}
-                value={metric.formatValue(metric.getValue(metrics))}
-                subtitle={metric.getSubtitle?.(metrics)}
-                icon={metric.icon}
-                color={metric.color}
-                sparklineData={sparklineDataMap[key]}
-                onPress={() => setSelectedMetric(metric)}
-                styles={styles}
-              />
-            );
-          })}
-        </View>
-
-        {/* Recent Workouts */}
-        {metrics.workoutsThisWeek.length > 0 && (
+        {/* Metrics Section — gated by HealthKit access */}
+        {healthReady ? (
           <>
-            <Text style={styles.sectionLabel}>Recent Workouts</Text>
-            <View style={styles.workoutsCard}>
-              {metrics.workoutsThisWeek.slice(0, 5).map((workout) => (
-                <WorkoutRow key={workout.id} workout={workout} styles={styles} colors={colors} />
-              ))}
+            <View style={styles.metricsSectionHeader}>
+              <Text style={[styles.sectionLabel, { marginTop: 0, marginBottom: 0 }]}>Metrics</Text>
+              <TouchableOpacity
+                style={styles.editMetricsButton}
+                onPress={() => setShowEditMetrics(true)}
+                activeOpacity={0.7}
+              >
+                <FontAwesome name="pencil" size={12} color={colors.primary} />
+                <Text style={styles.editMetricsButtonText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.metricsGrid}>
+              {visibleMetricKeys.map((key) => {
+                const metric = getMetricByKey(key);
+                if (!metric) return null;
+                return (
+                  <MetricCard
+                    key={key}
+                    title={metric.title}
+                    value={metric.formatValue(metric.getValue(metrics))}
+                    subtitle={metric.getSubtitle?.(metrics)}
+                    icon={metric.icon}
+                    color={metric.color}
+                    sparklineData={sparklineDataMap[key]}
+                    onPress={() => setSelectedMetric(metric)}
+                    styles={styles}
+                  />
+                );
+              })}
+            </View>
+
+            {/* Recent Workouts */}
+            {metrics.workoutsThisWeek.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>Recent Workouts</Text>
+                <View style={styles.workoutsCard}>
+                  {metrics.workoutsThisWeek.slice(0, 5).map((workout) => (
+                    <WorkoutRow key={workout.id} workout={workout} styles={styles} colors={colors} />
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* Hint about linking */}
+            <View style={styles.hintCard}>
+              <FontAwesome name="lightbulb-o" size={16} color={colors.primary} />
+              <Text style={styles.hintText}>
+                Link habits to health metrics to auto-complete them when you hit your targets. Edit a
+                habit and toggle "Link to Health Metric."
+              </Text>
             </View>
           </>
+        ) : isAvailable ? (
+          <ConnectHealthCTA onConnect={handleConnect} connecting={connecting} authFailed={authFailed} styles={styles} colors={colors} />
+        ) : (
+          <NotAvailable styles={styles} colors={colors} />
         )}
-
-        {/* Hint about linking */}
-        <View style={styles.hintCard}>
-          <FontAwesome name="lightbulb-o" size={16} color={colors.primary} />
-          <Text style={styles.hintText}>
-            Link habits to health metrics to auto-complete them when you hit your targets. Edit a
-            habit and toggle "Link to Health Metric."
-          </Text>
-        </View>
       </ScrollView>
 
       {/* Goal Detail Modal */}
@@ -683,6 +639,7 @@ export default function ProgressScreen() {
         onClose={() => setShowEditMetrics(false)}
         onSave={handleSaveMetricPrefs}
       />
+
     </SafeAreaView>
   );
 }
@@ -814,6 +771,7 @@ function createStyles(colors: ThemeColors) {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.xl,
+    marginTop: theme.spacing.lg,
   },
   ctaIconContainer: {
     marginBottom: theme.spacing.lg,

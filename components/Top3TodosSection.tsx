@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { DailyTodo } from '@/lib/types';
-import DailyTodoItem from './DailyTodoItem';
+import DailyTodoItem, { DailyTodoItemHandle } from './DailyTodoItem';
 
 interface Top3TodosSectionProps {
   todos: DailyTodo[];
@@ -22,12 +22,23 @@ export default function Top3TodosSection({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const todoByPosition = new Map(todos.map((t) => [t.position, t]));
 
+  const itemRefs = useRef<(DailyTodoItemHandle | null)[]>([null, null, null]);
+
   const handleDelete = (todo: DailyTodo) => {
     Alert.alert('Delete Todo', `Remove "${todo.text}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => onDelete(todo) },
     ]);
   };
+
+  const makeOnNext = useCallback(
+    (pos: number) => () => {
+      if (pos < 3) {
+        itemRefs.current[pos]?.startEditing();
+      }
+    },
+    [],
+  );
 
   return (
     <View style={styles.container}>
@@ -36,11 +47,13 @@ export default function Top3TodosSection({
         {[1, 2, 3].map((pos) => (
           <DailyTodoItem
             key={pos}
+            ref={(el) => { itemRefs.current[pos - 1] = el; }}
             todo={todoByPosition.get(pos) ?? null}
             position={pos}
             onSave={onSave}
             onToggle={onToggle}
             onDelete={handleDelete}
+            onNext={pos < 3 ? makeOnNext(pos) : undefined}
           />
         ))}
       </View>

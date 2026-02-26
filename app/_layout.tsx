@@ -14,7 +14,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { HealthProvider } from '@/contexts/HealthContext';
 import { UserSettingsProvider, useUserSettings } from '@/contexts/UserSettingsContext';
-import { setSuperProperties, trackScreen } from '@/lib/analytics';
+import * as Notifications from 'expo-notifications';
+import { captureEvent, EVENTS, setSuperProperties, trackScreen } from '@/lib/analytics';
 import { getAuthRedirectTarget } from '@/lib/authRouting';
 import { rescheduleNotifications } from '@/lib/notifications';
 import { posthogClient } from '@/lib/posthog';
@@ -130,6 +131,15 @@ function RootLayoutNav() {
       console.error('Error rescheduling notifications on app launch:', error);
     });
   }, [hasHydratedAuth]);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const reminderId =
+        (response.notification.request.content.data?.reminder_id as string) ?? 'unknown';
+      captureEvent(EVENTS.NOTIFICATION_OPENED, { reminder_id: reminderId });
+    });
+    return () => subscription.remove();
+  }, []);
 
   return (
     <>

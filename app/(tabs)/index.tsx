@@ -52,7 +52,7 @@ import {
 } from '@/hooks/useDailyJournalQuery';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { queryKeys } from '@/lib/queryClient';
-import PriorityItem from '@/components/PriorityItemVariantB';
+import PriorityItem from '@/components/PriorityItem';
 import CalendarStrip from '@/components/CalendarStrip';
 import ThriveLogo from '@/components/ThriveLogo';
 import Top3TodosSection from '@/components/Top3TodosSection';

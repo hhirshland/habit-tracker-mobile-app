@@ -10,7 +10,6 @@ interface HabitAdherenceRowProps {
 
 function getStatusColor(status: HabitWeeklyStats['status'], colors: ThemeColors): string {
   if (status === 'behind' || status === 'missed') return colors.danger;
-  if (status === 'at_risk') return colors.warning;
   return colors.success;
 }
 
@@ -18,8 +17,6 @@ function getStatusLabel(status: HabitWeeklyStats['status']): string {
   switch (status) {
     case 'behind':
       return 'Behind';
-    case 'at_risk':
-      return 'At risk';
     case 'met':
       return 'Met';
     case 'missed':

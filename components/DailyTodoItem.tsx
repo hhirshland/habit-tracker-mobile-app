@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   View,
   Text,
@@ -11,31 +11,41 @@ import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { DailyTodo } from '@/lib/types';
 
+export interface DailyTodoItemHandle {
+  startEditing: () => void;
+}
+
 interface DailyTodoItemProps {
   todo: DailyTodo | null;
   position: number;
   onSave: (position: number, text: string) => void;
   onToggle: (todo: DailyTodo) => void;
   onDelete: (todo: DailyTodo) => void;
+  onNext?: () => void;
 }
 
-export default function DailyTodoItem({
-  todo,
-  position,
-  onSave,
-  onToggle,
-  onDelete,
-}: DailyTodoItemProps) {
+const DailyTodoItem = forwardRef<DailyTodoItemHandle, DailyTodoItemProps>(function DailyTodoItem(
+  { todo, position, onSave, onToggle, onDelete, onNext },
+  ref,
+) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(todo?.text ?? '');
+  const didSubmitRef = useRef(false);
 
   useEffect(() => {
     setText(todo?.text ?? '');
   }, [todo?.id, todo?.text]);
 
-  const handleSubmit = () => {
+  useImperativeHandle(ref, () => ({
+    startEditing: () => {
+      setText(todo?.text ?? '');
+      setEditing(true);
+    },
+  }));
+
+  const save = () => {
     const trimmed = text.trim();
     if (trimmed) {
       onSave(position, trimmed);
@@ -45,9 +55,19 @@ export default function DailyTodoItem({
     setEditing(false);
   };
 
-  const handleCancel = () => {
-    setText(todo?.text ?? '');
-    setEditing(false);
+  const handleSubmitEditing = () => {
+    didSubmitRef.current = true;
+    save();
+    if (position < 3) {
+      onNext?.();
+    }
+  };
+
+  const handleBlur = () => {
+    if (!didSubmitRef.current) {
+      save();
+    }
+    didSubmitRef.current = false;
   };
 
   if (!todo && !editing) {
@@ -78,9 +98,9 @@ export default function DailyTodoItem({
           placeholder="What's your priority?"
           placeholderTextColor={colors.textMuted}
           autoFocus
-          onSubmitEditing={handleSubmit}
-          onBlur={handleCancel}
-          returnKeyType="done"
+          onSubmitEditing={handleSubmitEditing}
+          onBlur={handleBlur}
+          returnKeyType={position < 3 ? 'next' : 'done'}
           maxLength={100}
         />
       </View>
@@ -118,7 +138,9 @@ export default function DailyTodoItem({
       </TouchableOpacity>
     </View>
   );
-}
+});
+
+export default DailyTodoItem;
 
 function createStyles(colors: import('@/lib/theme').ThemeColors) {
   return StyleSheet.create({

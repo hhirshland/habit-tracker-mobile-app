@@ -27,6 +27,7 @@ export const EVENTS = {
   TOP3_TODOS_TOGGLED: 'top3_todos_toggled',
   JOURNAL_SUBMITTED: 'journal_submitted',
   JOURNAL_TOGGLED: 'journal_toggled',
+  NOTIFICATION_OPENED: 'notification_opened',
   NOTIFICATIONS_TOGGLED: 'notifications_toggled',
   SCREEN_VIEWED: 'screen_viewed',
   AVATAR_UPLOADED: 'avatar_uploaded',
@@ -123,6 +124,9 @@ type EventPropertiesMap = {
   };
   journal_toggled: {
     enabled: boolean;
+  };
+  notification_opened: {
+    reminder_id: string;
   };
   notifications_toggled: {
     enabled: boolean;

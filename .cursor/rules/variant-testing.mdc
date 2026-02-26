@@ -70,3 +70,12 @@ After generating the variants, provide:
 1. A **table summarizing key differences** across the variants (layout, interaction model, copy strategy, unique elements).
 2. Guidance on how to swap the `VariantSwitcher` into the existing app to start testing.
 3. Instructions for removing the switcher once a winner is chosen.
+
+### Cleanup After a Variant Is Chosen (required)
+
+Once the user picks a winning variant, **always** perform these cleanup steps immediately — do not leave variant scaffolding behind:
+
+1. **Rename the winning file** — remove the `Variant{Letter}` suffix so the file and default export use the base component name (e.g., `HabitsThisWeekVariantA.tsx` → `HabitsThisWeek.tsx`, export `HabitsThisWeekVariantA` → `HabitsThisWeek`).
+2. **Update imports** — replace the switcher import in the consuming file with a direct import of the renamed component. Remove the `VariantSwitcherBar` usage.
+3. **Delete unused files** — remove all non-winning variant files, the `VariantSwitcher` file, and the shared `.types.ts` file (inline the props interface into the winning component if needed).
+4. **Verify** — run a type check to confirm nothing is broken.

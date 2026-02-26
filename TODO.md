@@ -12,7 +12,7 @@
 
 
 ## Bugs
-- [ ] 
+- [X] Weird randomly appearing black border around habit & other containers
 
 ## Improvements
 - [X] Add step in onboarding for turning on/off features (daily prios & journal)
@@ -23,7 +23,7 @@
 - [X] cl/ci automations to allow for auto builds.  When I push / commit to github, automatically make a build for the new beta so I can test.
 
 ## Ideas
-- [ ] shortcuts for doing things like pushing to github, eas / app store
+- [X] shortcuts for doing things like pushing to github, eas / app store
 - [ ] learn how to do OTA updates
 - [ ] Integrate with whoop data?
 - [ ] Journal feature (with AI)

@@ -100,6 +100,16 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
     const loadSettings = async () => {
       try {
         const nextSettings = await migrateLegacySettingsIfNeeded();
+        // #region agent log
+        fetch('http://127.0.0.1:7874/ingest/7cda9f39-7330-4a7a-82e2-d6f5bd886520',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a1c528'},body:JSON.stringify({sessionId:'a1c528',runId:'journal-pre-fix',hypothesisId:'J1',location:'contexts/UserSettingsContext.tsx:loadSettings',message:'loaded local user settings',data:{journal_enabled:nextSettings.journal_enabled,top3_todos_enabled:nextSettings.top3_todos_enabled,theme_preference:nextSettings.theme_preference},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        // #region agent log
+        console.log('[DBG-a1c528] J1 local settings loaded', {
+          journalEnabled: nextSettings.journal_enabled,
+          top3TodosEnabled: nextSettings.top3_todos_enabled,
+          themePreference: nextSettings.theme_preference,
+        });
+        // #endregion
         if (isMounted) {
           setSettings(nextSettings);
           settingsRef.current = nextSettings;
@@ -167,6 +177,17 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
     if (hasRemoteSettings) {
       // Server is source of truth for signed-in users across devices.
       if (!areSettingsEqual(remoteSettings, localSettings)) {
+        // #region agent log
+        fetch('http://127.0.0.1:7874/ingest/7cda9f39-7330-4a7a-82e2-d6f5bd886520',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a1c528'},body:JSON.stringify({sessionId:'a1c528',runId:'journal-pre-fix',hypothesisId:'J2',location:'contexts/UserSettingsContext.tsx:remoteMerge',message:'remote settings override local settings',data:{local_journal_enabled:localSettings.journal_enabled,remote_journal_enabled:remoteSettings.journal_enabled,local_top3_todos_enabled:localSettings.top3_todos_enabled,remote_top3_todos_enabled:remoteSettings.top3_todos_enabled},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        // #region agent log
+        console.log('[DBG-a1c528] J2 remote settings override', {
+          localJournalEnabled: localSettings.journal_enabled,
+          remoteJournalEnabled: remoteSettings.journal_enabled,
+          localTop3TodosEnabled: localSettings.top3_todos_enabled,
+          remoteTop3TodosEnabled: remoteSettings.top3_todos_enabled,
+        });
+        // #endregion
         setSettings(remoteSettings);
         settingsRef.current = remoteSettings;
       }
@@ -180,6 +201,20 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
       });
     }
   }, [loaded, authLoading, user, profile?.settings, persistSettingsToRemote]);
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7874/ingest/7cda9f39-7330-4a7a-82e2-d6f5bd886520',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a1c528'},body:JSON.stringify({sessionId:'a1c528',runId:'journal-pre-fix',hypothesisId:'J3',location:'contexts/UserSettingsContext.tsx:stateEffect',message:'user settings context state changed',data:{loaded,journal_enabled:settings.journal_enabled,top3_todos_enabled:settings.top3_todos_enabled,theme_preference:settings.theme_preference},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    // #region agent log
+    console.log('[DBG-a1c528] J3 settings context state', {
+      loaded,
+      journalEnabled: settings.journal_enabled,
+      top3TodosEnabled: settings.top3_todos_enabled,
+      themePreference: settings.theme_preference,
+    });
+    // #endregion
+  }, [loaded, settings]);
 
   const resolvedTheme: ResolvedTheme = settings.theme_preference === 'system'
     ? (systemScheme ?? 'light')

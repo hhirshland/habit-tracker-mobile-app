@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { Habit, HabitCompletion, HabitSnooze, HealthMetricType } from './types';
 import { getCurrentMetricValue, isHealthKitAvailable } from './health';
 
-export type HabitWeeklyStatus = 'on_track' | 'at_risk' | 'behind' | 'met' | 'missed';
+export type HabitWeeklyStatus = 'on_track' | 'behind' | 'met' | 'missed';
 
 export interface HabitWeeklyStats {
   habit: Habit;
@@ -10,6 +10,7 @@ export interface HabitWeeklyStats {
   targetDays: number;
   adherencePercent: number;
   status: HabitWeeklyStatus;
+  completedDates: string[];
 }
 
 // Get all active habits for the current user
@@ -381,12 +382,8 @@ export function computeWeeklyAdherence(
       const remainingNeeded = Math.max(targetDays - completedDays, 0);
       const remainingDaysIncludingToday = Math.max(dayDiff(referenceDate, weekEnd) + 1, 0);
 
-      if (remainingNeeded === 0) {
-        status = 'on_track';
-      } else if (remainingNeeded > remainingDaysIncludingToday) {
+      if (remainingNeeded > remainingDaysIncludingToday) {
         status = 'behind';
-      } else if (remainingNeeded === remainingDaysIncludingToday) {
-        status = 'at_risk';
       } else {
         status = 'on_track';
       }
@@ -398,15 +395,15 @@ export function computeWeeklyAdherence(
       targetDays,
       adherencePercent,
       status,
+      completedDates: Array.from(completionDatesByHabit.get(habit.id) ?? []),
     };
   });
 
   const rank: Record<HabitWeeklyStatus, number> = {
     behind: 0,
     missed: 1,
-    at_risk: 2,
-    on_track: 3,
-    met: 4,
+    on_track: 2,
+    met: 3,
   };
 
   return stats.sort((a, b) => {
