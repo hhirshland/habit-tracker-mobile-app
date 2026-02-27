@@ -25,7 +25,7 @@ import {
 } from '@/lib/health';
 import { getWeekRange } from '@/lib/habits';
 import { getGoalCurrentValue } from '@/lib/goals';
-import { Goal, Habit } from '@/lib/types';
+import { Goal, Habit, QualifyingWeek } from '@/lib/types';
 import {
   ALL_METRICS,
   DEFAULT_VISIBLE_KEYS,
@@ -60,6 +60,13 @@ import MetricDetailModal from '@/components/MetricDetailModal';
 import EditMetricsSheet from '@/components/EditMetricsSheet';
 import HabitsThisWeek from '@/components/HabitsThisWeek';
 import JournalHistorySection from '@/components/JournalHistorySection';
+import WeeklyRecapBanner from '@/components/WeeklyRecapBanner';
+import WeeklyRecapDetail from '@/components/WeeklyRecapDetail';
+import WeeklyRecapsHistory from '@/components/WeeklyRecapsHistory';
+import {
+  useQualifyingWeeks,
+  useRefreshRecaps,
+} from '@/hooks/useWeeklyRecapsQuery';
 
 const METRIC_PREFS_KEY = '@metric_preferences';
 
@@ -207,6 +214,27 @@ export default function ProgressScreen() {
   const { settings } = useUserSettings();
   const [refreshing, setRefreshing] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedRecapWeek, setSelectedRecapWeek] = useState<QualifyingWeek | null>(null);
+
+  // ── Weekly Recaps ──
+  const refreshRecaps = useRefreshRecaps();
+
+  const recapSinceDate = useMemo(() => {
+    if (!user) return null;
+    return user.created_at?.slice(0, 10) ?? null;
+  }, [user]);
+  const { data: qualifyingWeeks = [] } = useQualifyingWeeks(recapSinceDate);
+
+  // Unseen = ungenerated OR generated-but-unread (shown as banners at top)
+  const unseenWeeks = useMemo(
+    () => qualifyingWeeks.filter((w) => !w.recap || !w.recap.is_read),
+    [qualifyingWeeks],
+  );
+  // Viewed = generated + read (shown in history horizontal scroll)
+  const viewedWeeks = useMemo(
+    () => qualifyingWeeks.filter((w) => w.recap && w.recap.is_read),
+    [qualifyingWeeks],
+  );
 
   // ── Health history queries (last 7 days for sparklines) ──
   const { data: stepHistory = [] } = useStepHistory(7, isAuthorized);
@@ -354,6 +382,7 @@ export default function ProgressScreen() {
     setRefreshing(true);
     refreshHabitData();
     refreshGoals();
+    refreshRecaps();
     queryClient.invalidateQueries({ queryKey: ['dailyTodos'] });
     queryClient.invalidateQueries({ queryKey: ['dailyJournal'] });
     if (isAuthorized) {
@@ -453,6 +482,15 @@ export default function ProgressScreen() {
           />
         }
       >
+        {/* Unseen Weekly Recap Banners (ungenerated + generated-but-unread) */}
+        {unseenWeeks.map((week) => (
+          <WeeklyRecapBanner
+            key={week.week_start}
+            week={week}
+            onPress={() => setSelectedRecapWeek(week)}
+          />
+        ))}
+
         {/* Missing Permissions Banner */}
         {healthReady && missingMetrics.length > 0 && (
           <TouchableOpacity
@@ -493,6 +531,12 @@ export default function ProgressScreen() {
           isLoading={weeklyAdherenceLoading}
           stats={weeklyAdherence?.stats ?? []}
           top3TodoWeeklyStat={top3TodoWeeklyStat}
+        />
+
+        {/* Weekly Recaps History (viewed only) */}
+        <WeeklyRecapsHistory
+          weeks={viewedWeeks}
+          onSelectWeek={setSelectedRecapWeek}
         />
 
         {/* Journal History Section */}
@@ -638,6 +682,13 @@ export default function ProgressScreen() {
         visibleKeys={visibleMetricKeys}
         onClose={() => setShowEditMetrics(false)}
         onSave={handleSaveMetricPrefs}
+      />
+
+      {/* Weekly Recap Detail Modal */}
+      <WeeklyRecapDetail
+        visible={selectedRecapWeek !== null}
+        week={selectedRecapWeek}
+        onClose={() => setSelectedRecapWeek(null)}
       />
 
     </SafeAreaView>

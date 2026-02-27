@@ -126,7 +126,7 @@ export default function OnboardingFeaturesScreen() {
               value={top3TodosEnabled}
               onValueChange={setTop3TodosEnabled}
               trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
-              thumbColor={top3TodosEnabled ? colors.primary : '#f4f3f4'}
+              thumbColor="#f4f3f4"
             />
           </View>
           <Text style={styles.featureDescription}>
@@ -147,7 +147,7 @@ export default function OnboardingFeaturesScreen() {
               value={journalEnabled}
               onValueChange={setJournalEnabled}
               trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
-              thumbColor={journalEnabled ? colors.primary : '#f4f3f4'}
+              thumbColor="#f4f3f4"
             />
           </View>
           <Text style={styles.featureDescription}>

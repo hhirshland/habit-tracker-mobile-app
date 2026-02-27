@@ -134,7 +134,7 @@ export default function HabitForm({
               if (!val) setSpecificDays([]);
             }}
             trackColor={{ false: colors.border, true: colors.primaryLight }}
-            thumbColor={useSpecificDays ? colors.primary : '#f4f3f4'}
+            thumbColor="#f4f3f4"
           />
         </View>
       </View>
@@ -214,7 +214,7 @@ export default function HabitForm({
                   }
                 }}
                 trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={linkMetric ? colors.primary : '#f4f3f4'}
+                thumbColor="#f4f3f4"
               />
             </View>
           </View>

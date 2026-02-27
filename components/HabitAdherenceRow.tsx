@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { HabitWeeklyStats } from '@/lib/habits';
@@ -13,8 +14,8 @@ function getStatusColor(status: HabitWeeklyStats['status'], colors: ThemeColors)
   return colors.success;
 }
 
-function getStatusLabel(status: HabitWeeklyStats['status']): string {
-  switch (status) {
+function getStatusLabel(stat: HabitWeeklyStats): string {
+  switch (stat.status) {
     case 'behind':
       return 'Behind';
     case 'met':
@@ -22,7 +23,7 @@ function getStatusLabel(status: HabitWeeklyStats['status']): string {
     case 'missed':
       return 'Missed';
     default:
-      return 'On track';
+      return stat.completedDays >= stat.targetDays ? 'Done' : 'On track';
   }
 }
 
@@ -36,12 +37,16 @@ export default function HabitAdherenceRow({ stat }: HabitAdherenceRowProps) {
     <View style={styles.row}>
       <View style={styles.topRow}>
         <View style={styles.habitMeta}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          {stat.completedDays >= stat.targetDays && stat.status === 'on_track' ? (
+            <FontAwesome name="check-circle" size={12} color={colors.success} style={{ marginRight: 6 }} />
+          ) : (
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          )}
           <Text style={styles.habitName} numberOfLines={1}>
             {stat.habit.name}
           </Text>
         </View>
-        <Text style={[styles.statusText, { color: statusColor }]}>{getStatusLabel(stat.status)}</Text>
+        <Text style={[styles.statusText, { color: statusColor }]}>{getStatusLabel(stat)}</Text>
       </View>
 
       <View style={styles.bottomRow}>

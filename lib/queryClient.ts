@@ -42,4 +42,9 @@ export const queryKeys = {
     forDate: (date: string) => ['dailyJournal', date] as const,
     forRange: (start: string, end: string) => ['dailyJournal', 'range', start, end] as const,
   },
+  weeklyRecaps: {
+    all: ['weeklyRecaps'] as const,
+    unread: ['weeklyRecaps', 'unread'] as const,
+    qualifyingWeeks: ['weeklyRecaps', 'qualifyingWeeks'] as const,
+  },
 } as const;

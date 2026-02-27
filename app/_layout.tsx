@@ -17,7 +17,7 @@ import { UserSettingsProvider, useUserSettings } from '@/contexts/UserSettingsCo
 import * as Notifications from 'expo-notifications';
 import { captureEvent, EVENTS, setSuperProperties, trackScreen } from '@/lib/analytics';
 import { getAuthRedirectTarget } from '@/lib/authRouting';
-import { rescheduleNotifications } from '@/lib/notifications';
+import { rescheduleNotifications, WEEKLY_RECAP_REMINDER_ID } from '@/lib/notifications';
 import { posthogClient } from '@/lib/posthog';
 import { queryClient } from '@/lib/queryClient';
 
@@ -137,9 +137,13 @@ function RootLayoutNav() {
       const reminderId =
         (response.notification.request.content.data?.reminder_id as string) ?? 'unknown';
       captureEvent(EVENTS.NOTIFICATION_OPENED, { reminder_id: reminderId });
+
+      if (reminderId === WEEKLY_RECAP_REMINDER_ID) {
+        router.navigate('/(tabs)/progress' as Href);
+      }
     });
     return () => subscription.remove();
-  }, []);
+  }, [router]);
 
   return (
     <>

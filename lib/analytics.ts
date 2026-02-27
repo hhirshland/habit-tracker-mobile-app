@@ -32,6 +32,9 @@ export const EVENTS = {
   SCREEN_VIEWED: 'screen_viewed',
   AVATAR_UPLOADED: 'avatar_uploaded',
   PROFILE_UPDATED: 'profile_updated',
+  RECAP_GENERATED: 'recap_generated',
+  RECAP_VIEWED: 'recap_viewed',
+  RECAP_GENERATION_FAILED: 'recap_generation_failed',
 } as const;
 
 type EventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -140,6 +143,18 @@ type EventPropertiesMap = {
   };
   avatar_uploaded: undefined;
   profile_updated: undefined;
+  recap_generated: {
+    week_start: string;
+    generation_time_ms: number;
+  };
+  recap_viewed: {
+    week_start: string;
+    was_unread: boolean;
+  };
+  recap_generation_failed: {
+    week_start: string;
+    error_type: string;
+  };
 };
 
 export function captureEvent<T extends EventName>(

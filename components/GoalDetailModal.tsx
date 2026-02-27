@@ -60,6 +60,9 @@ export default function GoalDetailModal({
   const [estimatedDate, setEstimatedDate] = useState<string | null>(null);
   const [projectedEndDate, setProjectedEndDate] = useState<string | null>(null);
 
+  // Chart time range
+  const [timeRange, setTimeRange] = useState<'1W' | '1M' | '6M'>('6M');
+
   // Log entry form
   const [showLogForm, setShowLogForm] = useState(false);
   const [logValue, setLogValue] = useState('');
@@ -197,6 +200,32 @@ export default function GoalDetailModal({
     if (isYesterday) return 'Yesterday';
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
+
+  const chartData = useMemo(() => {
+    const now = new Date();
+    const msPerDay = 86400000;
+    const rangeDays = timeRange === '1W' ? 7 : timeRange === '1M' ? 30 : 180;
+    const rangeStart = new Date(now.getTime() - rangeDays * msPerDay);
+    const rangeStartStr = `${rangeStart.getFullYear()}-${String(rangeStart.getMonth() + 1).padStart(2, '0')}-${String(rangeStart.getDate()).padStart(2, '0')}`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    if (timeRange === '6M') {
+      return {
+        filteredHistory: historyData,
+        chartStartDate: goal?.start_date.split('T')[0],
+        chartEndDate: projectedEndDate ?? undefined,
+      };
+    }
+
+    const filtered = historyData.filter((d) => d.date >= rangeStartStr);
+    return {
+      filteredHistory: filtered,
+      chartStartDate: rangeStartStr,
+      chartEndDate: todayStr,
+    };
+  }, [timeRange, historyData, goal, projectedEndDate]);
+
+  const chartWidth = screenWidth - theme.spacing.lg * 2 - theme.spacing.md * 2;
 
   if (!goal) return null;
 
@@ -341,32 +370,56 @@ export default function GoalDetailModal({
 
               {/* Chart */}
               <View style={styles.chartContainer}>
-                <View style={styles.chartLegend}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: color }]} />
-                    <Text style={styles.legendText}>Actual</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: colors.success, borderRadius: 0, height: 2 }]} />
-                    <Text style={styles.legendText}>Goal</Text>
-                  </View>
-                  {projection.length > 0 && (
+                <View style={styles.chartHeader}>
+                  <View style={styles.chartLegend}>
                     <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, { backgroundColor: colors.primaryLight, opacity: 0.5 }]} />
-                      <Text style={styles.legendText}>Projection</Text>
+                      <View style={[styles.legendDot, { backgroundColor: color }]} />
+                      <Text style={styles.legendText}>Actual</Text>
                     </View>
-                  )}
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDash, { backgroundColor: colors.success }]} />
+                      <Text style={styles.legendText}>Goal</Text>
+                    </View>
+                    {projection.length > 0 && (
+                      <View style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: colors.primaryLight, opacity: 0.5 }]} />
+                        <Text style={styles.legendText}>Projection</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.timeToggle}>
+                    {(['1W', '1M', '6M'] as const).map((range) => (
+                      <TouchableOpacity
+                        key={range}
+                        style={[
+                          styles.timeToggleButton,
+                          timeRange === range && styles.timeToggleButtonActive,
+                        ]}
+                        onPress={() => setTimeRange(range)}
+                      >
+                        <Text
+                          style={[
+                            styles.timeToggleText,
+                            timeRange === range && styles.timeToggleTextActive,
+                          ]}
+                        >
+                          {range}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
                 <GoalChart
-                  actualData={historyData}
+                  actualData={chartData.filteredHistory}
                   trajectory={trajectory}
-                  projection={projection}
-                  width={screenWidth - theme.spacing.lg * 2}
+                  projection={timeRange === '6M' ? projection : []}
+                  width={chartWidth}
                   height={220}
                   actualColor={color}
                   unit={goal.unit}
-                  goalStartDate={goal.start_date.split('T')[0]}
-                  goalEndDate={projectedEndDate ?? undefined}
+                  goalStartDate={chartData.chartStartDate}
+                  goalEndDate={chartData.chartEndDate}
+                  targetValue={goal.target_value}
                 />
               </View>
 
@@ -593,10 +646,16 @@ function createStyles(colors: ThemeColors) {
       padding: theme.spacing.md,
       ...theme.shadow.sm,
     },
+    chartHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: theme.spacing.sm,
+    },
     chartLegend: {
       flexDirection: 'row',
-      gap: theme.spacing.md,
-      marginBottom: theme.spacing.sm,
+      gap: theme.spacing.sm,
+      flexShrink: 1,
     },
     legendItem: {
       flexDirection: 'row',
@@ -608,9 +667,36 @@ function createStyles(colors: ThemeColors) {
       height: 8,
       borderRadius: 4,
     },
+    legendDash: {
+      width: 10,
+      height: 2,
+      borderRadius: 1,
+    },
     legendText: {
       fontSize: theme.fontSize.xs,
       color: colors.textMuted,
+    },
+    timeToggle: {
+      flexDirection: 'row',
+      backgroundColor: colors.background,
+      borderRadius: theme.borderRadius.sm,
+      padding: 2,
+    },
+    timeToggleButton: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: theme.borderRadius.sm - 2,
+    },
+    timeToggleButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    timeToggleText: {
+      fontSize: 11,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textMuted,
+    },
+    timeToggleTextActive: {
+      color: '#fff',
     },
 
     // Insights

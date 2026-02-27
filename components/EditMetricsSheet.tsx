@@ -181,9 +181,9 @@ export default function EditMetricsSheet({
                   onValueChange={() => toggleVisibility(item.metric.key)}
                   trackColor={{
                     false: colors.borderLight,
-                    true: colors.primaryOverlay60,
+                    true: colors.primaryLight,
                   }}
-                  thumbColor={item.visible ? colors.primary : '#f4f3f4'}
+                  thumbColor="#f4f3f4"
                   ios_backgroundColor={colors.borderLight}
                 />
               </View>

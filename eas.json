@@ -9,6 +9,7 @@
       "distribution": "internal",
       "env": {
         "APP_VARIANT": "development"
+
       }
     },
     "preview": {
@@ -17,8 +18,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://ptoivasmkjvivymerjmn.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_XzNNq--T9oZv2rIVhpjfCw_uOV7T0Ev"
+
       }
     }
   },

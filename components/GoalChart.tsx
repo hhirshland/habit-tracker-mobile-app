@@ -1,6 +1,16 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Polyline, Line, Circle, Polygon, Text as SvgText } from 'react-native-svg';
+import Svg, {
+  Polyline,
+  Line,
+  Circle,
+  Polygon,
+  Text as SvgText,
+  Defs,
+  ClipPath,
+  Rect,
+  G,
+} from 'react-native-svg';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import type { ThemeColors } from '@/lib/theme';
@@ -13,7 +23,7 @@ import {
 interface GoalChartProps {
   /** Actual measured data points */
   actualData: MetricDataPoint[];
-  /** Goal trajectory line (ideal path) */
+  /** Goal trajectory line (ideal path) — used only for scale computation */
   trajectory?: TrajectoryPoint[];
   /** Trend projection with confidence band */
   projection?: ProjectionPoint[];
@@ -30,6 +40,8 @@ interface GoalChartProps {
   goalStartDate?: string;
   /** Explicit x-axis end date (ISO string). If set, overrides auto-computed max. */
   goalEndDate?: string;
+  /** Target value — drawn as a horizontal dashed reference line */
+  targetValue?: number;
 }
 
 interface DateValue {
@@ -49,6 +61,7 @@ export default function GoalChart({
   unit = '',
   goalStartDate,
   goalEndDate,
+  targetValue,
 }: GoalChartProps) {
   const colors = useThemeColors();
   const resolvedActualColor = actualColor ?? colors.primary;
@@ -59,8 +72,7 @@ export default function GoalChart({
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Convert all data to numeric for unified scale computation
-  const { allPoints, actualPoints, trajectoryPoints, projectionPoints, xMin, xMax, yMin, yMax } =
+  const { actualPoints, projectionPoints, xMin, xMax, yMin, yMax } =
     useMemo(() => {
       const msPerDay = 86400000;
 
@@ -76,7 +88,6 @@ export default function GoalChart({
         lower: p.lower,
       }));
 
-      // Gather all date/value combos for scale
       const allDates: number[] = [
         ...ap.map((p) => p.dateMs),
         ...tp.map((p) => p.dateMs),
@@ -90,11 +101,14 @@ export default function GoalChart({
         ...pp.map((p) => p.lower),
       ];
 
+      // Include targetValue in the y-axis range
+      if (targetValue != null) {
+        allValues.push(targetValue);
+      }
+
       if (allDates.length === 0 || allValues.length === 0) {
         return {
-          allPoints: [],
           actualPoints: [],
-          trajectoryPoints: [],
           projectionPoints: [],
           xMin: 0,
           xMax: 1,
@@ -108,7 +122,6 @@ export default function GoalChart({
       const valMin = Math.min(...allValues);
       const valMax = Math.max(...allValues);
 
-      // Use explicit bounds when provided, otherwise fall back to data bounds
       const dateMin = goalStartDate
         ? new Date(goalStartDate).getTime()
         : dataDateMin;
@@ -116,21 +129,18 @@ export default function GoalChart({
         ? new Date(goalEndDate).getTime()
         : dataDateMax;
 
-      // Add 5% padding to value range
       const valRange = valMax - valMin || 1;
       const yPad = valRange * 0.05;
 
       return {
-        allPoints: [],
         actualPoints: ap,
-        trajectoryPoints: tp,
         projectionPoints: pp,
         xMin: dateMin,
         xMax: dateMax || dateMin + msPerDay,
         yMin: valMin - yPad,
         yMax: valMax + yPad,
       };
-    }, [actualData, trajectory, projection, goalStartDate, goalEndDate]);
+    }, [actualData, trajectory, projection, goalStartDate, goalEndDate, targetValue]);
 
   // Coordinate mappers
   const xScale = (dateMs: number) => {
@@ -148,19 +158,30 @@ export default function GoalChart({
     .map((p) => `${xScale(p.dateMs)},${yScale(p.value)}`)
     .join(' ');
 
-  const trajectorySvgPoints = trajectoryPoints
-    .map((p) => `${xScale(p.dateMs)},${yScale(p.value)}`)
-    .join(' ');
+  // Bridge the gap between actual data and projection by prepending the last
+  // actual point so the projection visually connects to the data line.
+  const bridgedProjection = useMemo(() => {
+    if (projectionPoints.length === 0 || actualPoints.length === 0) return projectionPoints;
+    const lastActual = actualPoints[actualPoints.length - 1];
+    const firstProj = projectionPoints[0];
+    if (lastActual.dateMs >= firstProj.dateMs) return projectionPoints;
+    const bridge = {
+      dateMs: lastActual.dateMs,
+      predicted: lastActual.value,
+      upper: lastActual.value,
+      lower: lastActual.value,
+    };
+    return [bridge, ...projectionPoints];
+  }, [projectionPoints, actualPoints]);
 
-  // Projection band polygon (upper line forward, lower line backward)
-  const projBandPoints = projectionPoints.length > 0
+  const projBandPoints = bridgedProjection.length > 0
     ? [
-        ...projectionPoints.map((p) => `${xScale(p.dateMs)},${yScale(p.upper)}`),
-        ...projectionPoints.slice().reverse().map((p) => `${xScale(p.dateMs)},${yScale(p.lower)}`),
+        ...bridgedProjection.map((p) => `${xScale(p.dateMs)},${yScale(p.upper)}`),
+        ...bridgedProjection.slice().reverse().map((p) => `${xScale(p.dateMs)},${yScale(p.lower)}`),
       ].join(' ')
     : '';
 
-  const projLinePoints = projectionPoints
+  const projLinePoints = bridgedProjection
     .map((p) => `${xScale(p.dateMs)},${yScale(p.predicted)}`)
     .join(' ');
 
@@ -188,7 +209,7 @@ export default function GoalChart({
   }, [xMin, xMax, chartWidth]);
 
   // No data state
-  if (actualPoints.length === 0 && trajectoryPoints.length === 0) {
+  if (actualPoints.length === 0 && targetValue == null) {
     return (
       <View style={[styles.container, { width, height }]}>
         <View style={styles.noData}>
@@ -198,9 +219,23 @@ export default function GoalChart({
     );
   }
 
+  const clipId = 'chart-clip';
+  const dotRadius = 4;
+
   return (
     <View style={[styles.container, { width, height }]}>
       <Svg width={width} height={height}>
+        <Defs>
+          <ClipPath id={clipId}>
+            <Rect
+              x={padding.left - dotRadius}
+              y={padding.top - dotRadius}
+              width={chartWidth + dotRadius * 2}
+              height={chartHeight + dotRadius * 2}
+            />
+          </ClipPath>
+        </Defs>
+
         {/* Grid lines */}
         {yTicks.map((tick, i) => (
           <Line
@@ -214,62 +249,67 @@ export default function GoalChart({
           />
         ))}
 
-        {/* Projection area (filled band showing variance) */}
-        {projBandPoints && (
-          <Polygon
-            points={projBandPoints}
-            fill={resolvedProjectionColor}
-            opacity={0.25}
-          />
-        )}
+        {/* All data elements clipped to the chart area */}
+        <G clipPath={`url(#${clipId})`}>
+          {/* Projection area (filled band) */}
+          {projBandPoints && (
+            <Polygon
+              points={projBandPoints}
+              fill={resolvedProjectionColor}
+              opacity={0.25}
+            />
+          )}
 
-        {/* Projection center trend line (thin, inside the area) */}
-        {projLinePoints && projectionPoints.length >= 2 && (
-          <Polyline
-            points={projLinePoints}
-            fill="none"
-            stroke={resolvedProjectionColor}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            opacity={0.5}
-          />
-        )}
+          {/* Projection center trend line */}
+          {projLinePoints && bridgedProjection.length >= 2 && (
+            <Polyline
+              points={projLinePoints}
+              fill="none"
+              stroke={resolvedProjectionColor}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              opacity={0.5}
+            />
+          )}
 
-        {/* Goal trajectory line (dashed) */}
-        {trajectorySvgPoints && trajectoryPoints.length >= 2 && (
-          <Polyline
-            points={trajectorySvgPoints}
-            fill="none"
-            stroke={resolvedGoalColor}
-            strokeWidth={2}
-            strokeDasharray="6,4"
-            strokeLinecap="round"
-          />
-        )}
+          {/* Horizontal goal target line (dashed) */}
+          {targetValue != null && (
+            <Line
+              x1={padding.left}
+              y1={yScale(targetValue)}
+              x2={width - padding.right}
+              y2={yScale(targetValue)}
+              stroke={resolvedGoalColor}
+              strokeWidth={2}
+              strokeDasharray="6,4"
+              strokeLinecap="round"
+            />
+          )}
 
-        {/* Actual data line */}
-        {actualSvgPoints && actualPoints.length >= 2 && (
-          <Polyline
-            points={actualSvgPoints}
-            fill="none"
-            stroke={resolvedActualColor}
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        )}
+          {/* Actual data line */}
+          {actualSvgPoints && actualPoints.length >= 2 && (
+            <Polyline
+              points={actualSvgPoints}
+              fill="none"
+              stroke={resolvedActualColor}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
 
-        {/* Actual data end dot */}
-        {actualPoints.length > 0 && (
-          <Circle
-            cx={xScale(actualPoints[actualPoints.length - 1].dateMs)}
-            cy={yScale(actualPoints[actualPoints.length - 1].value)}
-            r={4}
-            fill={resolvedActualColor}
-          />
-        )}
+          {/* Actual data end dot */}
+          {actualPoints.length > 0 && (
+            <Circle
+              cx={xScale(actualPoints[actualPoints.length - 1].dateMs)}
+              cy={yScale(actualPoints[actualPoints.length - 1].value)}
+              r={dotRadius}
+              fill={resolvedActualColor}
+            />
+          )}
+        </G>
 
-        {/* Y-axis labels */}
+        {/* Y-axis labels (outside clip) */}
         {yTicks.map((tick, i) => (
           <SvgText
             key={`ylabel-${i}`}
@@ -283,7 +323,7 @@ export default function GoalChart({
           </SvgText>
         ))}
 
-        {/* X-axis labels */}
+        {/* X-axis labels (outside clip) */}
         {xTicks.map((tick, i) => (
           <SvgText
             key={`xlabel-${i}`}

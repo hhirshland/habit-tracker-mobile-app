@@ -180,6 +180,49 @@ export interface DailyTodo {
   updated_at: string;
 }
 
+// ──────────────────────────────────────────────
+// Weekly Recaps
+// ──────────────────────────────────────────────
+
+export interface WeeklyRecapContent {
+  week_summary: string;
+  habit_review: {
+    overall_adherence_pct: number;
+    narrative: string;
+    standout_habit: string | null;
+    needs_attention: string | null;
+  };
+  goal_progress: Array<{
+    title: string;
+    narrative: string;
+  }>;
+  reflection_themes: {
+    narrative: string | null;
+    wins: string[];
+    growth_opportunity: string | null;
+    gratitude_highlight: string | null;
+  };
+  looking_ahead: string;
+}
+
+export interface WeeklyRecap {
+  id: string;
+  user_id: string;
+  week_start: string; // YYYY-MM-DD (Sunday)
+  week_end: string; // YYYY-MM-DD (Saturday)
+  content: WeeklyRecapContent;
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QualifyingWeek {
+  week_start: string;
+  week_end: string;
+  active_days: number;
+  recap: WeeklyRecap | null;
+}
+
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export const DAY_LABELS: Record<DayOfWeek, string> = {

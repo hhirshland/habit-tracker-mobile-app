@@ -13,6 +13,7 @@ export const NOTIFICATIONS_ENABLED_STORAGE_KEY = '@notifications_enabled';
 const REMINDER_CHANNEL_ID = 'daily-reminders';
 const HABIT_REMINDER_ID = 'habit-reminder';
 const TODO_REMINDER_ID = 'todo-reminder';
+export const WEEKLY_RECAP_REMINDER_ID = 'weekly-recap';
 
 async function ensureNotificationChannel() {
   if (Platform.OS !== 'android') return;
@@ -93,6 +94,41 @@ async function scheduleReminder({
   });
 }
 
+// expo-notifications weekday: 1=Sunday, 2=Monday, ..., 7=Saturday
+async function scheduleWeeklyReminder({
+  reminderId,
+  title,
+  body,
+  weekday,
+  hour,
+  minute,
+}: {
+  reminderId: string;
+  title: string;
+  body: string;
+  weekday: number;
+  hour: number;
+  minute: number;
+}) {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: 'default',
+      data: {
+        reminder_id: reminderId,
+      },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+      weekday,
+      hour,
+      minute,
+      ...(Platform.OS === 'android' ? { channelId: REMINDER_CHANNEL_ID } : {}),
+    },
+  });
+}
+
 export async function requestNotificationPermissions() {
   await ensureNotificationChannel();
 
@@ -125,6 +161,7 @@ export async function rescheduleNotifications() {
   const permissions = await Notifications.getPermissionsAsync();
   if (!permissions.granted) return;
 
+  // 8pm daily habit check-in
   await scheduleReminder({
     reminderId: HABIT_REMINDER_ID,
     title: 'Daily habits check-in',
@@ -135,13 +172,27 @@ export async function rescheduleNotifications() {
     minute: 0,
   });
 
+  // 8am Mon-Sat: Top 3 Todos (only when enabled)
   if (top3TodosEnabled) {
-    await scheduleReminder({
-      reminderId: TODO_REMINDER_ID,
-      title: 'Set your Top 3 todos',
-      body: 'Set your top 3 priorities for today.',
-      hour: 8,
-      minute: 0,
-    });
+    for (let weekday = 2; weekday <= 7; weekday++) {
+      await scheduleWeeklyReminder({
+        reminderId: TODO_REMINDER_ID,
+        title: 'Set your Top 3 todos',
+        body: 'Set your top 3 priorities for today.',
+        weekday,
+        hour: 8,
+        minute: 0,
+      });
+    }
   }
+
+  // 8am Sunday: Weekly Recap notification (always, replaces todo on Sundays)
+  await scheduleWeeklyReminder({
+    reminderId: WEEKLY_RECAP_REMINDER_ID,
+    title: 'Your weekly recap is ready',
+    body: 'See how your week went — habits, goals, and reflections.',
+    weekday: 1, // Sunday
+    hour: 8,
+    minute: 0,
+  });
 }

@@ -42,12 +42,12 @@ function getStatusColor(status: HabitWeeklyStats['status'], colors: ThemeColors)
   return colors.success;
 }
 
-function getStatusLabel(status: HabitWeeklyStats['status']): string {
-  switch (status) {
+function getStatusLabel(stat: HabitWeeklyStats): string {
+  switch (stat.status) {
     case 'behind': return 'Behind';
     case 'met': return 'Met';
     case 'missed': return 'Missed';
-    default: return 'On track';
+    default: return stat.completedDays >= stat.targetDays ? 'Done' : 'On track';
   }
 }
 
@@ -81,13 +81,17 @@ function ExpandableHabitRow({
     >
       <View style={styles.topRow}>
         <View style={styles.habitMeta}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          {stat.completedDays >= stat.targetDays && stat.status === 'on_track' ? (
+            <FontAwesome name="check-circle" size={12} color={colors.success} style={{ marginRight: 6 }} />
+          ) : (
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          )}
           <Text style={styles.habitName} numberOfLines={1}>
             {stat.habit.name}
           </Text>
         </View>
         <View style={styles.topRowRight}>
-          <Text style={[styles.statusText, { color: statusColor }]}>{getStatusLabel(stat.status)}</Text>
+          <Text style={[styles.statusText, { color: statusColor }]}>{getStatusLabel(stat)}</Text>
           <FontAwesome
             name={expanded ? 'chevron-up' : 'chevron-down'}
             size={10}
