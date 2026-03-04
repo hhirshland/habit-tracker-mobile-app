@@ -6,7 +6,7 @@
 - [ ] Identity statements -- add in identity statements, and tie habits to identity statements.  This should help users stick with their habits.
 - [X] Integrate with apple health data
 - [X] Reminders
-- [ ] Weekly reviews (& notification)
+- [X] Weekly reviews (& notification)
 - [X] Logo
 
 
@@ -21,6 +21,11 @@
 - [X] Add event tracking with Posthog.  Create a rule to define how to implement event tracking.
 - [X] Dark mode
 - [X] cl/ci automations to allow for auto builds.  When I push / commit to github, automatically make a build for the new beta so I can test.
+- [X] Improve Habits this week head section.  Better copy and visuals.
+- [X] Improve goals: make charts look cleaner, and also more meaningful.
+- [X] Implement an AI reflection layer for journal.
+- [ ] Delete or improve recent workouts section
+- [ ] Improve Health Metrics section --> make sure it is accurate.  Make charts more readable and insightful.
 
 ## Ideas
 - [X] shortcuts for doing things like pushing to github, eas / app store

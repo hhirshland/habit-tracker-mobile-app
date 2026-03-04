@@ -19,6 +19,7 @@ import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import { createHabit } from '@/lib/habits';
 import { supabase } from '@/lib/supabase';
+import OnboardingProgress from '@/components/OnboardingProgress';
 
 interface PendingHabit {
   id: string;
@@ -100,6 +101,7 @@ export default function OnboardingFeaturesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <OnboardingProgress current={7} total={7} />
       <View style={styles.header}>
         <Text style={styles.emoji}>✨</Text>
         <Text style={styles.title}>Choose Extra Features</Text>

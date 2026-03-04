@@ -47,4 +47,5 @@ export const queryKeys = {
     unread: ['weeklyRecaps', 'unread'] as const,
     qualifyingWeeks: ['weeklyRecaps', 'qualifyingWeeks'] as const,
   },
+  subscription: ['subscription'] as const,
 } as const;

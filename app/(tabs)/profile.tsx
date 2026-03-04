@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Switch,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,6 +23,7 @@ import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { HEALTH_METRIC_DISPLAY_NAMES } from '@/lib/health';
 import { supabase } from '@/lib/supabase';
 import { useNotificationsSetting } from '@/hooks/useNotificationsSetting';
+import { useSubscription } from '@/hooks/useSubscription';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import type { ThemePreference } from '@/lib/userSettings';
 
@@ -32,6 +34,13 @@ export default function ProfileScreen() {
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
   const { settings, setThemePreference, updateSettings } = useUserSettings();
   const { enabled: notificationsEnabled, toggle: toggleNotifications } = useNotificationsSetting();
+  const {
+    isActive: subActive,
+    isTrialing: subTrialing,
+    expirationDate: subExpiration,
+    productId: subProductId,
+    hasDiscountAccess,
+  } = useSubscription();
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -234,6 +243,62 @@ export default function ProfileScreen() {
               <Text style={styles.saveButtonText}>Save Changes</Text>
             )}
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Subscription */}
+        <View style={styles.healthSection}>
+          <Text style={styles.sectionLabel}>Subscription</Text>
+          <View style={styles.healthCard}>
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, {
+                backgroundColor: subActive ? colors.successLight : colors.warningBackground,
+              }]}>
+                <FontAwesome
+                  name="diamond"
+                  size={18}
+                  color={subActive ? colors.success : colors.warning}
+                />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>
+                  {hasDiscountAccess
+                    ? 'Free Access'
+                    : subProductId?.includes('annual') || subProductId?.includes('year')
+                      ? 'Thrive Pro — Yearly'
+                      : subProductId?.includes('month')
+                        ? 'Thrive Pro — Monthly'
+                        : subActive
+                          ? 'Thrive Pro'
+                          : 'No Active Plan'}
+                </Text>
+                <Text style={styles.healthStatus}>
+                  {subTrialing
+                    ? `Trial${subExpiration ? ` · Ends ${new Date(subExpiration).toLocaleDateString()}` : ''}`
+                    : subActive
+                      ? subExpiration
+                        ? `Active · Renews ${new Date(subExpiration).toLocaleDateString()}`
+                        : 'Active'
+                      : 'Inactive'}
+                </Text>
+              </View>
+            </View>
+            {subActive ? (
+              <View style={styles.connectedBadge}>
+                <FontAwesome name="check-circle" size={16} color={colors.success} />
+              </View>
+            ) : null}
+          </View>
+          {subActive && !hasDiscountAccess && (
+            <TouchableOpacity
+              style={[styles.connectButton, { marginTop: theme.spacing.sm, alignSelf: 'stretch' }]}
+              onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.connectButtonText}>Manage Subscription</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.divider} />

@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session, User } from '@supabase/supabase-js';
 import { EVENTS, captureEvent, identifyUser, resetUser, setUserProperties } from '@/lib/analytics';
+import { configureRevenueCat, loginRevenueCat, logoutRevenueCat } from '@/lib/revenueCat';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/lib/types';
 
@@ -124,6 +125,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Only show blocking loading for true auth transitions.
           if (event === 'SIGNED_IN') {
             setLoading(true);
+            configureRevenueCat();
+            loginRevenueCat(session.user.id).catch((err) => {
+              console.warn('[RevenueCat] login failed:', err);
+            });
           }
           identifyUser(session.user.id, {
             email: session.user.email ?? null,
@@ -167,6 +172,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
           return;
         }
+
+        configureRevenueCat();
+        loginRevenueCat(existingSession.user.id).catch((err) => {
+          console.warn('[RevenueCat] login failed during hydration:', err);
+        });
 
         if (!cachedProfileRaw) {
           return;
@@ -258,6 +268,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    logoutRevenueCat().catch((err) => {
+      console.warn('[RevenueCat] logout failed:', err);
+    });
     resetUser();
     setProfile(null);
     await cacheProfile(null);

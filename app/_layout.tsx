@@ -20,6 +20,7 @@ import { getAuthRedirectTarget } from '@/lib/authRouting';
 import { rescheduleNotifications, WEEKLY_RECAP_REMINDER_ID } from '@/lib/notifications';
 import { posthogClient } from '@/lib/posthog';
 import { queryClient } from '@/lib/queryClient';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -76,6 +77,7 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const { session, profile, loading } = useAuth();
   const { resolvedTheme } = useUserSettings();
+  const { isActive: subscriptionActive, isLoading: subscriptionLoading } = useSubscription();
   const segments = useSegments();
   const pathname = usePathname();
   const router = useRouter();
@@ -97,18 +99,19 @@ function RootLayoutNav() {
   }, [hasHydratedAuth]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || subscriptionLoading) return;
 
     const redirectTarget = getAuthRedirectTarget({
       hasSession: !!session,
       onboardingState: profile?.has_onboarded,
+      subscriptionActive: session ? subscriptionActive : undefined,
       segmentRoot: segments[0],
     });
 
     if (redirectTarget) {
       router.replace(redirectTarget as Href);
     }
-  }, [session, profile, loading, segments]);
+  }, [session, profile, loading, segments, subscriptionActive, subscriptionLoading]);
 
   useEffect(() => {
     setSuperProperties({

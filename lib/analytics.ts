@@ -35,6 +35,13 @@ export const EVENTS = {
   RECAP_GENERATED: 'recap_generated',
   RECAP_VIEWED: 'recap_viewed',
   RECAP_GENERATION_FAILED: 'recap_generation_failed',
+  PAYWALL_VIEWED: 'paywall_viewed',
+  CHECKOUT_STARTED: 'checkout_started',
+  SUBSCRIPTION_STARTED: 'subscription_started',
+  SUBSCRIPTION_RESTORED: 'subscription_restored',
+  DISCOUNT_CODE_APPLIED: 'discount_code_applied',
+  ONBOARDING_GOAL_SELECTED: 'onboarding_goal_selected',
+  ONBOARDING_PLAN_VIEWED: 'onboarding_plan_viewed',
 } as const;
 
 type EventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -154,6 +161,31 @@ type EventPropertiesMap = {
   recap_generation_failed: {
     week_start: string;
     error_type: string;
+  };
+  paywall_viewed: {
+    source: 'onboarding' | 'expired' | 'profile';
+  };
+  checkout_started: {
+    plan_type: 'monthly' | 'yearly';
+  };
+  subscription_started: {
+    plan_type: 'monthly' | 'yearly';
+    is_trial: boolean;
+    has_discount: boolean;
+  };
+  subscription_restored: {
+    plan_type: string;
+  };
+  discount_code_applied: {
+    grant_type: string;
+  };
+  onboarding_goal_selected: {
+    goals: string[];
+    goal_count: number;
+  };
+  onboarding_plan_viewed: {
+    experience_level: string;
+    challenge: string;
   };
 };
 

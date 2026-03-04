@@ -7,8 +7,36 @@ export interface Profile {
   avatar_url: string | null;
   settings: UserSettings | null;
   has_onboarded: boolean;
+  rc_customer_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type SubscriptionStatus = 'active' | 'trialing' | 'expired' | 'grace_period' | 'none';
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  rc_entitlement: string;
+  product_id: string | null;
+  status: SubscriptionStatus;
+  is_active: boolean;
+  original_purchase_date: string | null;
+  expiration_date: string | null;
+  unsubscribe_detected_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscountCode {
+  id: string;
+  code: string;
+  grant_type: 'free_forever' | 'free_trial_extension';
+  max_uses: number | null;
+  current_uses: number;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
 }
 
 export type HealthMetricType =
