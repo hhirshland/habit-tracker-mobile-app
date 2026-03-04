@@ -18,7 +18,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: "#ffffff",
   },
   ios: {
-    supportsTablet: true,
+    supportsTablet: false,
     bundleIdentifier: IS_DEV
       ? "com.hyperactive.thrive.dev"
       : "com.hyperactive.thrive",
