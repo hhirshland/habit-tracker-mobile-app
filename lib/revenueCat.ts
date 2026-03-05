@@ -6,10 +6,12 @@ import Purchases, {
   type PurchasesPackage,
 } from 'react-native-purchases';
 
-const API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_IOS || '';
+const API_KEY_IOS = __DEV__
+  ? (process.env.EXPO_PUBLIC_REVENUECAT_IOS_TEST || '')
+  : (process.env.EXPO_PUBLIC_REVENUECAT_IOS || '');
 const API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID || '';
 
-const PRO_ENTITLEMENT = 'pro';
+const PRO_ENTITLEMENT = 'Thrive Pro';
 
 let isConfigured = false;
 
@@ -19,9 +21,13 @@ export function configureRevenueCat() {
   const apiKey = Platform.OS === 'ios' ? API_KEY_IOS : API_KEY_ANDROID;
   if (!apiKey) return;
 
-  Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.ERROR);
-  Purchases.configure({ apiKey });
-  isConfigured = true;
+  try {
+    Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.ERROR);
+    Purchases.configure({ apiKey });
+    isConfigured = true;
+  } catch (err) {
+    console.warn('[RevenueCat] Native module not available:', err);
+  }
 }
 
 export async function loginRevenueCat(appUserId: string): Promise<CustomerInfo> {

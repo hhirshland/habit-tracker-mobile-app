@@ -24,6 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       : "com.hyperactive.thrive",
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      UIDeviceFamily: [1],
     },
   },
   android: {

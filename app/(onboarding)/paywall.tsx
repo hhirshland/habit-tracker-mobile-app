@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { PurchasesPackage } from 'react-native-purchases';
 import { theme, ThemeColors } from '@/lib/theme';
@@ -28,6 +29,9 @@ import { supabase } from '@/lib/supabase';
 import { captureEvent, EVENTS } from '@/lib/analytics';
 import OnboardingProgress from '@/components/OnboardingProgress';
 
+const PRIVACY_POLICY_URL = 'https://thrive.hyperactivestudio.xyz/privacy';
+const TERMS_OF_USE_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+
 type PlanOption = 'yearly' | 'monthly';
 
 export default function PaywallScreen() {
@@ -41,12 +45,15 @@ export default function PaywallScreen() {
     challenge?: string;
   }>();
 
+  const isAuthenticated = !!user;
+
   const [selectedPlan, setSelectedPlan] = useState<PlanOption>('yearly');
   const [packages, setPackages] = useState<{
     monthly: PurchasesPackage | null;
     yearly: PurchasesPackage | null;
   }>({ monthly: null, yearly: null });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [discountCode, setDiscountCode] = useState('');
@@ -58,6 +65,8 @@ export default function PaywallScreen() {
   }, []);
 
   const loadOfferings = async () => {
+    setLoadError(false);
+    setLoading(true);
     try {
       const offering = await fetchOfferings();
       if (offering) {
@@ -68,9 +77,13 @@ export default function PaywallScreen() {
           (p) => p.packageType === 'ANNUAL',
         ) ?? null;
         setPackages({ monthly, yearly });
+        if (!monthly && !yearly) setLoadError(true);
+      } else {
+        setLoadError(true);
       }
     } catch (err) {
       console.warn('[Paywall] Failed to load offerings:', err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -93,8 +106,10 @@ export default function PaywallScreen() {
           is_trial: true,
           has_discount: false,
         });
-        await refetchSubscription();
-        navigateForward();
+        if (isAuthenticated) {
+          await refetchSubscription();
+        }
+        navigateAfterPurchase();
       }
     } catch (err: any) {
       if (err.userCancelled) return;
@@ -102,7 +117,7 @@ export default function PaywallScreen() {
     } finally {
       setPurchasing(false);
     }
-  }, [selectedPlan, packages, refetchSubscription]);
+  }, [selectedPlan, packages, refetchSubscription, isAuthenticated]);
 
   const handleRestore = useCallback(async () => {
     setPurchasing(true);
@@ -110,8 +125,10 @@ export default function PaywallScreen() {
       const info = await restorePurchases();
       if (hasProEntitlement(info)) {
         captureEvent(EVENTS.SUBSCRIPTION_RESTORED, { plan_type: 'restored' });
-        await refetchSubscription();
-        navigateForward();
+        if (isAuthenticated) {
+          await refetchSubscription();
+        }
+        navigateAfterPurchase();
       } else {
         Alert.alert('No Subscription Found', 'We couldn\'t find an active subscription for this account.');
       }
@@ -120,7 +137,7 @@ export default function PaywallScreen() {
     } finally {
       setPurchasing(false);
     }
-  }, [refetchSubscription]);
+  }, [refetchSubscription, isAuthenticated]);
 
   const handleApplyCode = useCallback(async () => {
     if (!discountCode.trim() || !user) return;
@@ -134,7 +151,7 @@ export default function PaywallScreen() {
       if (data?.success) {
         captureEvent(EVENTS.DISCOUNT_CODE_APPLIED, { grant_type: data.grant_type ?? 'unknown' });
         await refetchSubscription();
-        navigateForward();
+        navigateAfterPurchase();
       } else {
         Alert.alert('Invalid Code', data?.message ?? 'This code is not valid.');
       }
@@ -145,15 +162,24 @@ export default function PaywallScreen() {
     }
   }, [discountCode, user, refetchSubscription]);
 
-  const navigateForward = () => {
-    router.push({
-      pathname: '/(onboarding)/habits',
-      params: {
-        goals: params.goals ?? '[]',
-        experience: params.experience ?? 'beginner',
-        challenge: params.challenge ?? 'motivation',
-      },
-    });
+  const onboardingParams = {
+    goals: params.goals ?? '[]',
+    experience: params.experience ?? 'beginner',
+    challenge: params.challenge ?? 'motivation',
+  };
+
+  const navigateAfterPurchase = () => {
+    if (isAuthenticated) {
+      router.push({
+        pathname: '/(onboarding)/habits',
+        params: onboardingParams,
+      });
+    } else {
+      router.push({
+        pathname: '/(auth)/sign-up',
+        params: onboardingParams,
+      });
+    }
   };
 
   const yearlyPkg = packages.yearly;
@@ -240,7 +266,7 @@ export default function PaywallScreen() {
           </TouchableOpacity>
         </View>
 
-        {showCodeInput ? (
+        {isAuthenticated && (showCodeInput ? (
           <View style={styles.codeSection}>
             <View style={styles.codeInputRow}>
               <TextInput
@@ -274,22 +300,32 @@ export default function PaywallScreen() {
           >
             <Text style={styles.codeLinkText}>Have a code?</Text>
           </TouchableOpacity>
-        )}
+        ))}
       </ScrollView>
 
       <View style={styles.bottom}>
-        <TouchableOpacity
-          style={[styles.ctaButton, (purchasing || loading) && { opacity: 0.7 }]}
-          onPress={handlePurchase}
-          disabled={purchasing || loading}
-          activeOpacity={0.8}
-        >
-          {purchasing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.ctaText}>Start Free Trial</Text>
-          )}
-        </TouchableOpacity>
+        {loadError && !loading ? (
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={loadOfferings}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.ctaText}>Retry Loading Plans</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.ctaButton, (purchasing || loading) && { opacity: 0.7 }]}
+            onPress={handlePurchase}
+            disabled={purchasing || loading}
+            activeOpacity={0.8}
+          >
+            {purchasing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.ctaText}>Start Free Trial</Text>
+            )}
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={styles.restoreButton}
           onPress={handleRestore}
@@ -298,6 +334,21 @@ export default function PaywallScreen() {
         >
           <Text style={styles.restoreText}>Restore Purchases</Text>
         </TouchableOpacity>
+
+        <Text style={styles.legalDisclosure}>
+          After your 7-day free trial, subscription automatically renews at {selectedPlan === 'yearly' ? `${yearlyPrice}/year` : `${monthlyPrice}/month`} unless
+          cancelled at least 24 hours before the end of the current period.
+          Payment will be charged to your Apple ID account.
+        </Text>
+        <View style={styles.legalLinks}>
+          <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync(TERMS_OF_USE_URL)}>
+            <Text style={styles.legalLinkText}>Terms of Use</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalSeparator}>|</Text>
+          <TouchableOpacity onPress={() => WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL)}>
+            <Text style={styles.legalLinkText}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -510,6 +561,29 @@ const createStyles = (colors: ThemeColors) =>
     },
     restoreText: {
       fontSize: theme.fontSize.sm,
+      color: colors.textMuted,
+    },
+    legalDisclosure: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textMuted,
+      textAlign: 'center',
+      lineHeight: 16,
+      paddingHorizontal: theme.spacing.sm,
+      marginTop: theme.spacing.xs,
+    },
+    legalLinks: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.xs,
+    },
+    legalLinkText: {
+      fontSize: theme.fontSize.xs,
+      color: colors.primary,
+    },
+    legalSeparator: {
+      fontSize: theme.fontSize.xs,
       color: colors.textMuted,
     },
   });

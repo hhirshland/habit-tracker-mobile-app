@@ -24,6 +24,7 @@ import { HEALTH_METRIC_DISPLAY_NAMES } from '@/lib/health';
 import { supabase } from '@/lib/supabase';
 import { useNotificationsSetting } from '@/hooks/useNotificationsSetting';
 import { useSubscription } from '@/hooks/useSubscription';
+import { fetchOfferings, purchasePackage, hasProEntitlement } from '@/lib/revenueCat';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import type { ThemePreference } from '@/lib/userSettings';
 
@@ -40,6 +41,7 @@ export default function ProfileScreen() {
     expirationDate: subExpiration,
     productId: subProductId,
     hasDiscountAccess,
+    refetch: refetchSubscription,
   } = useSubscription();
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export default function ProfileScreen() {
   const [uploading, setUploading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [updatingAppearance, setUpdatingAppearance] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
   const top3TodosEnabled = settings.top3_todos_enabled;
   const journalEnabled = settings.journal_enabled;
   const preference = settings.theme_preference;
@@ -175,6 +178,39 @@ export default function ProfileScreen() {
     captureEvent(EVENTS.JOURNAL_TOGGLED, { enabled: nextEnabled });
   };
 
+  const isMonthly = subActive && !hasDiscountAccess &&
+    subProductId?.includes('month') &&
+    !(subProductId?.includes('annual') || subProductId?.includes('year'));
+
+  const handleUpgradeToYearly = async () => {
+    setUpgrading(true);
+    try {
+      const offering = await fetchOfferings();
+      const yearlyPkg = offering?.availablePackages.find(
+        (p) => p.packageType === 'ANNUAL',
+      );
+      if (!yearlyPkg) {
+        Alert.alert('Unavailable', 'Yearly plan is not available right now. Please try again later.');
+        return;
+      }
+      const info = await purchasePackage(yearlyPkg);
+      if (hasProEntitlement(info)) {
+        captureEvent(EVENTS.SUBSCRIPTION_STARTED, {
+          plan_type: 'yearly',
+          is_trial: false,
+          upgrade_from: 'monthly',
+        });
+        await refetchSubscription();
+        Alert.alert('Upgraded!', 'You\'ve been upgraded to the yearly plan.');
+      }
+    } catch (err: any) {
+      if (err.userCancelled) return;
+      Alert.alert('Upgrade Failed', err.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
   const getInitials = () => {
     if (!fullName) return '?';
     return fullName
@@ -243,62 +279,6 @@ export default function ProfileScreen() {
               <Text style={styles.saveButtonText}>Save Changes</Text>
             )}
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Subscription */}
-        <View style={styles.healthSection}>
-          <Text style={styles.sectionLabel}>Subscription</Text>
-          <View style={styles.healthCard}>
-            <View style={styles.healthCardLeft}>
-              <View style={[styles.healthIconContainer, {
-                backgroundColor: subActive ? colors.successLight : colors.warningBackground,
-              }]}>
-                <FontAwesome
-                  name="diamond"
-                  size={18}
-                  color={subActive ? colors.success : colors.warning}
-                />
-              </View>
-              <View style={styles.healthInfo}>
-                <Text style={styles.healthTitle}>
-                  {hasDiscountAccess
-                    ? 'Free Access'
-                    : subProductId?.includes('annual') || subProductId?.includes('year')
-                      ? 'Thrive Pro — Yearly'
-                      : subProductId?.includes('month')
-                        ? 'Thrive Pro — Monthly'
-                        : subActive
-                          ? 'Thrive Pro'
-                          : 'No Active Plan'}
-                </Text>
-                <Text style={styles.healthStatus}>
-                  {subTrialing
-                    ? `Trial${subExpiration ? ` · Ends ${new Date(subExpiration).toLocaleDateString()}` : ''}`
-                    : subActive
-                      ? subExpiration
-                        ? `Active · Renews ${new Date(subExpiration).toLocaleDateString()}`
-                        : 'Active'
-                      : 'Inactive'}
-                </Text>
-              </View>
-            </View>
-            {subActive ? (
-              <View style={styles.connectedBadge}>
-                <FontAwesome name="check-circle" size={16} color={colors.success} />
-              </View>
-            ) : null}
-          </View>
-          {subActive && !hasDiscountAccess && (
-            <TouchableOpacity
-              style={[styles.connectButton, { marginTop: theme.spacing.sm, alignSelf: 'stretch' }]}
-              onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.connectButtonText}>Manage Subscription</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         <View style={styles.divider} />
@@ -492,6 +472,76 @@ export default function ProfileScreen() {
             )}
           </View>
         )}
+
+        <View style={styles.divider} />
+
+        {/* Subscription */}
+        <View style={styles.healthSection}>
+          <Text style={styles.sectionLabel}>Subscription</Text>
+          <View style={styles.healthCard}>
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, {
+                backgroundColor: subActive ? colors.successLight : colors.warningBackground,
+              }]}>
+                <FontAwesome
+                  name="diamond"
+                  size={18}
+                  color={subActive ? colors.success : colors.warning}
+                />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>
+                  {hasDiscountAccess
+                    ? 'Free Access'
+                    : subProductId?.includes('annual') || subProductId?.includes('year')
+                      ? 'Thrive Pro — Yearly'
+                      : subProductId?.includes('month')
+                        ? 'Thrive Pro — Monthly'
+                        : subActive
+                          ? 'Thrive Pro'
+                          : 'No Active Plan'}
+                </Text>
+                <Text style={styles.healthStatus}>
+                  {subTrialing
+                    ? `Trial${subExpiration ? ` · Ends ${new Date(subExpiration).toLocaleDateString()}` : ''}`
+                    : subActive
+                      ? subExpiration
+                        ? `Active · Renews ${new Date(subExpiration).toLocaleDateString()}`
+                        : 'Active'
+                      : 'Inactive'}
+                </Text>
+              </View>
+            </View>
+            {subActive ? (
+              <View style={styles.connectedBadge}>
+                <FontAwesome name="check-circle" size={16} color={colors.success} />
+              </View>
+            ) : null}
+          </View>
+          {isMonthly && (
+            <TouchableOpacity
+              style={[styles.upgradeButton, upgrading && styles.buttonDisabled]}
+              onPress={handleUpgradeToYearly}
+              disabled={upgrading}
+              activeOpacity={0.8}
+            >
+              {upgrading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.upgradeButtonText}>Upgrade to Yearly — Save 36%</Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {subActive && !hasDiscountAccess && (
+            <TouchableOpacity
+              style={[styles.manageSubButton, { marginTop: isMonthly ? 0 : theme.spacing.sm }]}
+              onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.manageSubText}>Manage Subscription</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         <View style={styles.divider} />
 
@@ -777,5 +827,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   appearanceOptionTextSelected: {
     color: colors.primary,
     fontWeight: theme.fontWeight.semibold,
+  },
+  upgradeButton: {
+    backgroundColor: colors.primary,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+    ...theme.shadow.md,
+  },
+  upgradeButtonText: {
+    color: '#fff',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  manageSubButton: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+  },
+  manageSubText: {
+    fontSize: theme.fontSize.sm,
+    color: colors.textMuted,
   },
 });

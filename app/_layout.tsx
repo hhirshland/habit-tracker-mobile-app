@@ -18,6 +18,7 @@ import * as Notifications from 'expo-notifications';
 import { captureEvent, EVENTS, setSuperProperties, trackScreen } from '@/lib/analytics';
 import { getAuthRedirectTarget } from '@/lib/authRouting';
 import { rescheduleNotifications, WEEKLY_RECAP_REMINDER_ID } from '@/lib/notifications';
+import { configureRevenueCat } from '@/lib/revenueCat';
 import { posthogClient } from '@/lib/posthog';
 import { queryClient } from '@/lib/queryClient';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -83,6 +84,10 @@ function RootLayoutNav() {
   const router = useRouter();
   const lastTrackedPath = useRef<string | null>(null);
   const [hasHydratedAuth, setHasHydratedAuth] = useState(false);
+
+  useEffect(() => {
+    configureRevenueCat();
+  }, []);
 
   useEffect(() => {
     if (!loading && !hasHydratedAuth) {

@@ -21,7 +21,8 @@ export function getAuthRedirectTarget({
   const inOnboardingGroup = segmentRoot === '(onboarding)';
 
   if (!hasSession) {
-    return inAuthGroup ? null : '/(auth)/sign-in';
+    if (inOnboardingGroup || inAuthGroup) return null;
+    return '/(onboarding)';
   }
 
   // Only route to onboarding when onboarding status is explicitly false.

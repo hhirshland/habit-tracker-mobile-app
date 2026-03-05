@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
@@ -25,7 +25,7 @@ export default function WelcomeScreen() {
 
         <View style={styles.messaging}>
           <Text style={styles.headline}>
-            Build the life you want,{'\n'}one habit at a time
+            Become your best self,{'\n'}one habit at a time
           </Text>
           <Text style={styles.subtext}>
             Track habits, set goals, and reflect daily.{'\n'}Small actions compound into big results.
@@ -56,6 +56,14 @@ export default function WelcomeScreen() {
         >
           <Text style={styles.ctaText}>Get Started</Text>
         </TouchableOpacity>
+        <View style={styles.signInRow}>
+          <Text style={styles.signInText}>Already have an account? </Text>
+          <Link href="/(auth)/sign-in" asChild>
+            <TouchableOpacity>
+              <Text style={styles.signInLink}>Sign In</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -145,6 +153,20 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
     ctaText: {
       color: '#fff',
       fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.semibold,
+    },
+    signInRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: theme.spacing.md,
+    },
+    signInText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+    },
+    signInLink: {
+      fontSize: theme.fontSize.sm,
+      color: colors.primary,
       fontWeight: theme.fontWeight.semibold,
     },
   });
