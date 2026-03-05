@@ -15,6 +15,14 @@ const PRO_ENTITLEMENT = 'Thrive Pro';
 
 let isConfigured = false;
 
+export function getRevenueCatDiagnostics() {
+  const apiKey = Platform.OS === 'ios' ? API_KEY_IOS : API_KEY_ANDROID;
+  const masked = apiKey
+    ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}`
+    : 'EMPTY';
+  return { isConfigured, apiKeyMasked: masked, isDev: __DEV__ };
+}
+
 export function configureRevenueCat() {
   if (isConfigured || !API_KEY_IOS) return;
 
@@ -22,7 +30,8 @@ export function configureRevenueCat() {
   if (!apiKey) return;
 
   try {
-    Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.ERROR);
+    // TEMP: use DEBUG in prod to aid TestFlight diagnosis
+    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
     Purchases.configure({ apiKey });
     isConfigured = true;
   } catch (err) {
