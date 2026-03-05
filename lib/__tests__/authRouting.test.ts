@@ -1,20 +1,22 @@
 import { getAuthRedirectTarget } from '../authRouting';
 
 describe('getAuthRedirectTarget', () => {
-  it('redirects signed-out users to sign-in when outside auth group', () => {
+  it('redirects signed-out users to onboarding when outside auth/onboarding groups', () => {
     const result = getAuthRedirectTarget({
       hasSession: false,
       onboardingState: undefined,
+      subscriptionActive: undefined,
       segmentRoot: '(tabs)',
     });
 
-    expect(result).toBe('/(auth)/sign-in');
+    expect(result).toBe('/(onboarding)');
   });
 
   it('does not redirect signed-out users already in auth group', () => {
     const result = getAuthRedirectTarget({
       hasSession: false,
       onboardingState: undefined,
+      subscriptionActive: undefined,
       segmentRoot: '(auth)',
     });
 
@@ -25,6 +27,7 @@ describe('getAuthRedirectTarget', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: false,
+      subscriptionActive: undefined,
       segmentRoot: '(tabs)',
     });
 
@@ -35,6 +38,7 @@ describe('getAuthRedirectTarget', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: undefined,
+      subscriptionActive: undefined,
       segmentRoot: '(tabs)',
     });
 
@@ -45,6 +49,7 @@ describe('getAuthRedirectTarget', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: undefined,
+      subscriptionActive: undefined,
       segmentRoot: '(onboarding)',
     });
 
@@ -55,6 +60,7 @@ describe('getAuthRedirectTarget', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: undefined,
+      subscriptionActive: undefined,
       segmentRoot: '(auth)',
     });
 
@@ -65,6 +71,7 @@ describe('getAuthRedirectTarget', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: true,
+      subscriptionActive: undefined,
       segmentRoot: '(auth)',
     });
 
@@ -75,7 +82,30 @@ describe('getAuthRedirectTarget', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: true,
+      subscriptionActive: undefined,
       segmentRoot: '(tabs)',
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('redirects onboarded users without subscription to paywall', () => {
+    const result = getAuthRedirectTarget({
+      hasSession: true,
+      onboardingState: true,
+      subscriptionActive: false,
+      segmentRoot: '(tabs)',
+    });
+
+    expect(result).toBe('/(onboarding)/paywall');
+  });
+
+  it('does not redirect onboarded users without subscription already in onboarding', () => {
+    const result = getAuthRedirectTarget({
+      hasSession: true,
+      onboardingState: true,
+      subscriptionActive: false,
+      segmentRoot: '(onboarding)',
     });
 
     expect(result).toBeNull();
