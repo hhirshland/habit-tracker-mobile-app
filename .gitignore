@@ -44,5 +44,8 @@ coverage/
 /ios
 /android
 
+# Supabase CLI temp files
+supabase/.temp/
+
 # Claude Code
 .claude/

@@ -8,6 +8,10 @@ export interface Profile {
   settings: UserSettings | null;
   has_onboarded: boolean;
   rc_customer_id: string | null;
+  phone_number: string | null;
+  evening_call_enabled: boolean;
+  evening_call_time: string;
+  timezone: string;
   created_at: string;
   updated_at: string;
 }

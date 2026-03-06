@@ -58,7 +58,7 @@ export async function getRecapForWeek(
 }
 
 export async function triggerRecapGeneration(
-  userId: string,
+  _userId: string,
   weekStart: string,
   weekEnd: string,
 ): Promise<{
@@ -72,7 +72,7 @@ export async function triggerRecapGeneration(
   const { data, error } = await supabase.functions.invoke(
     'generate-weekly-recap',
     {
-      body: { user_id: userId, week_start: weekStart, week_end: weekEnd },
+      body: { week_start: weekStart, week_end: weekEnd },
     },
   );
 

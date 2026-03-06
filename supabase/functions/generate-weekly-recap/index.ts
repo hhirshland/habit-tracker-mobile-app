@@ -95,14 +95,29 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { user_id, week_start, week_end }: RecapRequest = await req.json();
+    // Authenticate caller via JWT
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
+
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: caller }, error: authError } = await supabaseAuth.auth.getUser(token);
+    if (authError || !caller) {
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
+
+    const { week_start, week_end }: Omit<RecapRequest, "user_id"> = await req.json();
+    const user_id = caller.id;
     console.log("Request:", { user_id, week_start, week_end });
 
-    if (!user_id || !week_start || !week_end) {
+    if (!week_start || !week_end) {
       return jsonResponse({ error: "Missing required fields" }, 400);
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = supabaseAuth;
 
     // Check if recap already exists
     const { data: existing } = await supabase
@@ -313,7 +328,7 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     console.error("Unexpected error:", err);
     return jsonResponse(
-      { error: "internal_error", retryable: true, detail: String(err) },
+      { error: "internal_error", retryable: true },
       500,
     );
   }

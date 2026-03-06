@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -19,6 +20,7 @@ import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import { createHabit } from '@/lib/habits';
 import { supabase } from '@/lib/supabase';
+import { normalizePhoneNumber, updateEveningCallPreferences } from '@/lib/eveningCalls';
 import OnboardingProgress from '@/components/OnboardingProgress';
 
 interface PendingHabit {
@@ -53,6 +55,8 @@ export default function OnboardingFeaturesScreen() {
 
   const [top3TodosEnabled, setTop3TodosEnabled] = useState(false);
   const [journalEnabled, setJournalEnabled] = useState(false);
+  const [eveningCallEnabled, setEveningCallEnabled] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleCompleteOnboarding = async () => {
@@ -63,12 +67,33 @@ export default function OnboardingFeaturesScreen() {
       return;
     }
 
+    if (eveningCallEnabled && phoneNumber.trim()) {
+      const normalized = normalizePhoneNumber(phoneNumber.trim());
+      if (!normalized) {
+        Alert.alert(
+          'Invalid Phone Number',
+          'Please enter a valid US phone number for the evening check-in call.',
+        );
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       await updateSettings({
         top3_todos_enabled: top3TodosEnabled,
         journal_enabled: journalEnabled,
       });
+
+      if (eveningCallEnabled && phoneNumber.trim()) {
+        const normalized = normalizePhoneNumber(phoneNumber.trim())!;
+        await updateEveningCallPreferences(user.id, {
+          phone_number: normalized,
+          evening_call_enabled: true,
+          evening_call_time: '20:00:00',
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+      }
 
       for (const habit of habits) {
         await createHabit(user.id, {
@@ -89,6 +114,7 @@ export default function OnboardingFeaturesScreen() {
         habits_count: habits.length,
         top3_todos_enabled: top3TodosEnabled,
         journal_enabled: journalEnabled,
+        evening_call_enabled: eveningCallEnabled,
       });
       router.replace('/(tabs)');
     } catch (error) {
@@ -156,6 +182,41 @@ export default function OnboardingFeaturesScreen() {
             End your day with a quick reflection: one win, one tension, and one gratitude. This
             simple practice helps you notice progress and patterns over time.
           </Text>
+        </View>
+
+        <View style={styles.featureCard}>
+          <View style={styles.featureTopRow}>
+            <View style={styles.featureTitleRow}>
+              <View style={styles.featureIcon}>
+                <FontAwesome name="phone" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.featureTitle}>Evening Check-In Call</Text>
+            </View>
+            <Switch
+              value={eveningCallEnabled}
+              onValueChange={setEveningCallEnabled}
+              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
+              thumbColor="#f4f3f4"
+            />
+          </View>
+          <Text style={styles.featureDescription}>
+            Get a nightly call from Thrive to reflect on your day. It automatically updates your
+            journal, habits, and todos in the app for you.
+          </Text>
+          {eveningCallEnabled && (
+            <View style={styles.phoneField}>
+              <Text style={styles.phoneLabel}>Phone Number</Text>
+              <TextInput
+                style={styles.phoneInput}
+                placeholder="(555) 123-4567"
+                placeholderTextColor={colors.textMuted}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+                autoComplete="tel"
+              />
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -259,6 +320,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: colors.textSecondary,
     lineHeight: 20,
+  },
+  phoneField: {
+    gap: theme.spacing.xs,
+    paddingTop: theme.spacing.xs,
+  },
+  phoneLabel: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  phoneInput: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 12,
+    fontSize: theme.fontSize.md,
+    color: colors.textPrimary,
   },
   actions: {
     flexDirection: 'row',

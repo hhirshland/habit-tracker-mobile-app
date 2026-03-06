@@ -24,7 +24,6 @@ import {
   purchasePackage,
   restorePurchases,
   hasProEntitlement,
-  getRevenueCatDiagnostics,
 } from '@/lib/revenueCat';
 import { supabase } from '@/lib/supabase';
 import { captureEvent, EVENTS } from '@/lib/analytics';
@@ -68,11 +67,9 @@ export default function PaywallScreen() {
   const loadOfferings = async () => {
     setLoadError(false);
     setLoading(true);
-    const diag = getRevenueCatDiagnostics();
     try {
       const offering = await fetchOfferings();
       if (offering) {
-        const pkgTypes = offering.availablePackages.map((p) => p.packageType);
         const monthly = offering.availablePackages.find(
           (p) => p.packageType === 'MONTHLY',
         ) ?? null;
@@ -80,28 +77,11 @@ export default function PaywallScreen() {
           (p) => p.packageType === 'ANNUAL',
         ) ?? null;
         setPackages({ monthly, yearly });
-        if (!monthly && !yearly) {
-          // TEMP: diagnostic alert
-          Alert.alert(
-            'Debug: Empty Packages',
-            `key: ${diag.apiKeyMasked}\nconfigured: ${diag.isConfigured}\n__DEV__: ${diag.isDev}\navailablePackages (${pkgTypes.length}): ${JSON.stringify(pkgTypes)}`,
-          );
-          setLoadError(true);
-        }
+        if (!monthly && !yearly) setLoadError(true);
       } else {
-        // TEMP: diagnostic alert
-        Alert.alert(
-          'Debug: No Current Offering',
-          `key: ${diag.apiKeyMasked}\nconfigured: ${diag.isConfigured}\n__DEV__: ${diag.isDev}\noffering was null`,
-        );
         setLoadError(true);
       }
-    } catch (err: any) {
-      // TEMP: diagnostic alert
-      Alert.alert(
-        'Debug: fetchOfferings threw',
-        `key: ${diag.apiKeyMasked}\nconfigured: ${diag.isConfigured}\n__DEV__: ${diag.isDev}\nerror: ${err?.message ?? err}`,
-      );
+    } catch (err) {
       console.warn('[Paywall] Failed to load offerings:', err);
       setLoadError(true);
     } finally {

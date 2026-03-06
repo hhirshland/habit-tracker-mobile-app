@@ -42,6 +42,9 @@ export const EVENTS = {
   DISCOUNT_CODE_APPLIED: 'discount_code_applied',
   ONBOARDING_GOAL_SELECTED: 'onboarding_goal_selected',
   ONBOARDING_PLAN_VIEWED: 'onboarding_plan_viewed',
+  EVENING_CALL_ENABLED: 'evening_call_enabled',
+  EVENING_CALL_DISABLED: 'evening_call_disabled',
+  EVENING_CALL_TRIGGERED: 'evening_call_triggered',
 } as const;
 
 type EventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -60,6 +63,7 @@ type EventPropertiesMap = {
     habits_count: number;
     top3_todos_enabled: boolean;
     journal_enabled: boolean;
+    evening_call_enabled?: boolean;
   };
   habit_created: {
     habit_name: string;
@@ -171,7 +175,8 @@ type EventPropertiesMap = {
   subscription_started: {
     plan_type: 'monthly' | 'yearly';
     is_trial: boolean;
-    has_discount: boolean;
+    has_discount?: boolean;
+    upgrade_from?: string;
   };
   subscription_restored: {
     plan_type: string;
@@ -187,6 +192,12 @@ type EventPropertiesMap = {
     experience_level: string;
     challenge: string;
   };
+  evening_call_enabled: {
+    call_time: string;
+    timezone: string;
+  };
+  evening_call_disabled: undefined;
+  evening_call_triggered: undefined;
 };
 
 export function captureEvent<T extends EventName>(

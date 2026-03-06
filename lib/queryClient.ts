@@ -1,4 +1,14 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, focusManager } from '@tanstack/react-query';
+import { AppState, Platform } from 'react-native';
+
+if (Platform.OS !== 'web') {
+  focusManager.setEventListener((handleFocus) => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      handleFocus(state === 'active');
+    });
+    return () => subscription.remove();
+  });
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -7,7 +17,7 @@ export const queryClient = new QueryClient({
       staleTime: 1000 * 60, // 1 minute default
       gcTime: 1000 * 60 * 10, // Keep unused cache for 10 minutes
       retry: 2,
-      refetchOnWindowFocus: false, // Not relevant for mobile
+      refetchOnWindowFocus: true,
       refetchOnReconnect: true,
     },
   },

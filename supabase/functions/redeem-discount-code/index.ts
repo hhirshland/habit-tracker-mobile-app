@@ -15,15 +15,23 @@ Deno.serve(async (req: Request) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
-  // Create a user-scoped client to extract user ID
+  if (!SUPABASE_ANON_KEY) {
+    console.error("SUPABASE_ANON_KEY is not configured");
+    return new Response(JSON.stringify({ success: false, message: "Server misconfigured" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
   const supabaseUser = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     { global: { headers: { Authorization: authHeader } } },
   );
 
@@ -87,7 +95,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Validate: max_uses
+  // Validate: max_uses (preliminary check — atomic enforcement below)
   if (
     discountCode.max_uses !== null &&
     discountCode.current_uses >= discountCode.max_uses
@@ -113,9 +121,22 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // Atomically increment current_uses only if under max_uses.
+  // This prevents TOCTOU races where concurrent requests slip past the check above.
+  const { data: updatedCode, error: incrementError } = await supabaseAdmin.rpc(
+    "increment_discount_uses",
+    { code_id: discountCode.id },
+  );
+
+  if (incrementError || !updatedCode) {
+    return new Response(
+      JSON.stringify({ success: false, message: "This code has reached its usage limit" }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   // Grant access based on grant_type
   if (discountCode.grant_type === "free_forever") {
-    // Upsert subscription as active with no expiration
     const { error: subError } = await supabaseAdmin.from("subscriptions").upsert(
       {
         user_id: user.id,
@@ -142,12 +163,6 @@ Deno.serve(async (req: Request) => {
     user_id: user.id,
     discount_code_id: discountCode.id,
   });
-
-  // Increment current_uses
-  await supabaseAdmin
-    .from("discount_codes")
-    .update({ current_uses: discountCode.current_uses + 1 })
-    .eq("id", discountCode.id);
 
   return new Response(
     JSON.stringify({

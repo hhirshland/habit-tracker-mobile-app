@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   ScrollView,
   Switch,
   Linking,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -27,6 +29,15 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { fetchOfferings, purchasePackage, hasProEntitlement } from '@/lib/revenueCat';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import type { ThemePreference } from '@/lib/userSettings';
+import {
+  updateEveningCallPreferences,
+  triggerEveningCall,
+  formatCallTime,
+  formatTimezoneShort,
+  normalizePhoneNumber,
+  formatPhoneDisplay,
+  CALL_TIME_OPTIONS,
+} from '@/lib/eveningCalls';
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -53,6 +64,132 @@ export default function ProfileScreen() {
   const top3TodosEnabled = settings.top3_todos_enabled;
   const journalEnabled = settings.journal_enabled;
   const preference = settings.theme_preference;
+
+  // Evening Check-In state
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [eveningCallEnabled, setEveningCallEnabled] = useState(false);
+  const [eveningCallTime, setEveningCallTime] = useState('20:00:00');
+  const [callTimezone, setCallTimezone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [savingCall, setSavingCall] = useState(false);
+  const [callingNow, setCallingNow] = useState(false);
+
+  const profileHasChanges = useMemo(() => {
+    if (!profile) return false;
+    return (
+      fullName.trim() !== (profile.full_name || '') ||
+      avatarUrl !== profile.avatar_url
+    );
+  }, [fullName, avatarUrl, profile]);
+
+  const callHasChanges = useMemo(() => {
+    if (!profile) return false;
+    const normalizedInput = phoneNumber.trim()
+      ? normalizePhoneNumber(phoneNumber.trim())
+      : null;
+    const savedPhone = profile.phone_number || null;
+    return (
+      normalizedInput !== savedPhone ||
+      eveningCallEnabled !== (profile.evening_call_enabled ?? false) ||
+      eveningCallTime !== (profile.evening_call_time ?? '20:00:00') ||
+      callTimezone !== (profile.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone)
+    );
+  }, [phoneNumber, eveningCallEnabled, eveningCallTime, callTimezone, profile]);
+
+  useEffect(() => {
+    if (profile) {
+      setPhoneNumber(
+        profile.phone_number ? formatPhoneDisplay(profile.phone_number) : '',
+      );
+      setEveningCallEnabled(profile.evening_call_enabled ?? false);
+      setEveningCallTime(profile.evening_call_time ?? '20:00:00');
+      setCallTimezone(
+        profile.timezone ??
+          Intl.DateTimeFormat().resolvedOptions().timeZone,
+      );
+    }
+  }, [profile]);
+
+  const handleSaveCallPreferences = useCallback(async () => {
+    if (!user) return;
+    const normalized = phoneNumber.trim()
+      ? normalizePhoneNumber(phoneNumber.trim())
+      : null;
+
+    if (phoneNumber.trim() && !normalized) {
+      Alert.alert(
+        'Invalid Phone Number',
+        'Please enter a valid US phone number (e.g. 555-123-4567).',
+      );
+      return;
+    }
+
+    setSavingCall(true);
+    try {
+      await updateEveningCallPreferences(user.id, {
+        phone_number: normalized,
+        evening_call_enabled: eveningCallEnabled,
+        evening_call_time: eveningCallTime,
+        timezone: callTimezone,
+      });
+      await refreshProfile();
+
+      if (eveningCallEnabled && !profile?.evening_call_enabled) {
+        captureEvent(EVENTS.EVENING_CALL_ENABLED, {
+          call_time: eveningCallTime,
+          timezone: callTimezone,
+        });
+      } else if (!eveningCallEnabled && profile?.evening_call_enabled) {
+        captureEvent(EVENTS.EVENING_CALL_DISABLED);
+      }
+
+      Alert.alert('Saved', 'Evening check-in preferences updated.');
+    } catch (err) {
+      console.error('Error saving call preferences:', err);
+      Alert.alert('Error', 'Failed to save preferences.');
+    } finally {
+      setSavingCall(false);
+    }
+  }, [user, phoneNumber, eveningCallEnabled, eveningCallTime, callTimezone, refreshProfile, profile]);
+
+  const handleCallMeNow = useCallback(async () => {
+    if (!user) return;
+    if (!profile?.phone_number) {
+      Alert.alert(
+        'Phone Number Required',
+        'Please save a phone number first.',
+      );
+      return;
+    }
+    setCallingNow(true);
+    captureEvent(EVENTS.EVENING_CALL_TRIGGERED);
+    try {
+      const result = await triggerEveningCall(user.id);
+      if (result.success) {
+        Alert.alert('Calling!', 'You should receive a call in a moment.');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to initiate call.');
+      }
+    } catch (err) {
+      console.error('Error triggering call:', err);
+      Alert.alert('Error', 'Something went wrong.');
+    } finally {
+      setCallingNow(false);
+    }
+  }, [user, profile?.phone_number]);
+
+  const handleToggleEveningCall = useCallback((value: boolean) => {
+    if (value && !phoneNumber.trim()) {
+      Alert.alert(
+        'Phone Number Required',
+        'Please enter your phone number before enabling evening calls.',
+      );
+      return;
+    }
+    setEveningCallEnabled(value);
+  }, [phoneNumber]);
 
   const handleConnectHealth = async () => {
     setConnecting(true);
@@ -193,8 +330,8 @@ export default function ProfileScreen() {
         Alert.alert('Unavailable', 'Yearly plan is not available right now. Please try again later.');
         return;
       }
-      const info = await purchasePackage(yearlyPkg);
-      if (hasProEntitlement(info)) {
+      const customerInfo = await purchasePackage(yearlyPkg);
+      if (hasProEntitlement(customerInfo)) {
         captureEvent(EVENTS.SUBSCRIPTION_STARTED, {
           plan_type: 'yearly',
           is_trial: false,
@@ -203,9 +340,10 @@ export default function ProfileScreen() {
         await refetchSubscription();
         Alert.alert('Upgraded!', 'You\'ve been upgraded to the yearly plan.');
       }
-    } catch (err: any) {
-      if (err.userCancelled) return;
-      Alert.alert('Upgrade Failed', err.message ?? 'Something went wrong. Please try again.');
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'userCancelled' in err && err.userCancelled) return;
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      Alert.alert('Upgrade Failed', message);
     } finally {
       setUpgrading(false);
     }
@@ -267,18 +405,20 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.buttonDisabled]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.8}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
+          {profileHasChanges && (
+            <TouchableOpacity
+              style={[styles.saveButton, saving && styles.buttonDisabled]}
+              onPress={handleSave}
+              disabled={saving}
+              activeOpacity={0.8}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -345,6 +485,101 @@ export default function ProfileScreen() {
               trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
               thumbColor="#f4f3f4"
             />
+          </View>
+          <View style={[styles.healthCard, styles.eveningCallCard, { marginTop: theme.spacing.sm }]}>
+            <View style={styles.eveningCallHeader}>
+              <View style={styles.healthCardLeft}>
+                <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                  <FontAwesome name="phone" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.healthInfo}>
+                  <Text style={styles.healthTitle}>Evening Check-In Call</Text>
+                  <Text style={styles.healthStatus}>
+                    Keep yourself accountable with a call from Thrive
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                style={styles.healthCardSwitch}
+                value={eveningCallEnabled}
+                onValueChange={handleToggleEveningCall}
+                trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
+                thumbColor="#f4f3f4"
+              />
+            </View>
+            {(eveningCallEnabled || profile?.evening_call_enabled) && (
+              <View style={styles.eveningCallConfig}>
+                <View style={styles.eveningCallConfigDivider} />
+                <Text style={styles.eveningCallDescription}>
+                  Automatically updates your journal, habits, and todos in the app for you.
+                </Text>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Phone Number</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="(555) 123-4567"
+                    placeholderTextColor={colors.textMuted}
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
+                  />
+                </View>
+                <View style={[styles.field, { marginTop: theme.spacing.md }]}>
+                  <Text style={styles.label}>Call Time</Text>
+                  <TouchableOpacity
+                    style={[styles.input, styles.pickerTrigger]}
+                    onPress={() => setShowTimePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.pickerTriggerText}>
+                      {formatCallTime(eveningCallTime)}
+                    </Text>
+                    <Text style={styles.pickerTimezone}>
+                      {formatTimezoneShort(callTimezone)}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {callHasChanges && (
+                  <TouchableOpacity
+                    style={[
+                      styles.saveButton,
+                      { marginTop: theme.spacing.md },
+                      savingCall && styles.buttonDisabled,
+                    ]}
+                    onPress={handleSaveCallPreferences}
+                    disabled={savingCall}
+                    activeOpacity={0.8}
+                  >
+                    {savingCall ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Save Preferences</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+                {profile?.phone_number && (
+                  <TouchableOpacity
+                    style={[
+                      styles.callNowButton,
+                      callingNow && styles.buttonDisabled,
+                    ]}
+                    onPress={handleCallMeNow}
+                    disabled={callingNow}
+                    activeOpacity={0.8}
+                  >
+                    {callingNow ? (
+                      <ActivityIndicator color={colors.primary} />
+                    ) : (
+                      <>
+                        <FontAwesome name="phone" size={16} color={colors.primary} />
+                        <Text style={styles.callNowText}>Call Me Now</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         </View>
 
@@ -472,6 +707,59 @@ export default function ProfileScreen() {
             )}
           </View>
         )}
+
+        {/* Time Picker Modal */}
+        <Modal
+          visible={showTimePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowTimePicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowTimePicker(false)}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Call Time</Text>
+              <FlatList
+                data={CALL_TIME_OPTIONS}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.timeOption,
+                      item === eveningCallTime && styles.timeOptionSelected,
+                    ]}
+                    onPress={() => {
+                      setEveningCallTime(item);
+                      setShowTimePicker(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.timeOptionText,
+                        item === eveningCallTime &&
+                          styles.timeOptionTextSelected,
+                      ]}
+                    >
+                      {formatCallTime(item)}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                showsVerticalScrollIndicator={false}
+              />
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setShowTimePicker(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <View style={styles.divider} />
 
@@ -849,5 +1137,107 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   manageSubText: {
     fontSize: theme.fontSize.sm,
     color: colors.textMuted,
+  },
+  // Evening Check-In
+  eveningCallCard: {
+    flexDirection: 'column',
+    alignItems: undefined,
+  },
+  eveningCallHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eveningCallConfig: {
+    paddingTop: 0,
+  },
+  eveningCallConfigDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: theme.spacing.md,
+    marginHorizontal: -theme.spacing.md,
+  },
+  eveningCallDescription: {
+    fontSize: theme.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: theme.spacing.md,
+  },
+  pickerTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pickerTriggerText: {
+    fontSize: theme.fontSize.md,
+    color: colors.textPrimary,
+  },
+  pickerTimezone: {
+    fontSize: theme.fontSize.sm,
+    color: colors.textMuted,
+  },
+  callNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: 14,
+    marginTop: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: theme.borderRadius.md,
+  },
+  callNowText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: colors.primary,
+  },
+  // Time Picker Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    width: '80%',
+    maxHeight: '60%',
+  },
+  modalTitle: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  timeOption: {
+    paddingVertical: 14,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+  },
+  timeOptionSelected: {
+    backgroundColor: colors.primaryLightOverlay30,
+  },
+  timeOptionText: {
+    fontSize: theme.fontSize.md,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  timeOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  modalCancel: {
+    paddingVertical: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: theme.fontSize.md,
+    color: colors.textMuted,
+    fontWeight: theme.fontWeight.medium,
   },
 });

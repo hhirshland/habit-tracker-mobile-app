@@ -44,8 +44,12 @@ export default function SignUpScreen() {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      Alert.alert('Error', 'Password must include at least one uppercase letter and one number');
       return;
     }
 
@@ -153,7 +157,7 @@ export default function SignUpScreen() {
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters, 1 uppercase, 1 number"
               placeholderTextColor={colors.textMuted}
               value={password}
               onChangeText={setPassword}

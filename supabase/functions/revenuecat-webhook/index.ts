@@ -46,9 +46,13 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  // Validate authorization header
+  // Validate authorization header — always required
+  if (!REVENUECAT_WEBHOOK_AUTH) {
+    console.error("REVENUECAT_WEBHOOK_AUTH is not configured");
+    return new Response("Server misconfigured", { status: 500 });
+  }
   const authHeader = req.headers.get("authorization");
-  if (REVENUECAT_WEBHOOK_AUTH && authHeader !== `Bearer ${REVENUECAT_WEBHOOK_AUTH}`) {
+  if (authHeader !== `Bearer ${REVENUECAT_WEBHOOK_AUTH}`) {
     return new Response("Unauthorized", { status: 401 });
   }
 
