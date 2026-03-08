@@ -15,6 +15,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -276,6 +277,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await cacheProfile(null);
   };
 
+  const deleteAccount = async () => {
+    const { error } = await supabase.functions.invoke('delete-account');
+    if (error) throw error;
+
+    // User is deleted server-side; clean up local state.
+    // signOut may fail since the auth user no longer exists, but we still
+    // need to clear the local session and caches.
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Expected — user no longer exists on the server
+    }
+    logoutRevenueCat().catch((err) => {
+      console.warn('[RevenueCat] logout failed:', err);
+    });
+    resetUser();
+    setProfile(null);
+    await cacheProfile(null);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -286,6 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signIn,
         signOut,
+        deleteAccount,
         refreshProfile,
       }}
     >

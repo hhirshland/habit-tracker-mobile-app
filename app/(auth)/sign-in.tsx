@@ -176,8 +176,9 @@ export default function SignInScreen() {
               placeholderTextColor={colors.textMuted}
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="password"
+              secureTextEntry={password.length > 0}
+              autoComplete={password.length > 0 ? 'password' : 'off'}
+              textContentType={password.length > 0 ? 'password' : 'none'}
             />
           </View>
 

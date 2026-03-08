@@ -7,8 +7,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  TextInput,
-  Keyboard,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,7 +24,6 @@ import {
   restorePurchases,
   hasProEntitlement,
 } from '@/lib/revenueCat';
-import { supabase } from '@/lib/supabase';
 import { captureEvent, EVENTS } from '@/lib/analytics';
 import OnboardingProgress from '@/components/OnboardingProgress';
 
@@ -56,10 +53,6 @@ export default function PaywallScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  const [showCodeInput, setShowCodeInput] = useState(false);
-  const [discountCode, setDiscountCode] = useState('');
-  const [applyingCode, setApplyingCode] = useState(false);
-
   useEffect(() => {
     loadOfferings();
     captureEvent(EVENTS.PAYWALL_VIEWED, { source: 'onboarding' });
@@ -136,29 +129,6 @@ export default function PaywallScreen() {
     }
   }, [refetchSubscription, isAuthenticated]);
 
-  const handleApplyCode = useCallback(async () => {
-    if (!discountCode.trim() || !user) return;
-    Keyboard.dismiss();
-    setApplyingCode(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('redeem-discount-code', {
-        body: { code: discountCode.trim() },
-      });
-      if (error) throw error;
-      if (data?.success) {
-        captureEvent(EVENTS.DISCOUNT_CODE_APPLIED, { grant_type: data.grant_type ?? 'unknown' });
-        await refetchSubscription();
-        navigateAfterPurchase();
-      } else {
-        Alert.alert('Invalid Code', data?.message ?? 'This code is not valid.');
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Failed to apply code.');
-    } finally {
-      setApplyingCode(false);
-    }
-  }, [discountCode, user, refetchSubscription]);
-
   const onboardingParams = {
     goals: params.goals ?? '[]',
     experience: params.experience ?? 'beginner',
@@ -195,7 +165,6 @@ export default function PaywallScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
           <Text style={styles.title}>Start Your{'\n'}7-Day Free Trial</Text>
@@ -263,41 +232,6 @@ export default function PaywallScreen() {
           </TouchableOpacity>
         </View>
 
-        {isAuthenticated && (showCodeInput ? (
-          <View style={styles.codeSection}>
-            <View style={styles.codeInputRow}>
-              <TextInput
-                style={styles.codeInput}
-                placeholder="Enter discount code"
-                placeholderTextColor={colors.textMuted}
-                value={discountCode}
-                onChangeText={setDiscountCode}
-                autoCapitalize="characters"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                style={[styles.codeApplyButton, applyingCode && { opacity: 0.6 }]}
-                onPress={handleApplyCode}
-                disabled={applyingCode || !discountCode.trim()}
-                activeOpacity={0.8}
-              >
-                {applyingCode ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.codeApplyText}>Apply</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.codeLink}
-            onPress={() => setShowCodeInput(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.codeLinkText}>Have a code?</Text>
-          </TouchableOpacity>
-        ))}
       </ScrollView>
 
       <View style={styles.bottom}>
@@ -494,45 +428,6 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textSecondary,
       marginLeft: 30,
       marginTop: 2,
-    },
-    codeLink: {
-      alignItems: 'center',
-      paddingVertical: theme.spacing.sm,
-    },
-    codeLinkText: {
-      fontSize: theme.fontSize.sm,
-      color: colors.primary,
-      fontWeight: theme.fontWeight.medium,
-    },
-    codeSection: {
-      marginBottom: theme.spacing.md,
-    },
-    codeInputRow: {
-      flexDirection: 'row',
-      gap: theme.spacing.sm,
-    },
-    codeInput: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: theme.borderRadius.md,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: 12,
-      fontSize: theme.fontSize.md,
-      color: colors.textPrimary,
-    },
-    codeApplyButton: {
-      backgroundColor: colors.primary,
-      borderRadius: theme.borderRadius.md,
-      paddingHorizontal: theme.spacing.lg,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    codeApplyText: {
-      color: '#fff',
-      fontSize: theme.fontSize.md,
-      fontWeight: theme.fontWeight.semibold,
     },
     bottom: {
       paddingHorizontal: theme.spacing.lg,

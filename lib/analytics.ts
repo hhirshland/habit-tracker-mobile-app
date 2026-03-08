@@ -45,6 +45,7 @@ export const EVENTS = {
   EVENING_CALL_ENABLED: 'evening_call_enabled',
   EVENING_CALL_DISABLED: 'evening_call_disabled',
   EVENING_CALL_TRIGGERED: 'evening_call_triggered',
+  ACCOUNT_DELETED: 'account_deleted',
 } as const;
 
 type EventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -198,6 +199,7 @@ type EventPropertiesMap = {
   };
   evening_call_disabled: undefined;
   evening_call_triggered: undefined;
+  account_deleted: undefined;
 };
 
 export function captureEvent<T extends EventName>(

@@ -157,13 +157,17 @@ export default function SignUpScreen() {
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="At least 8 characters, 1 uppercase, 1 number"
+              placeholder="Enter a password"
               placeholderTextColor={colors.textMuted}
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="new-password"
+              secureTextEntry={password.length > 0}
+              autoComplete={password.length > 0 ? 'new-password' : 'off'}
+              textContentType={password.length > 0 ? 'newPassword' : 'none'}
             />
+            <Text style={styles.passwordHint}>
+              At least 8 characters, 1 uppercase letter, 1 number
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -289,6 +293,11 @@ const createStyles = (colors: ThemeColors) =>
       paddingVertical: 14,
       fontSize: theme.fontSize.md,
       color: colors.textPrimary,
+    },
+    passwordHint: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textMuted,
+      marginLeft: theme.spacing.xs,
     },
     button: {
       backgroundColor: colors.primary,

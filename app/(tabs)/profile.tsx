@@ -47,7 +47,7 @@ import {
 export default function ProfileScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { user, profile, signOut, refreshProfile } = useAuth();
+  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
   const { settings, setThemePreference, updateSettings } = useUserSettings();
   const { enabled: notificationsEnabled, toggle: toggleNotifications } = useNotificationsSetting();
@@ -80,6 +80,9 @@ export default function ProfileScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [savingCall, setSavingCall] = useState(false);
   const [callingNow, setCallingNow] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const profileHasChanges = useMemo(() => {
     if (!profile) return false;
@@ -293,6 +296,21 @@ export default function ProfileScreen() {
       },
     ]);
   };
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') return;
+    setDeleting(true);
+    try {
+      captureEvent(EVENTS.ACCOUNT_DELETED);
+      await deleteAccount();
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      Alert.alert('Error', 'Failed to delete your account. Please try again.');
+      setDeleting(false);
+      setShowDeleteModal(false);
+      setDeleteConfirmText('');
+    }
+  }, [deleteConfirmText, deleteAccount]);
 
   const handleAppearanceChange = async (nextPreference: ThemePreference) => {
     if (nextPreference === preference || updatingAppearance) return;
@@ -844,6 +862,104 @@ export default function ProfileScreen() {
           <FontAwesome name="sign-out" size={18} color={colors.danger} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteAccountButton}
+          onPress={() => setShowDeleteModal(true)}
+          activeOpacity={0.8}
+        >
+          <FontAwesome name="trash" size={16} color={colors.textMuted} />
+          <Text style={styles.deleteAccountText}>Delete Account</Text>
+        </TouchableOpacity>
+
+        {/* Delete Account Confirmation Modal */}
+        <Modal
+          visible={showDeleteModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            if (!deleting) {
+              setShowDeleteModal(false);
+              setDeleteConfirmText('');
+            }
+          }}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => {
+              if (!deleting) {
+                setShowDeleteModal(false);
+                setDeleteConfirmText('');
+              }
+            }}
+          >
+            <View
+              style={styles.deleteModalContent}
+              onStartShouldSetResponder={() => true}
+            >
+              <View style={styles.deleteWarningIcon}>
+                <FontAwesome name="exclamation-triangle" size={32} color={colors.danger} />
+              </View>
+              <Text style={styles.deleteModalTitle}>Delete Your Account?</Text>
+              <Text style={styles.deleteModalWarning}>
+                This action is permanent and cannot be undone. All of your data will be
+                immediately and irreversibly deleted, including:
+              </Text>
+              <View style={styles.deleteDataList}>
+                <Text style={styles.deleteDataItem}>• All habits and completion history</Text>
+                <Text style={styles.deleteDataItem}>• Goals and progress entries</Text>
+                <Text style={styles.deleteDataItem}>• Journal entries and weekly recaps</Text>
+                <Text style={styles.deleteDataItem}>• Todos, settings, and profile info</Text>
+              </View>
+              <Text style={styles.deleteModalWarning}>
+                You will not be able to recover your data or sign back in with this account.
+              </Text>
+              <View style={[styles.field, { marginTop: theme.spacing.md }]}>
+                <Text style={styles.deleteConfirmLabel}>
+                  Type <Text style={{ fontWeight: '800' }}>DELETE</Text> to confirm
+                </Text>
+                <TextInput
+                  style={styles.deleteConfirmInput}
+                  placeholder="DELETE"
+                  placeholderTextColor={colors.textMuted}
+                  value={deleteConfirmText}
+                  onChangeText={setDeleteConfirmText}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  editable={!deleting}
+                />
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.deleteConfirmButton,
+                  deleteConfirmText.trim().toUpperCase() !== 'DELETE' && styles.deleteConfirmButtonDisabled,
+                  deleting && styles.buttonDisabled,
+                ]}
+                onPress={handleDeleteAccount}
+                disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE' || deleting}
+                activeOpacity={0.8}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.deleteConfirmButtonText}>Permanently Delete Account</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteCancelButton}
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText('');
+                }}
+                disabled={deleting}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.deleteCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -1239,6 +1355,98 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
   modalCancelText: {
+    fontSize: theme.fontSize.md,
+    color: colors.textMuted,
+    fontWeight: theme.fontWeight.medium,
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.xxl,
+  },
+  deleteAccountText: {
+    fontSize: theme.fontSize.sm,
+    color: colors.textMuted,
+  },
+  deleteModalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    width: '88%',
+    maxWidth: 400,
+  },
+  deleteWarningIcon: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  deleteModalTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  deleteModalWarning: {
+    fontSize: theme.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  deleteDataList: {
+    backgroundColor: colors.borderLight,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginVertical: theme.spacing.md,
+  },
+  deleteDataItem: {
+    fontSize: theme.fontSize.sm,
+    color: colors.textPrimary,
+    lineHeight: 22,
+  },
+  deleteConfirmLabel: {
+    fontSize: theme.fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  deleteConfirmInput: {
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.danger,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 14,
+    fontSize: theme.fontSize.lg,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    letterSpacing: 4,
+    fontWeight: theme.fontWeight.bold,
+  },
+  deleteConfirmButton: {
+    backgroundColor: colors.danger,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+  },
+  deleteConfirmButtonDisabled: {
+    opacity: 0.4,
+  },
+  deleteConfirmButtonText: {
+    color: '#fff',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  deleteCancelButton: {
+    paddingVertical: theme.spacing.md,
+    marginTop: theme.spacing.xs,
+    alignItems: 'center',
+  },
+  deleteCancelText: {
     fontSize: theme.fontSize.md,
     color: colors.textMuted,
     fontWeight: theme.fontWeight.medium,
