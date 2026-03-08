@@ -26,7 +26,12 @@ import { HEALTH_METRIC_DISPLAY_NAMES } from '@/lib/health';
 import { supabase } from '@/lib/supabase';
 import { useNotificationsSetting } from '@/hooks/useNotificationsSetting';
 import { useSubscription } from '@/hooks/useSubscription';
-import { fetchOfferings, purchasePackage, hasProEntitlement } from '@/lib/revenueCat';
+import {
+  fetchOfferings,
+  getOfferingPackage,
+  purchasePackage,
+  hasProEntitlement,
+} from '@/lib/revenueCat';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import type { ThemePreference } from '@/lib/userSettings';
 import {
@@ -323,9 +328,7 @@ export default function ProfileScreen() {
     setUpgrading(true);
     try {
       const offering = await fetchOfferings();
-      const yearlyPkg = offering?.availablePackages.find(
-        (p) => p.packageType === 'ANNUAL',
-      );
+      const yearlyPkg = getOfferingPackage(offering, 'yearly');
       if (!yearlyPkg) {
         Alert.alert('Unavailable', 'Yearly plan is not available right now. Please try again later.');
         return;

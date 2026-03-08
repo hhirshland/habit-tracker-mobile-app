@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import {
   fetchOfferings,
+  getOfferingPackage,
   purchasePackage,
   restorePurchases,
   hasProEntitlement,
@@ -67,30 +68,17 @@ export default function PaywallScreen() {
   const loadOfferings = async () => {
     setLoadError(false);
     setLoading(true);
-    // #region agent log
-    fetch('http://127.0.0.1:7254/ingest/faecd354-d430-4e96-a8a5-e5f3ee5271e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9afac7'},body:JSON.stringify({sessionId:'9afac7',runId:'initial',hypothesisId:'H1',location:'app/(onboarding)/paywall.tsx:70',message:'paywall loadOfferings started',data:{isAuthenticated},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     try {
       const offering = await fetchOfferings();
       if (offering) {
-        const monthly = offering.availablePackages.find(
-          (p) => p.packageType === 'MONTHLY',
-        ) ?? null;
-        const yearly = offering.availablePackages.find(
-          (p) => p.packageType === 'ANNUAL',
-        ) ?? null;
+        const monthly = getOfferingPackage(offering, 'monthly');
+        const yearly = getOfferingPackage(offering, 'yearly');
         setPackages({ monthly, yearly });
-        // #region agent log
-        fetch('http://127.0.0.1:7254/ingest/faecd354-d430-4e96-a8a5-e5f3ee5271e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9afac7'},body:JSON.stringify({sessionId:'9afac7',runId:'initial',hypothesisId:'H3',location:'app/(onboarding)/paywall.tsx:83',message:'paywall mapped offering packages',data:{monthlyPackageType:monthly?.packageType??null,monthlyProductId:monthly?.product.identifier??null,yearlyPackageType:yearly?.packageType??null,yearlyProductId:yearly?.product.identifier??null},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         if (!monthly && !yearly) setLoadError(true);
       } else {
         setLoadError(true);
       }
     } catch (err) {
-      // #region agent log
-      fetch('http://127.0.0.1:7254/ingest/faecd354-d430-4e96-a8a5-e5f3ee5271e0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'9afac7'},body:JSON.stringify({sessionId:'9afac7',runId:'initial',hypothesisId:'H4',location:'app/(onboarding)/paywall.tsx:89',message:'paywall loadOfferings failed',data:{error:err instanceof Error?{name:err.name,message:err.message}:String(err)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       console.warn('[Paywall] Failed to load offerings:', err);
       setLoadError(true);
     } finally {
@@ -374,12 +362,12 @@ const createStyles = (colors: ThemeColors) =>
     },
     scrollContent: {
       paddingHorizontal: theme.spacing.lg,
-      paddingBottom: theme.spacing.md,
+      paddingBottom: theme.spacing.xl,
     },
     header: {
       alignItems: 'center',
-      paddingTop: theme.spacing.lg,
-      marginBottom: theme.spacing.xl,
+      paddingTop: theme.spacing.md,
+      marginBottom: theme.spacing.lg,
     },
     title: {
       fontSize: theme.fontSize.xxl,
@@ -395,7 +383,7 @@ const createStyles = (colors: ThemeColors) =>
       lineHeight: 22,
     },
     timeline: {
-      marginBottom: theme.spacing.xl,
+      marginBottom: theme.spacing.lg,
       paddingLeft: theme.spacing.sm,
     },
     timelineRow: {
@@ -439,7 +427,7 @@ const createStyles = (colors: ThemeColors) =>
     },
     plans: {
       gap: theme.spacing.md,
-      marginBottom: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
     },
     planCard: {
       backgroundColor: colors.surface,
@@ -549,7 +537,7 @@ const createStyles = (colors: ThemeColors) =>
     bottom: {
       paddingHorizontal: theme.spacing.lg,
       paddingBottom: theme.spacing.lg,
-      paddingTop: theme.spacing.sm,
+      paddingTop: theme.spacing.xs,
       gap: theme.spacing.sm,
     },
     ctaButton: {
