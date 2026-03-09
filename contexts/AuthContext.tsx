@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session, User } from '@supabase/supabase-js';
 import { EVENTS, captureEvent, identifyUser, resetUser, setUserProperties } from '@/lib/analytics';
 import { configureRevenueCat, loginRevenueCat, logoutRevenueCat } from '@/lib/revenueCat';
+import { captureError } from '@/lib/sentry';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/lib/types';
 
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
+        captureError(error, { tag: 'auth.fetchProfile' });
       }
 
       // Keep previous profile on transient errors; only clear when profile truly doesn't exist.
@@ -79,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      captureError(error, { tag: 'auth.fetchProfile' });
     } finally {
       setLoading(false);
     }
@@ -247,9 +250,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: { full_name: fullName },
         },
       });
-      if (error) return { error };
+      if (error) {
+        captureError(error, { tag: 'auth.signUp' });
+        return { error };
+      }
       return { error: null };
     } catch (error) {
+      captureError(error, { tag: 'auth.signUp' });
       return { error: error as Error };
     }
   };
@@ -260,9 +267,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
       });
-      if (error) return { error };
+      if (error) {
+        captureError(error, { tag: 'auth.signIn' });
+        return { error };
+      }
       return { error: null };
     } catch (error) {
+      captureError(error, { tag: 'auth.signIn' });
       return { error: error as Error };
     }
   };

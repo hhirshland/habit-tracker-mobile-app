@@ -1,3 +1,4 @@
+import { captureError } from './sentry';
 import { supabase } from './supabase';
 import { Goal, GoalEntry, GoalType } from './types';
 import {
@@ -218,6 +219,66 @@ export async function getGoalCurrentValue(goal: Goal): Promise<number | null> {
   const entries = await getGoalEntries(goal.id);
   if (entries.length === 0) return goal.start_value;
   return entries[entries.length - 1].value;
+}
+
+// ──────────────────────────────────────────────
+// Apple Health → goal_entries sync
+// ──────────────────────────────────────────────
+
+/**
+ * Sync HealthKit data into goal_entries for all active Apple Health goals
+ * within the given week range. This makes the data available to server-side
+ * features (e.g. weekly recap generation) that can't access HealthKit directly.
+ *
+ * Safe to call multiple times — uses upsert on (goal_id, recorded_date).
+ */
+export async function syncHealthGoalEntries(
+  userId: string,
+  weekStart: string,
+  weekEnd: string
+): Promise<void> {
+  const goals = await getGoals();
+  const healthGoals = goals.filter((g) => g.data_source === 'apple_health');
+  if (healthGoals.length === 0) return;
+
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const startDate = new Date(weekStart + 'T12:00:00');
+  const daysBack = Math.ceil((today.getTime() - startDate.getTime()) / 86_400_000) + 1;
+
+  const rows: { goal_id: string; user_id: string; value: number; recorded_date: string }[] = [];
+
+  await Promise.all(
+    healthGoals.map(async (goal) => {
+      try {
+        const history = await getGoalHistoryData(goal, daysBack);
+        const inRange = history.filter((p) => p.date >= weekStart && p.date <= weekEnd);
+
+        // Deduplicate: keep the last value per date (latest sample wins)
+        const byDate = new Map<string, number>();
+        for (const p of inRange) {
+          byDate.set(p.date, p.value);
+        }
+
+        for (const [date, value] of byDate) {
+          rows.push({ goal_id: goal.id, user_id: userId, value, recorded_date: date });
+        }
+      } catch (e) {
+        console.warn(`[syncHealthGoalEntries] Failed for goal "${goal.title}":`, e);
+      }
+    })
+  );
+
+  if (rows.length === 0) return;
+
+  const { error } = await supabase
+    .from('goal_entries')
+    .upsert(rows, { onConflict: 'goal_id,recorded_date' });
+
+  if (error) {
+    console.error('[syncHealthGoalEntries] Upsert failed:', error);
+    captureError(error, { tag: 'goals.syncHealthEntries' });
+  }
 }
 
 // ──────────────────────────────────────────────

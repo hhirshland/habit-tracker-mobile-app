@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Appearance, useColorScheme } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { captureError } from '@/lib/sentry';
 import { supabase } from '@/lib/supabase';
 import {
   coerceThemePreference,
@@ -87,6 +88,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
 
     if (error) {
       console.error('Error persisting user settings to Supabase:', error);
+      captureError(error, { tag: 'userSettings.persistRemote' });
     }
   }, []);
 
@@ -106,6 +108,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
         }
       } catch (error) {
         console.error('Error loading user settings:', error);
+        captureError(error, { tag: 'userSettings.load' });
       } finally {
         if (isMounted) {
           setLoaded(true);
@@ -172,6 +175,7 @@ export function UserSettingsProvider({ children }: { children: React.ReactNode }
       }
       AsyncStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify(remoteSettings)).catch((error) => {
         console.error('Error caching remote user settings locally:', error);
+        captureError(error, { tag: 'userSettings.cacheRemote' });
       });
     } else {
       // Seed server settings from current local settings if profile has no settings yet.

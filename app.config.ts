@@ -12,6 +12,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: IS_DEV ? "habittracker-dev" : "habittracker",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
+  runtimeVersion: {
+    policy: "fingerprint",
+  },
+  updates: {
+    url: "https://u.expo.dev/38a997f1-2a62-44d7-bfe9-ecea70fd81c7",
+  },
   splash: {
     image: "./assets/images/splash-icon.png",
     resizeMode: "contain",
@@ -44,6 +50,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-router",
     "expo-secure-store",
     "expo-notifications",
+    [
+      "@sentry/react-native/expo",
+      {
+        organization: process.env.SENTRY_ORG || "",
+        project: process.env.SENTRY_PROJECT || "",
+      },
+    ],
     [
       "@kingstinct/react-native-healthkit",
       {

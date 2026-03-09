@@ -8,6 +8,9 @@
     },
     "revenuecat": {
       "url": "https://mcp.revenuecat.ai/mcp"
+    },
+    "notion": {
+      "url": "https://mcp.notion.com/mcp"
     }
   }
 }

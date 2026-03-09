@@ -7,6 +7,7 @@ import {
   deleteRecap,
   triggerRecapGeneration,
 } from '@/lib/weeklyRecaps';
+import { syncHealthGoalEntries } from '@/lib/goals';
 import { queryKeys } from '@/lib/queryClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { captureEvent, EVENTS } from '@/lib/analytics';
@@ -47,7 +48,7 @@ export function useGenerateRecap() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       weekStart,
       weekEnd,
     }: {
@@ -55,6 +56,7 @@ export function useGenerateRecap() {
       weekEnd: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
+      await syncHealthGoalEntries(user.id, weekStart, weekEnd);
       return triggerRecapGeneration(user.id, weekStart, weekEnd);
     },
     onSuccess: (data, variables) => {

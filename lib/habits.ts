@@ -1,3 +1,4 @@
+import { captureError } from './sentry';
 import { supabase } from './supabase';
 import { Habit, HabitCompletion, HabitSnooze, HealthMetricType } from './types';
 import { getCurrentMetricValue, isHealthKitAvailable } from './health';
@@ -460,12 +461,14 @@ export async function checkAutoCompletions(
         // Ignore unique constraint violations (already completed)
         if (error && !error.message.includes('duplicate')) {
           console.error(`Error auto-completing habit ${habit.name}:`, error);
+          captureError(error, { tag: 'habits.autoComplete', extra: { habit_name: habit.name } });
         } else if (!error) {
           autoCompletedIds.push(habit.id);
         }
       }
     } catch (error) {
       console.error(`Error checking metric for habit ${habit.name}:`, error);
+      captureError(error, { tag: 'habits.checkMetric', extra: { habit_name: habit.name } });
     }
   }
 

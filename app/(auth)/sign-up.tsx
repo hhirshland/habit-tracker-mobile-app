@@ -11,6 +11,7 @@ import {
   Alert,
   Keyboard,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -36,6 +37,7 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -82,116 +84,123 @@ export default function SignUpScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          {isPostPurchase ? (
-            <>
-              <View style={styles.successBadge}>
-                <FontAwesome name="check-circle" size={20} color={colors.success} />
-                <Text style={styles.successText}>Subscription activated!</Text>
-              </View>
-              <Text style={styles.title}>One last step</Text>
-              <Text style={styles.subtitle}>
-                Create an account to keep your progress safe
-              </Text>
-            </>
-          ) : (
-            <>
-              <View style={styles.wordmarkRow}>
-                <ThriveLogo size={40} style={{ marginRight: 10 }} />
-                <Text style={styles.wordmark}>Thrive</Text>
-              </View>
-              <Text style={styles.title}>Get Started</Text>
-              <Text style={styles.subtitle}>
-                Create an account to start building better habits
-              </Text>
-            </>
-          )}
-        </View>
-
-        {isPostPurchase && (
-          <View style={styles.benefits}>
-            {[
-              { icon: 'refresh' as const, text: 'Sync across all your devices' },
-              { icon: 'shield' as const, text: 'Never lose your habits or streaks' },
-              { icon: 'bar-chart' as const, text: 'Unlock personalized insights' },
-            ].map((item, i) => (
-              <View key={i} style={styles.benefitRow}>
-                <View style={styles.benefitIcon}>
-                  <FontAwesome name={item.icon} size={14} color={colors.primary} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            {isPostPurchase ? (
+              <>
+                <View style={styles.successBadge}>
+                  <FontAwesome name="check-circle" size={20} color={colors.success} />
+                  <Text style={styles.successText}>Subscription activated!</Text>
                 </View>
-                <Text style={styles.benefitText}>{item.text}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="John Doe"
-              placeholderTextColor={colors.textMuted}
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
-              autoComplete="name"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.textMuted}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter a password"
-              placeholderTextColor={colors.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={password.length > 0}
-              autoComplete={password.length > 0 ? 'new-password' : 'off'}
-              textContentType={password.length > 0 ? 'newPassword' : 'none'}
-            />
-            <Text style={styles.passwordHint}>
-              At least 8 characters, 1 uppercase letter, 1 number
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSignUp}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
+                <Text style={styles.title}>One last step</Text>
+                <Text style={styles.subtitle}>
+                  Create an account to keep your progress safe
+                </Text>
+              </>
             ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
+              <>
+                <View style={styles.wordmarkRow}>
+                  <ThriveLogo size={40} style={{ marginRight: 10 }} />
+                  <Text style={styles.wordmark}>Thrive</Text>
+                </View>
+                <Text style={styles.title}>Get Started</Text>
+                <Text style={styles.subtitle}>
+                  Create an account to start building better habits
+                </Text>
+              </>
             )}
-          </TouchableOpacity>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <Link href="/(auth)/sign-in" asChild>
-              <TouchableOpacity>
-                <Text style={styles.linkText}>Sign In</Text>
-              </TouchableOpacity>
-            </Link>
           </View>
-        </View>
+
+          {isPostPurchase && (
+            <View style={styles.benefits}>
+              {[
+                { icon: 'refresh' as const, text: 'Sync across all your devices' },
+                { icon: 'shield' as const, text: 'Never lose your habits or streaks' },
+                { icon: 'bar-chart' as const, text: 'Unlock personalized insights' },
+              ].map((item, i) => (
+                <View key={i} style={styles.benefitRow}>
+                  <View style={styles.benefitIcon}>
+                    <FontAwesome name={item.icon} size={14} color={colors.primary} />
+                  </View>
+                  <Text style={styles.benefitText}>{item.text}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="John Doe"
+                placeholderTextColor={colors.textMuted}
+                value={fullName}
+                onChangeText={setFullName}
+                autoCapitalize="words"
+                autoComplete="name"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter a password"
+                placeholderTextColor={colors.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoComplete="new-password"
+                textContentType="newPassword"
+              />
+              <Text style={styles.passwordHint}>
+                At least 8 characters, 1 uppercase letter, 1 number
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSignUp}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <Link href="/(auth)/sign-in" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.linkText}>Sign In</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
       </Pressable>
     </SafeAreaView>
@@ -206,6 +215,9 @@ const createStyles = (colors: ThemeColors) =>
     },
     keyboardView: {
       flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
       justifyContent: 'center',
       paddingHorizontal: theme.spacing.lg,
     },

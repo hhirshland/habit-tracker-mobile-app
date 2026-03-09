@@ -11,6 +11,7 @@ import {
   Alert,
   Keyboard,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +37,9 @@ export default function SignInScreen() {
         },
         keyboardView: {
           flex: 1,
+        },
+        scrollContent: {
+          flexGrow: 1,
           justifyContent: 'center',
           paddingHorizontal: theme.spacing.lg,
         },
@@ -145,65 +149,72 @@ export default function SignInScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          <View style={styles.wordmarkRow}>
-            <ThriveLogo size={40} style={{ marginRight: 10 }} />
-            <Text style={styles.wordmark}>Thrive</Text>
-          </View>
-          <Text style={styles.subtitle}>Sign in to continue tracking your habits</Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.textMuted}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-            />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <View style={styles.wordmarkRow}>
+              <ThriveLogo size={40} style={{ marginRight: 10 }} />
+              <Text style={styles.wordmark}>Thrive</Text>
+            </View>
+            <Text style={styles.subtitle}>Sign in to continue tracking your habits</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Your password"
-              placeholderTextColor={colors.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={password.length > 0}
-              autoComplete={password.length > 0 ? 'password' : 'off'}
-              textContentType={password.length > 0 ? 'password' : 'none'}
-            />
-          </View>
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+              />
+            </View>
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSignIn}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Your password"
+                placeholderTextColor={colors.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoComplete="password"
+                textContentType="password"
+              />
+            </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <Link href="/(auth)/sign-up" asChild>
-              <TouchableOpacity>
-                <Text style={styles.linkText}>Sign Up</Text>
-              </TouchableOpacity>
-            </Link>
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSignIn}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Sign In</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Link href="/(onboarding)" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.linkText}>Sign Up</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
       </Pressable>
     </SafeAreaView>

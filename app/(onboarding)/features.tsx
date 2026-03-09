@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Switch,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -58,6 +59,8 @@ export default function OnboardingFeaturesScreen() {
   const [eveningCallEnabled, setEveningCallEnabled] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [saving, setSaving] = useState(false);
+  const [phoneInputFocused, setPhoneInputFocused] = useState(false);
+  const phoneInputRef = useRef<TextInput>(null);
 
   const handleCompleteOnboarding = async () => {
     if (!user) return;
@@ -141,6 +144,8 @@ export default function OnboardingFeaturesScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         <View style={styles.featureCard}>
           <View style={styles.featureTopRow}>
@@ -206,15 +211,29 @@ export default function OnboardingFeaturesScreen() {
           {eveningCallEnabled && (
             <View style={styles.phoneField}>
               <Text style={styles.phoneLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.phoneInput}
-                placeholder="(555) 123-4567"
-                placeholderTextColor={colors.textMuted}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-              />
+              <View style={styles.phoneInputRow}>
+                <TextInput
+                  ref={phoneInputRef}
+                  style={[styles.phoneInput, styles.phoneInputFlex]}
+                  placeholder="(555) 123-4567"
+                  placeholderTextColor={colors.textMuted}
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  onFocus={() => setPhoneInputFocused(true)}
+                  onBlur={() => setPhoneInputFocused(false)}
+                />
+                {phoneInputFocused && (
+                  <TouchableOpacity
+                    style={styles.doneButton}
+                    onPress={() => Keyboard.dismiss()}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.doneButtonText}>Done</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           )}
         </View>
@@ -330,6 +349,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
     color: colors.textPrimary,
   },
+  phoneInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
   phoneInput: {
     backgroundColor: colors.background,
     borderWidth: 1,
@@ -339,6 +363,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 12,
     fontSize: theme.fontSize.md,
     color: colors.textPrimary,
+  },
+  phoneInputFlex: {
+    flex: 1,
+  },
+  doneButton: {
+    backgroundColor: colors.primary,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 12,
+  },
+  doneButtonText: {
+    color: '#fff',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
   },
   actions: {
     flexDirection: 'row',

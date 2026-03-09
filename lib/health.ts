@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { captureError } from './sentry';
 import type { HealthMetricType } from './types';
 
 // Types for health data used throughout the app
@@ -116,6 +117,7 @@ export async function requestHealthPermissions(): Promise<boolean> {
     return canRead;
   } catch (error) {
     console.error('[HealthKit] Error requesting authorization:', error);
+    captureError(error, { tag: 'health.requestAuth' });
     return false;
   }
 }
@@ -167,14 +169,16 @@ export async function checkHealthAuthorization(): Promise<boolean> {
 // Metric Fetchers (all silently return null / empty on auth errors)
 // ──────────────────────────────────────────────
 
-/** Returns true if the error is benign (auth denial or no data) and should be silently ignored */
+/** Returns true if the error is benign (auth denial, protected data, or no data) and should be silently ignored */
 function isBenignHealthKitError(error: any): boolean {
   const msg = error?.message ?? '';
   return (
     msg.includes('Code=5') ||           // Authorization not determined / denied
+    msg.includes('Code=6') ||           // Protected health data is inaccessible (device locked)
     msg.includes('Code=11') ||           // No data available for the predicate
     msg.includes('not determined') ||
     msg.includes('Authorization') ||
+    msg.includes('Protected health data') ||
     msg.includes('No data available')
   );
 }
@@ -234,6 +238,7 @@ export async function getStepsForDate(date: Date): Promise<number | null> {
     trackIfDenied('steps', error);
     if (!isAuthError(error)) {
       console.error('Error fetching steps:', error);
+      captureError(error, { tag: 'health.steps' });
     }
     return null;
   }
@@ -261,6 +266,7 @@ export async function getLatestWeight(): Promise<number | null> {
     trackIfDenied('weight', error);
     if (!isAuthError(error)) {
       console.error('Error fetching weight:', error);
+      captureError(error, { tag: 'health.weight' });
     }
     return null;
   }
@@ -281,6 +287,7 @@ export async function getTodayRestingHeartRate(): Promise<number | null> {
     trackIfDenied('restingHeartRate', error);
     if (!isAuthError(error)) {
       console.error('Error fetching resting heart rate:', error);
+      captureError(error, { tag: 'health.restingHeartRate' });
     }
     return null;
   }
@@ -303,6 +310,7 @@ export async function getLatestBodyFatPercentage(): Promise<number | null> {
     trackIfDenied('bodyFatPercentage', error);
     if (!isAuthError(error)) {
       console.error('Error fetching body fat percentage:', error);
+      captureError(error, { tag: 'health.bodyFatPercentage' });
     }
     return null;
   }
@@ -323,6 +331,7 @@ export async function getLatestLeanBodyMass(): Promise<number | null> {
     trackIfDenied('leanBodyMass', error);
     if (!isAuthError(error)) {
       console.error('Error fetching lean body mass:', error);
+      captureError(error, { tag: 'health.leanBodyMass' });
     }
     return null;
   }
@@ -343,6 +352,7 @@ export async function getLatestBMI(): Promise<number | null> {
     trackIfDenied('bodyMassIndex', error);
     if (!isAuthError(error)) {
       console.error('Error fetching BMI:', error);
+      captureError(error, { tag: 'health.bmi' });
     }
     return null;
   }
@@ -377,6 +387,7 @@ export async function getTodayExerciseMinutes(): Promise<number | null> {
     trackIfDenied('exerciseMinutes', error);
     if (!isAuthError(error)) {
       console.error('Error fetching exercise minutes:', error);
+      captureError(error, { tag: 'health.exerciseMinutes' });
     }
     return null;
   }
@@ -411,6 +422,7 @@ export async function getTodayTimeInDaylight(): Promise<number | null> {
     trackIfDenied('timeInDaylight', error);
     if (!isAuthError(error)) {
       console.error('Error fetching time in daylight:', error);
+      captureError(error, { tag: 'health.timeInDaylight' });
     }
     return null;
   }
@@ -431,6 +443,7 @@ export async function getLatestHRV(): Promise<number | null> {
     trackIfDenied('hrv', error);
     if (!isAuthError(error)) {
       console.error('Error fetching HRV:', error);
+      captureError(error, { tag: 'health.hrv' });
     }
     return null;
   }
@@ -572,6 +585,7 @@ export async function getRecentWorkouts(days: number = 7): Promise<WorkoutSummar
   } catch (error: any) {
     if (!isAuthError(error)) {
       console.error('Error fetching workouts:', error);
+      captureError(error, { tag: 'health.workouts' });
     }
     return [];
   }
@@ -600,6 +614,7 @@ export async function getTodayWorkoutMinutes(): Promise<number> {
   } catch (error: any) {
     if (!isAuthError(error)) {
       console.error('Error fetching workout minutes:', error);
+      captureError(error, { tag: 'health.workoutMinutes' });
     }
     return 0;
   }
@@ -677,6 +692,7 @@ export async function getStepHistory(days: number = 30): Promise<MetricDataPoint
     return points;
   } catch (error) {
     console.error('Error fetching step history:', error);
+    captureError(error, { tag: 'health.stepHistory' });
     return [];
   }
 }
@@ -714,6 +730,7 @@ export async function getWeightHistory(days: number = 90): Promise<MetricDataPoi
   } catch (error: any) {
     if (!isAuthError(error)) {
       console.error('Error fetching weight history:', error);
+      captureError(error, { tag: 'health.weightHistory' });
     }
     return [];
   }
@@ -751,6 +768,7 @@ export async function getRHRHistory(days: number = 30): Promise<MetricDataPoint[
   } catch (error: any) {
     if (!isAuthError(error)) {
       console.error('Error fetching RHR history:', error);
+      captureError(error, { tag: 'health.rhrHistory' });
     }
     return [];
   }
@@ -788,7 +806,10 @@ export async function getBodyFatHistory(days: number = 90): Promise<MetricDataPo
       })
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
   } catch (error: any) {
-    if (!isAuthError(error)) console.error('Error fetching body fat history:', error);
+    if (!isAuthError(error)) {
+      console.error('Error fetching body fat history:', error);
+      captureError(error, { tag: 'health.bodyFatHistory' });
+    }
     return [];
   }
 }
@@ -822,7 +843,10 @@ export async function getHRVHistory(days: number = 30): Promise<MetricDataPoint[
       }))
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
   } catch (error: any) {
-    if (!isAuthError(error)) console.error('Error fetching HRV history:', error);
+    if (!isAuthError(error)) {
+      console.error('Error fetching HRV history:', error);
+      captureError(error, { tag: 'health.hrvHistory' });
+    }
     return [];
   }
 }
@@ -893,6 +917,7 @@ export async function getExerciseHistory(days: number = 30): Promise<MetricDataP
     return points;
   } catch (error) {
     console.error('Error fetching exercise history:', error);
+    captureError(error, { tag: 'health.exerciseHistory' });
     return [];
   }
 }
@@ -923,7 +948,10 @@ export async function getLeanMassHistory(days: number = 90): Promise<MetricDataP
       }))
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
   } catch (error: any) {
-    if (!isBenignHealthKitError(error)) console.error('Error fetching lean mass history:', error);
+    if (!isBenignHealthKitError(error)) {
+      console.error('Error fetching lean mass history:', error);
+      captureError(error, { tag: 'health.leanMassHistory' });
+    }
     return [];
   }
 }
@@ -953,7 +981,10 @@ export async function getBMIHistory(days: number = 90): Promise<MetricDataPoint[
       }))
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
   } catch (error: any) {
-    if (!isBenignHealthKitError(error)) console.error('Error fetching BMI history:', error);
+    if (!isBenignHealthKitError(error)) {
+      console.error('Error fetching BMI history:', error);
+      captureError(error, { tag: 'health.bmiHistory' });
+    }
     return [];
   }
 }
@@ -995,6 +1026,7 @@ export async function getDaylightHistory(days: number = 30): Promise<MetricDataP
     return points;
   } catch (error) {
     console.error('Error fetching daylight history:', error);
+    captureError(error, { tag: 'health.daylightHistory' });
     return [];
   }
 }
@@ -1024,6 +1056,7 @@ export async function getWorkoutCountHistory(days: number = 30): Promise<MetricD
     return points;
   } catch (error) {
     console.error('Error fetching workout count history:', error);
+    captureError(error, { tag: 'health.workoutCountHistory' });
     return [];
   }
 }

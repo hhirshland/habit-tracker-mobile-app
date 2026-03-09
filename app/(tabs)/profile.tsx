@@ -126,6 +126,14 @@ export default function ProfileScreen() {
       ? normalizePhoneNumber(phoneNumber.trim())
       : null;
 
+    if (eveningCallEnabled && !phoneNumber.trim()) {
+      Alert.alert(
+        'Phone Number Required',
+        'Please enter your phone number to enable evening calls.',
+      );
+      return;
+    }
+
     if (phoneNumber.trim() && !normalized) {
       Alert.alert(
         'Invalid Phone Number',
@@ -189,15 +197,8 @@ export default function ProfileScreen() {
   }, [user, profile?.phone_number]);
 
   const handleToggleEveningCall = useCallback((value: boolean) => {
-    if (value && !phoneNumber.trim()) {
-      Alert.alert(
-        'Phone Number Required',
-        'Please enter your phone number before enabling evening calls.',
-      );
-      return;
-    }
     setEveningCallEnabled(value);
-  }, [phoneNumber]);
+  }, []);
 
   const handleConnectHealth = async () => {
     setConnecting(true);
@@ -898,65 +899,71 @@ export default function ProfileScreen() {
               style={styles.deleteModalContent}
               onStartShouldSetResponder={() => true}
             >
-              <View style={styles.deleteWarningIcon}>
-                <FontAwesome name="exclamation-triangle" size={32} color={colors.danger} />
-              </View>
-              <Text style={styles.deleteModalTitle}>Delete Your Account?</Text>
-              <Text style={styles.deleteModalWarning}>
-                This action is permanent and cannot be undone. All of your data will be
-                immediately and irreversibly deleted, including:
-              </Text>
-              <View style={styles.deleteDataList}>
-                <Text style={styles.deleteDataItem}>• All habits and completion history</Text>
-                <Text style={styles.deleteDataItem}>• Goals and progress entries</Text>
-                <Text style={styles.deleteDataItem}>• Journal entries and weekly recaps</Text>
-                <Text style={styles.deleteDataItem}>• Todos, settings, and profile info</Text>
-              </View>
-              <Text style={styles.deleteModalWarning}>
-                You will not be able to recover your data or sign back in with this account.
-              </Text>
-              <View style={[styles.field, { marginTop: theme.spacing.md }]}>
-                <Text style={styles.deleteConfirmLabel}>
-                  Type <Text style={{ fontWeight: '800' }}>DELETE</Text> to confirm
+              <ScrollView
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.deleteWarningIcon}>
+                  <FontAwesome name="exclamation-triangle" size={32} color={colors.danger} />
+                </View>
+                <Text style={styles.deleteModalTitle}>Delete Your Account?</Text>
+                <Text style={styles.deleteModalWarning}>
+                  This action is permanent and cannot be undone. All of your data will be
+                  immediately and irreversibly deleted, including:
                 </Text>
-                <TextInput
-                  style={styles.deleteConfirmInput}
-                  placeholder="DELETE"
-                  placeholderTextColor={colors.textMuted}
-                  value={deleteConfirmText}
-                  onChangeText={setDeleteConfirmText}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  editable={!deleting}
-                />
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.deleteConfirmButton,
-                  deleteConfirmText.trim().toUpperCase() !== 'DELETE' && styles.deleteConfirmButtonDisabled,
-                  deleting && styles.buttonDisabled,
-                ]}
-                onPress={handleDeleteAccount}
-                disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE' || deleting}
-                activeOpacity={0.8}
-              >
-                {deleting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.deleteConfirmButtonText}>Permanently Delete Account</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteCancelButton}
-                onPress={() => {
-                  setShowDeleteModal(false);
-                  setDeleteConfirmText('');
-                }}
-                disabled={deleting}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.deleteCancelText}>Cancel</Text>
-              </TouchableOpacity>
+                <View style={styles.deleteDataList}>
+                  <Text style={styles.deleteDataItem}>• All habits and completion history</Text>
+                  <Text style={styles.deleteDataItem}>• Goals and progress entries</Text>
+                  <Text style={styles.deleteDataItem}>• Journal entries and weekly recaps</Text>
+                  <Text style={styles.deleteDataItem}>• Todos, settings, and profile info</Text>
+                </View>
+                <Text style={styles.deleteModalWarning}>
+                  You will not be able to recover your data or sign back in with this account.
+                </Text>
+                <View style={[styles.field, { marginTop: theme.spacing.md }]}>
+                  <Text style={styles.deleteConfirmLabel}>
+                    Type <Text style={{ fontWeight: '800' }}>DELETE</Text> to confirm
+                  </Text>
+                  <TextInput
+                    style={styles.deleteConfirmInput}
+                    placeholder="DELETE"
+                    placeholderTextColor={colors.textMuted}
+                    value={deleteConfirmText}
+                    onChangeText={setDeleteConfirmText}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    editable={!deleting}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.deleteConfirmButton,
+                    deleteConfirmText.trim().toUpperCase() !== 'DELETE' && styles.deleteConfirmButtonDisabled,
+                    deleting && styles.buttonDisabled,
+                  ]}
+                  onPress={handleDeleteAccount}
+                  disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE' || deleting}
+                  activeOpacity={0.8}
+                >
+                  {deleting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.deleteConfirmButtonText}>Permanently Delete Account</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteCancelButton}
+                  onPress={() => {
+                    setShowDeleteModal(false);
+                    setDeleteConfirmText('');
+                  }}
+                  disabled={deleting}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
           </TouchableOpacity>
         </Modal>
@@ -1378,6 +1385,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: theme.spacing.lg,
     width: '88%',
     maxWidth: 400,
+    maxHeight: '85%',
   },
   deleteWarningIcon: {
     alignItems: 'center',

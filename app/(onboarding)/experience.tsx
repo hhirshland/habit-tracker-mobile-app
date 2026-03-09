@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -48,54 +48,60 @@ export default function ExperienceScreen() {
     <SafeAreaView style={styles.container}>
       <OnboardingProgress current={2} total={7} />
 
-      <View style={styles.header}>
-        <Text style={styles.title}>How consistent are you{'\n'}with habits today?</Text>
-        <Text style={styles.subtitle}>This helps us personalize your experience</Text>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>How consistent are you{'\n'}with habits today?</Text>
+          <Text style={styles.subtitle}>This helps us personalize your experience</Text>
+        </View>
 
-      <View style={styles.options}>
-        {EXPERIENCE_OPTIONS.map((option) => {
-          const isSelected = selected === option.id;
-          return (
-            <TouchableOpacity
-              key={option.id}
-              style={[styles.card, isSelected && styles.cardSelected]}
-              onPress={() => setSelected(option.id)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.iconCircle, isSelected && styles.iconCircleSelected]}>
-                <FontAwesome
-                  name={option.icon}
-                  size={20}
-                  color={isSelected ? '#fff' : colors.primary}
-                />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
-                  {option.label}
-                </Text>
-                <Text style={styles.cardDescription}>{option.description}</Text>
-              </View>
-              {isSelected && (
-                <FontAwesome name="check-circle" size={22} color={colors.primary} />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+        <View style={styles.options}>
+          {EXPERIENCE_OPTIONS.map((option) => {
+            const isSelected = selected === option.id;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[styles.card, isSelected && styles.cardSelected]}
+                onPress={() => setSelected(option.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconCircle, isSelected && styles.iconCircleSelected]}>
+                  <FontAwesome
+                    name={option.icon}
+                    size={20}
+                    color={isSelected ? '#fff' : colors.primary}
+                  />
+                </View>
+                <View style={styles.cardText}>
+                  <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
+                    {option.label}
+                  </Text>
+                  <Text style={styles.cardDescription}>{option.description}</Text>
+                </View>
+                {isSelected && (
+                  <FontAwesome name="check-circle" size={22} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-      <View style={styles.spacer} />
+        <View style={styles.spacer} />
 
-      <View style={styles.bottom}>
-        <TouchableOpacity
-          style={[styles.ctaButton, !selected && styles.ctaDisabled]}
-          onPress={handleContinue}
-          disabled={!selected}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.ctaText}>Continue</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.bottom}>
+          <TouchableOpacity
+            style={[styles.ctaButton, !selected && styles.ctaDisabled]}
+            onPress={handleContinue}
+            disabled={!selected}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.ctaText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -105,6 +111,9 @@ const createStyles = (colors: ThemeColors) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
     },
     header: {
       paddingHorizontal: theme.spacing.lg,

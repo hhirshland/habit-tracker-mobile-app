@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/lib/theme';
@@ -17,54 +17,60 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.hero}>
-          <ThriveLogo size={80} style={styles.logo} />
-          <Text style={styles.appName}>Thrive</Text>
-        </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <View style={styles.hero}>
+            <ThriveLogo size={80} style={styles.logo} />
+            <Text style={styles.appName}>Thrive</Text>
+          </View>
 
-        <View style={styles.messaging}>
-          <Text style={styles.headline}>
-            Become your best self,{'\n'}one habit at a time
-          </Text>
-          <Text style={styles.subtext}>
-            Track habits, set goals, and reflect daily.{'\n'}Small actions compound into big results.
-          </Text>
-        </View>
+          <View style={styles.messaging}>
+            <Text style={styles.headline}>
+              Become your best self,{'\n'}one habit at a time
+            </Text>
+            <Text style={styles.subtext}>
+              Track habits, set goals, and reflect daily.{'\n'}Small actions compound into big results.
+            </Text>
+          </View>
 
-        <View style={styles.features}>
-          {[
-            { icon: '✓', text: 'Build lasting habits with streaks & reminders' },
-            { icon: '✓', text: 'Track goals with Apple Health integration' },
-            { icon: '✓', text: 'Reflect & grow with daily journaling' },
-          ].map((item, i) => (
-            <View key={i} style={styles.featureRow}>
-              <View style={styles.checkCircle}>
-                <Text style={styles.checkText}>{item.icon}</Text>
+          <View style={styles.features}>
+            {[
+              { icon: '✓', text: 'Build lasting habits with streaks & reminders' },
+              { icon: '✓', text: 'Track goals with Apple Health integration' },
+              { icon: '✓', text: 'Reflect & grow with daily journaling' },
+            ].map((item, i) => (
+              <View key={i} style={styles.featureRow}>
+                <View style={styles.checkCircle}>
+                  <Text style={styles.checkText}>{item.icon}</Text>
+                </View>
+                <Text style={styles.featureText}>{item.text}</Text>
               </View>
-              <Text style={styles.featureText}>{item.text}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.bottom}>
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={() => router.push('/(onboarding)/goals')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.ctaText}>Get Started</Text>
-        </TouchableOpacity>
-        <View style={styles.signInRow}>
-          <Text style={styles.signInText}>Already have an account? </Text>
-          <Link href="/(auth)/sign-in" asChild>
-            <TouchableOpacity>
-              <Text style={styles.signInLink}>Sign In</Text>
-            </TouchableOpacity>
-          </Link>
+        <View style={styles.bottom}>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={() => router.push('/(onboarding)/goals')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.ctaText}>Get Started</Text>
+          </TouchableOpacity>
+          <View style={styles.signInRow}>
+            <Text style={styles.signInText}>Already have an account? </Text>
+            <Link href="/(auth)/sign-in" asChild>
+              <TouchableOpacity>
+                <Text style={styles.signInLink}>Sign In</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -74,6 +80,9 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
     },
     content: {
       flex: 1,

@@ -8,6 +8,7 @@ import {
   getTodayMetrics,
   detectMissingMetrics,
 } from '@/lib/health';
+import { captureError } from '@/lib/sentry';
 
 interface HealthContextType {
   /** Whether HealthKit is available on this device (iOS only) */
@@ -93,6 +94,7 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
       setMissingMetrics(detectMissingMetrics(data));
     } catch (error) {
       console.error('[HealthContext] Error loading health metrics:', error);
+      captureError(error, { tag: 'health.loadMetrics' });
     } finally {
       setLoading(false);
       loadingRef.current = false;

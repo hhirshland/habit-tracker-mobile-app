@@ -25,6 +25,7 @@ import {
   hasProEntitlement,
 } from '@/lib/revenueCat';
 import { captureEvent, EVENTS } from '@/lib/analytics';
+import { captureError } from '@/lib/sentry';
 import OnboardingProgress from '@/components/OnboardingProgress';
 
 const PRIVACY_POLICY_URL = 'https://thrive.hyperactivestudio.xyz/privacy';
@@ -103,6 +104,7 @@ export default function PaywallScreen() {
       }
     } catch (err: any) {
       if (err.userCancelled) return;
+      captureError(err, { tag: 'paywall.purchase', extra: { plan: selectedPlan } });
       Alert.alert('Purchase Failed', err.message ?? 'Something went wrong. Please try again.');
     } finally {
       setPurchasing(false);
@@ -123,6 +125,7 @@ export default function PaywallScreen() {
         Alert.alert('No Subscription Found', 'We couldn\'t find an active subscription for this account.');
       }
     } catch (err: any) {
+      captureError(err, { tag: 'paywall.restore' });
       Alert.alert('Restore Failed', err.message ?? 'Something went wrong.');
     } finally {
       setPurchasing(false);

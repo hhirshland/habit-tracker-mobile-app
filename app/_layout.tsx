@@ -5,7 +5,7 @@ import { Href, Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { PostHogProvider } from 'posthog-react-native';
@@ -22,16 +22,36 @@ import { configureRevenueCat } from '@/lib/revenueCat';
 import { posthogClient } from '@/lib/posthog';
 import { queryClient } from '@/lib/queryClient';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useOTAUpdates } from '@/hooks/useOTAUpdates';
+import { initSentry, captureError, Sentry } from '@/lib/sentry';
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+initSentry();
+
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  Sentry.captureException(error);
+  return (
+    <View style={ebStyles.container}>
+      <Text style={ebStyles.title}>Something went wrong</Text>
+      <Text style={ebStyles.message}>{error.message}</Text>
+      <TouchableOpacity style={ebStyles.button} onPress={retry}>
+        <Text style={ebStyles.buttonText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const ebStyles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  title: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  message: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 24 },
+  button: { backgroundColor: '#4A90E2', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
@@ -75,7 +95,11 @@ export default function RootLayout() {
   );
 }
 
+export default Sentry.wrap(RootLayout);
+
 function RootLayoutNav() {
+  useOTAUpdates();
+
   const { session, profile, loading } = useAuth();
   const { resolvedTheme } = useUserSettings();
   const { isActive: subscriptionActive, isLoading: subscriptionLoading } = useSubscription();
@@ -88,6 +112,14 @@ function RootLayoutNav() {
   useEffect(() => {
     configureRevenueCat();
   }, []);
+
+  useEffect(() => {
+    if (session?.user) {
+      Sentry.setUser({ id: session.user.id, email: session.user.email });
+    } else {
+      Sentry.setUser(null);
+    }
+  }, [session]);
 
   useEffect(() => {
     if (!loading && !hasHydratedAuth) {
@@ -137,6 +169,7 @@ function RootLayoutNav() {
 
     rescheduleNotifications().catch((error) => {
       console.error('Error rescheduling notifications on app launch:', error);
+      captureError(error, { tag: 'notifications.reschedule' });
     });
   }, [hasHydratedAuth]);
 
