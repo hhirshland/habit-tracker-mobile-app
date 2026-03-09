@@ -3,6 +3,7 @@ import { Habit } from '../types';
 // Mock supabase before importing habits
 jest.mock('../supabase');
 jest.mock('../health');
+jest.mock('../sentry');
 
 import {
   getHabitsForDay,
