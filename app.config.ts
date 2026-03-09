@@ -6,7 +6,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: IS_DEV ? "Thrive (Dev)" : "Thrive",
   slug: "habit-tracker",
-  version: "1.0.1",
+  version: "1.0.2",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: IS_DEV ? "habittracker-dev" : "habittracker",
