@@ -92,13 +92,13 @@ function buildSystemPrompt(
 ): string {
   const todosSection =
     todos.length > 0
-      ? `### Top 3 Priorities
-Today's remaining priorities:
+      ? `### Daily Intentions
+Today's remaining intentions:
 ${todos.map((t) => `- ${t.text} (id: ${t.id}, position: ${t.position})`).join("\n")}
 
-Ask about each one. For each completed todo, call the complete_todo function with the todo_id.
-If they didn't finish a todo, acknowledge and move on.`
-      : "### Top 3 Priorities\nNo remaining priorities for today — skip this section or mention they're all done.";
+Ask about each one. For each completed intention, call the complete_todo function with the todo_id.
+If they didn't finish an intention, acknowledge and move on.`
+      : "### Daily Intentions\nAll intentions completed today — acknowledge their follow-through and move on.";
 
   const habitsSection =
     habits.length > 0
@@ -117,7 +117,7 @@ If they simply didn't do it and don't mention skipping, just acknowledge warmly 
 
 Your job is to have a warm, natural conversation covering three topics in order:
 1. Daily Journal (win, tension, gratitude)
-2. Top 3 priorities for the day
+2. Daily intentions
 3. Habit check-in
 
 ## Conversation Flow
@@ -145,7 +145,7 @@ End with brief, genuine encouragement. Keep the whole call to 3-5 minutes.
 - If they want to skip a section, respect that immediately.
 - Don't repeat back exactly what they said — paraphrase naturally.
 - Call tool functions as you go through the conversation, not all at the end.
-- NEVER fabricate habit names or todo items beyond the specific ones listed above.`;
+- NEVER fabricate habit names or intention items beyond the specific ones listed above.`;
 }
 
 function buildTools(serverUrl: string) {

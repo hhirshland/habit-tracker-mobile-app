@@ -57,6 +57,10 @@ import CalendarStrip from '@/components/CalendarStrip';
 import ThriveLogo from '@/components/ThriveLogo';
 import Top3TodosSection from '@/components/Top3TodosSection';
 import DailyJournalSection from '@/components/DailyJournalSection';
+import DefineIdentityCard from '@/components/DefineIdentityCard';
+import { useIdentityStatements } from '@/hooks/useIdentityQuery';
+import { CATEGORY_ICONS } from '@/components/CategoryPicker';
+import { getCategoryIdForStatement } from '@/lib/identityTemplates';
 
 const CALENDAR_BUFFER = 30; // days in each direction
 
@@ -104,6 +108,17 @@ export default function HomeScreen() {
       end: formatDate(end),
     };
   }, [selectedDate]);
+
+  // ── Identity statements ──
+  const { data: identityStatements = [] } = useIdentityStatements();
+  const identityIconMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const identity of identityStatements) {
+      const catId = getCategoryIdForStatement(identity.statement);
+      map.set(identity.id, CATEGORY_ICONS[catId] ?? 'star');
+    }
+    return map;
+  }, [identityStatements]);
 
   // ── Queries (cached, stale-while-revalidate) ──
   const { data: habits = [], isLoading: habitsLoading } = useHabits();
@@ -341,10 +356,16 @@ export default function HomeScreen() {
     | { type: 'label'; label: string }
     | { type: 'todosSection' }
     | { type: 'journalSection' }
-    | { type: 'completedJournal' };
+    | { type: 'completedJournal' }
+    | { type: 'identityCard' };
 
   const buildListData = (): ListItem[] => {
     const items: ListItem[] = [];
+
+    // Identity card for existing users without identities
+    if (identityStatements.length === 0) {
+      items.push({ type: 'identityCard' });
+    }
 
     // Top 3 Todos section
     if (top3Enabled) {
@@ -393,6 +414,14 @@ export default function HomeScreen() {
   const listData = buildListData();
 
   const renderItem = ({ item }: { item: ListItem }) => {
+    if (item.type === 'identityCard') {
+      return (
+        <View style={styles.itemWrapper}>
+          <DefineIdentityCard />
+        </View>
+      );
+    }
+
     if (item.type === 'label') {
       return <Text style={styles.sectionLabel}>{item.label}</Text>;
     }
@@ -443,6 +472,7 @@ export default function HomeScreen() {
           onToggle={() => handleToggle(habit)}
           onSnooze={() => handleSnooze(habit)}
           onUnsnooze={() => handleUnsnooze(habit)}
+          identityIcon={habit.identity_statement_id ? (identityIconMap.get(habit.identity_statement_id) as any) : undefined}
         />
       </View>
     );
@@ -508,6 +538,7 @@ export default function HomeScreen() {
             if (item.type === 'todosSection') return 'todos-section';
             if (item.type === 'journalSection') return 'journal-section';
             if (item.type === 'completedJournal') return 'completed-journal';
+            if (item.type === 'identityCard') return 'identity-card';
             return `habit-${item.habit.id}`;
           }}
           renderItem={renderItem}

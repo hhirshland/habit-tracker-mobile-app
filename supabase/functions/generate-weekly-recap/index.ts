@@ -141,10 +141,11 @@ Deno.serve(async (req: Request) => {
       goalsResult,
       goalEntriesResult,
       journalResult,
+      identityResult,
     ] = await Promise.all([
       supabase
         .from("habits")
-        .select("id, name, frequency_per_week, specific_days")
+        .select("id, name, frequency_per_week, specific_days, identity_statement_id")
         .eq("user_id", user_id)
         .eq("is_active", true),
       supabase
@@ -170,6 +171,11 @@ Deno.serve(async (req: Request) => {
         .eq("user_id", user_id)
         .gte("journal_date", week_start)
         .lte("journal_date", week_end),
+      supabase
+        .from("identity_statements")
+        .select("id, statement, emoji")
+        .eq("user_id", user_id)
+        .eq("is_active", true),
     ]);
 
     const habits = habitsResult.data ?? [];
@@ -177,6 +183,7 @@ Deno.serve(async (req: Request) => {
     const goals = goalsResult.data ?? [];
     const goalEntries = goalEntriesResult.data ?? [];
     const journalEntries = journalResult.data ?? [];
+    const identityStatements = identityResult.data ?? [];
 
     console.log("Data fetched:", {
       habits: habits.length,
@@ -184,6 +191,7 @@ Deno.serve(async (req: Request) => {
       goals: goals.length,
       goalEntries: goalEntries.length,
       journalEntries: journalEntries.length,
+      identityStatements: identityStatements.length,
     });
 
     // Count distinct active days (4-day minimum threshold)
@@ -229,6 +237,35 @@ Deno.serve(async (req: Request) => {
       };
     });
 
+    // Build identity context only when the user has identity statements
+    let identityContext = null;
+    if (identityStatements.length > 0) {
+      identityContext = identityStatements.map((identity) => {
+        const mappedHabits = habits.filter(
+          (h) => h.identity_statement_id === identity.id,
+        );
+        const totalTarget = mappedHabits.reduce(
+          (sum, h) => sum + h.frequency_per_week,
+          0,
+        );
+        const totalCompleted = mappedHabits.reduce((sum, h) => {
+          return (
+            sum +
+            completions.filter((c) => c.habit_id === h.id).length
+          );
+        }, 0);
+        return {
+          statement: identity.statement,
+          emoji: identity.emoji,
+          habits: mappedHabits.map((h) => h.name),
+          adherence_pct:
+            totalTarget > 0
+              ? Math.round((totalCompleted / totalTarget) * 100)
+              : 0,
+        };
+      });
+    }
+
     const userPrompt = JSON.stringify(
       {
         week: { start: week_start, end: week_end },
@@ -236,10 +273,17 @@ Deno.serve(async (req: Request) => {
         habits: habitSummaries,
         goals: goalSummaries,
         journal_entries: journalEntries.length > 0 ? journalEntries : null,
+        ...(identityContext ? { identities: identityContext } : {}),
       },
       null,
       2,
     );
+
+    // Build system prompt with optional identity instructions
+    let systemPrompt = RECAP_SYSTEM_PROMPT;
+    if (identityContext && identityContext.length > 0) {
+      systemPrompt += `\n\nThe user has defined identity statements — "I am ___" declarations that represent who they want to become. Habits are mapped to these identities. When identities are present in the data:\n- Include an "identity_review" field in your JSON output with this schema:\n  "identity_review": {\n    "identities": [{ "statement": "<identity>", "emoji": "<emoji>", "adherence_pct": <number>, "mapped_habit_count": <number> }],\n    "narrative": "<2-3 sentences weaving identity progress into the motivational narrative. Celebrate identities where adherence is high — 'You really showed up as [identity] this week.' Gently encourage identities that slipped — 'Next week, let's channel more energy into being [identity].' Use their emojis.>"\n  }\n- Reference their identities in week_summary and looking_ahead naturally.\n- If no identities are in the data, omit identity_review entirely.`;
+    }
 
     // Call Claude API
     console.log("Calling Claude API...");
@@ -256,7 +300,7 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 2048,
-          system: RECAP_SYSTEM_PROMPT,
+          system: systemPrompt,
           messages: [
             {
               role: "user",

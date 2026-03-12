@@ -80,7 +80,7 @@ const DailyTodoItem = forwardRef<DailyTodoItemHandle, DailyTodoItemProps>(functi
         <View style={styles.emptyCheckbox}>
           <Text style={styles.positionNumber}>{position}</Text>
         </View>
-        <Text style={styles.placeholder}>Add a todo...</Text>
+        <Text style={styles.placeholder}>Set an intention...</Text>
       </TouchableOpacity>
     );
   }
@@ -95,7 +95,7 @@ const DailyTodoItem = forwardRef<DailyTodoItemHandle, DailyTodoItemProps>(functi
           style={styles.input}
           value={text}
           onChangeText={setText}
-          placeholder="What's your priority?"
+          placeholder="What matters today?"
           placeholderTextColor={colors.textMuted}
           autoFocus
           onSubmitEditing={handleSubmitEditing}

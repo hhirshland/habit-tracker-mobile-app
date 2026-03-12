@@ -5,6 +5,12 @@ import { Session, User } from '@supabase/supabase-js';
 import { EVENTS, captureEvent, identifyUser, resetUser, setUserProperties } from '@/lib/analytics';
 import { configureRevenueCat, loginRevenueCat, logoutRevenueCat } from '@/lib/revenueCat';
 import { captureError } from '@/lib/sentry';
+import {
+  signInWithApple as socialSignInWithApple,
+  signInWithGoogle as socialSignInWithGoogle,
+  linkAppleIdentity as socialLinkApple,
+  linkGoogleIdentity as socialLinkGoogle,
+} from '@/lib/socialAuth';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/lib/types';
 
@@ -15,6 +21,10 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithApple: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  linkAppleIdentity: () => Promise<{ error: Error | null }>;
+  linkGoogleIdentity: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -278,6 +288,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithApple = async () => {
+    try {
+      await socialSignInWithApple();
+      captureEvent(EVENTS.USER_SIGNED_UP, { method: 'apple' });
+      return { error: null };
+    } catch (error) {
+      captureError(error, { tag: 'auth.signInWithApple' });
+      return { error: error as Error };
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      await socialSignInWithGoogle();
+      captureEvent(EVENTS.USER_SIGNED_UP, { method: 'google' });
+      return { error: null };
+    } catch (error) {
+      captureError(error, { tag: 'auth.signInWithGoogle' });
+      return { error: error as Error };
+    }
+  };
+
+  const linkAppleIdentity = async () => {
+    try {
+      await socialLinkApple();
+      return { error: null };
+    } catch (error) {
+      captureError(error, { tag: 'auth.linkAppleIdentity' });
+      return { error: error as Error };
+    }
+  };
+
+  const linkGoogleIdentity = async () => {
+    try {
+      await socialLinkGoogle();
+      return { error: null };
+    } catch (error) {
+      captureError(error, { tag: 'auth.linkGoogleIdentity' });
+      return { error: error as Error };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     logoutRevenueCat().catch((err) => {
@@ -317,6 +369,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         signUp,
         signIn,
+        signInWithApple,
+        signInWithGoogle,
+        linkAppleIdentity,
+        linkGoogleIdentity,
         signOut,
         deleteAccount,
         refreshProfile,

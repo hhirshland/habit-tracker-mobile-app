@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { captureEvent, EVENTS } from '@/lib/analytics';
@@ -11,8 +12,11 @@ export default function WelcomeScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  const startTime = useRef(Date.now());
+
   useEffect(() => {
     captureEvent(EVENTS.ONBOARDING_STARTED);
+    captureEvent(EVENTS.ONBOARDING_STEP_VIEWED, { step_name: 'welcome', step_number: 0 });
   }, []);
 
   return (
@@ -51,12 +55,26 @@ export default function WelcomeScreen() {
               </View>
             ))}
           </View>
+
+          <View style={styles.socialProof}>
+            <FontAwesome name="star" size={14} color={colors.warning} />
+            <Text style={styles.socialProofText}>
+              Join thousands building better habits with Thrive
+            </Text>
+          </View>
         </View>
 
         <View style={styles.bottom}>
           <TouchableOpacity
             style={styles.ctaButton}
-            onPress={() => router.push('/(onboarding)/goals')}
+            onPress={() => {
+              captureEvent(EVENTS.ONBOARDING_STEP_COMPLETED, {
+                step_name: 'welcome',
+                step_number: 0,
+                duration_seconds: Math.round((Date.now() - startTime.current) / 1000),
+              });
+              router.push('/(onboarding)/paywall');
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.ctaText}>Get Started</Text>
@@ -123,6 +141,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
     features: {
       gap: theme.spacing.md,
       paddingHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.xl,
     },
     featureRow: {
       flexDirection: 'row',
@@ -147,6 +166,17 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       fontSize: theme.fontSize.md,
       color: colors.textPrimary,
       lineHeight: 22,
+    },
+    socialProof: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.xs,
+    },
+    socialProofText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+      fontWeight: theme.fontWeight.medium,
     },
     bottom: {
       paddingHorizontal: theme.spacing.lg,

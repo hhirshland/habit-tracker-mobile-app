@@ -1,0 +1,34 @@
+---
+description: Backward compatibility requirements for database, edge functions, and API changes. Apply when modifying Supabase migrations, edge functions, shared types, or any backend contract.
+globs:
+  - supabase/migrations/**
+  - supabase/functions/**
+  - lib/types.ts
+---
+
+# Backward Compatibility
+
+Thrive is a mobile app with users on older versions that cannot be force-upgraded. Every backend change must be safe for clients that don't know about the change yet.
+
+## Database migrations
+
+- **Additive only.** Create new tables and add new nullable columns. Never drop, rename, or add NOT NULL constraints to existing columns in the same release.
+- New columns must be nullable or have a safe default so that older clients inserting rows without the new column succeed.
+- Never change a column's type in place. If a type change is needed, add a new column, migrate data, and deprecate the old one in a later release.
+- Foreign keys on new nullable columns must use `ON DELETE SET NULL` or `ON DELETE CASCADE` as appropriate — never leave dangling references.
+
+## Edge functions
+
+- Every edge function that reads new data (new tables, new columns) must handle the case where that data does not exist. If a user has no rows in a new table, the function must behave identically to its pre-feature behavior.
+- Never remove or rename fields in a function's JSON response. New fields are fine; removing or renaming existing fields breaks older clients.
+- When augmenting an AI prompt (e.g., weekly recaps), wrap new context sections in a conditional so the prompt is unchanged when the new data is absent.
+
+## Shared types (`lib/types.ts`)
+
+- New fields on existing interfaces must be optional (`field?: type` or `field: type | null`).
+- Never remove or rename existing fields. Deprecate with a comment and remove in a future major version.
+- Client code must handle the absence of new optional fields gracefully (e.g., recaps generated before a feature was added will lack the new fields).
+
+## General principle
+
+When in doubt, ask: "If a user on the previous app version hits this endpoint / reads this table / parses this response, does everything still work?" If the answer is no, redesign the change to be additive.

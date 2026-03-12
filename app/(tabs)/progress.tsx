@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Modal,
   Platform,
   Linking,
 } from 'react-native';
@@ -20,7 +21,6 @@ import { useThemeColors } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHealth } from '@/contexts/HealthContext';
 import {
-  WorkoutSummary,
   HEALTH_METRIC_DISPLAY_NAMES,
 } from '@/lib/health';
 import { getWeekRange } from '@/lib/habits';
@@ -103,29 +103,6 @@ function MetricCard({ title, value, subtitle, icon, color, sparklineData, onPres
       <Text style={styles.metricTitle}>{title}</Text>
       {subtitle && <Text style={styles.metricSubtitle}>{subtitle}</Text>}
     </Wrapper>
-  );
-}
-
-// ─────────────────────────────────────────────────
-// Workout Row Component
-// ─────────────────────────────────────────────────
-
-function WorkoutRow({ workout, styles, colors }: { workout: WorkoutSummary; styles: ReturnType<typeof createStyles>; colors: ThemeColors }) {
-  const date = new Date(workout.date);
-  const dayStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-  return (
-    <View style={styles.workoutRow}>
-      <View style={styles.workoutIcon}>
-        <FontAwesome name="bolt" size={14} color={colors.warning} />
-      </View>
-      <View style={styles.workoutInfo}>
-        <Text style={styles.workoutTitle}>{workout.activityName ?? 'Workout'} · {dayStr}</Text>
-        <Text style={styles.workoutDetails}>
-          {workout.duration} min{workout.calories > 0 ? ` · ${workout.calories} cal` : ''}
-        </Text>
-      </View>
-    </View>
   );
 }
 
@@ -315,7 +292,7 @@ export default function ProgressScreen() {
     }
 
     return {
-      habit: { id: '__top3_todos__', name: 'Finish top 3 todos' } as Habit,
+      habit: { id: '__top3_todos__', name: 'Complete daily intentions' } as Habit,
       completedDays: daysCompleted,
       targetDays,
       adherencePercent: Math.min(100, Math.round((daysCompleted / targetDays) * 100)),
@@ -333,6 +310,7 @@ export default function ProgressScreen() {
   const [visibleMetricKeys, setVisibleMetricKeys] = useState<string[]>(DEFAULT_VISIBLE_KEYS);
   const [selectedMetric, setSelectedMetric] = useState<MetricDefinition | null>(null);
   const [showEditMetrics, setShowEditMetrics] = useState(false);
+  const [showJournalHistory, setShowJournalHistory] = useState(false);
 
   // Load saved metric preferences on mount
   useEffect(() => {
@@ -539,9 +517,20 @@ export default function ProgressScreen() {
           onSelectWeek={setSelectedRecapWeek}
         />
 
-        {/* Journal History Section */}
-        {journalEnabled && (
-          <JournalHistorySection entries={journalEntries} />
+        {/* Journal History Row */}
+        {journalEnabled && journalEntries.length > 0 && (
+          <TouchableOpacity
+            style={styles.journalRow}
+            onPress={() => setShowJournalHistory(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.journalRowLeft}>
+              <FontAwesome name="book" size={16} color={colors.primary} />
+              <Text style={styles.journalRowLabel}>Journal</Text>
+              <Text style={styles.journalRowCount}>{journalEntries.length} entries</Text>
+            </View>
+            <FontAwesome name="chevron-right" size={12} color={colors.textMuted} />
+          </TouchableOpacity>
         )}
 
         {/* Goals Section */}
@@ -619,18 +608,6 @@ export default function ProgressScreen() {
               })}
             </View>
 
-            {/* Recent Workouts */}
-            {metrics.workoutsThisWeek.length > 0 && (
-              <>
-                <Text style={styles.sectionLabel}>Recent Workouts</Text>
-                <View style={styles.workoutsCard}>
-                  {metrics.workoutsThisWeek.slice(0, 5).map((workout) => (
-                    <WorkoutRow key={workout.id} workout={workout} styles={styles} colors={colors} />
-                  ))}
-                </View>
-              </>
-            )}
-
             {/* Hint about linking */}
             <View style={styles.hintCard}>
               <FontAwesome name="lightbulb-o" size={16} color={colors.primary} />
@@ -691,6 +668,29 @@ export default function ProgressScreen() {
         onClose={() => setSelectedRecapWeek(null)}
       />
 
+      {/* Journal History Modal */}
+      <Modal
+        visible={showJournalHistory}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowJournalHistory(false)}
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.journalModalHeader}>
+            <Text style={styles.headerTitle}>Journal History</Text>
+            <TouchableOpacity onPress={() => setShowJournalHistory(false)}>
+              <FontAwesome name="times" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xl }}
+            showsVerticalScrollIndicator={false}
+          >
+            <JournalHistorySection entries={journalEntries} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -736,6 +736,39 @@ function createStyles(colors: ThemeColors) {
     marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.md,
   },
+  journalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    ...theme.shadow.sm,
+  },
+  journalRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  journalRowLabel: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  journalRowCount: {
+    fontSize: theme.fontSize.sm,
+    color: colors.textMuted,
+  },
+  journalModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
 
   // Metric Cards
   metricsGrid: {
@@ -780,41 +813,6 @@ function createStyles(colors: ThemeColors) {
     marginTop: 2,
   },
 
-  // Workouts
-  workoutsCard: {
-    backgroundColor: colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.sm,
-    ...theme.shadow.sm,
-  },
-  workoutRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
-  },
-  workoutIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: colors.warningOverlay18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: theme.spacing.sm,
-  },
-  workoutInfo: {
-    flex: 1,
-  },
-  workoutTitle: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  workoutDetails: {
-    fontSize: theme.fontSize.xs,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
 
   // Connect CTA
   ctaContainer: {

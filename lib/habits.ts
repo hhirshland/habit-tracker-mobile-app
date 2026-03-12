@@ -131,6 +131,7 @@ export async function createHabit(
     metric_type?: HealthMetricType | null;
     metric_threshold?: number | null;
     auto_complete?: boolean;
+    identity_statement_id?: string | null;
   }
 ): Promise<Habit> {
   const { data, error } = await supabase
@@ -144,6 +145,7 @@ export async function createHabit(
       metric_type: habit.metric_type || null,
       metric_threshold: habit.metric_threshold || null,
       auto_complete: habit.auto_complete || false,
+      identity_statement_id: habit.identity_statement_id || null,
     })
     .select()
     .single();
@@ -164,6 +166,7 @@ export async function updateHabit(
     metric_type?: HealthMetricType | null;
     metric_threshold?: number | null;
     auto_complete?: boolean;
+    identity_statement_id?: string | null;
   }
 ): Promise<Habit> {
   const { data, error } = await supabase

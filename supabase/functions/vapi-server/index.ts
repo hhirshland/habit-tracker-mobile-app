@@ -87,6 +87,37 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+// ─── Resolve user from call metadata or phone number fallback ───
+
+async function resolveCallUser(
+  supabase: ReturnType<typeof createClient>,
+  call: any,
+): Promise<{ userId: string; callDate: string } | null> {
+  const metadata = call?.metadata || {};
+  if (metadata.user_id) {
+    return {
+      userId: metadata.user_id,
+      callDate: metadata.call_date || new Date().toISOString().split("T")[0],
+    };
+  }
+
+  // Inbound calls don't carry metadata — look up by caller phone number
+  const callerNumber = call?.customer?.number;
+  if (!callerNumber) return null;
+
+  const { data: user } = await supabase
+    .from("profiles")
+    .select("user_id, timezone")
+    .eq("phone_number", callerNumber)
+    .maybeSingle();
+
+  if (!user) return null;
+
+  const tz = user.timezone || "America/New_York";
+  const callDate = new Date().toLocaleDateString("en-CA", { timeZone: tz });
+  return { userId: user.user_id, callDate };
+}
+
 // ─── Tool Calls (mid-conversation function calling) ───
 
 async function handleToolCalls(
@@ -95,13 +126,12 @@ async function handleToolCalls(
   posthogKey: string,
 ): Promise<Response> {
   const toolCalls = message.toolCallList || [];
-  const metadata = message.call?.metadata || {};
-  const userId = metadata.user_id;
-  const callDate =
-    metadata.call_date || new Date().toISOString().split("T")[0];
+  const resolved = await resolveCallUser(supabase, message.call);
+  const userId = resolved?.userId;
+  const callDate = resolved?.callDate || new Date().toISOString().split("T")[0];
 
   if (!userId) {
-    console.error("Missing user_id in call metadata. Full call object:", JSON.stringify(message.call));
+    console.error("Could not resolve user_id from metadata or phone number. Full call object:", JSON.stringify(message.call));
     return jsonResponse({
       results: toolCalls.map((tc: any) => ({
         toolCallId: tc.id,
@@ -262,9 +292,9 @@ async function handleEndOfCall(
   const callId = message.call?.id;
   const endedReason = message.endedReason;
   const durationSeconds = message.durationSeconds ?? message.call?.duration ?? 0;
-  const metadata = message.call?.metadata || {};
-  const userId = metadata.user_id;
-  const callDate = metadata.call_date;
+  const resolved = await resolveCallUser(supabase, message.call);
+  const userId = resolved?.userId;
+  const callDate = resolved?.callDate;
 
   if (!callId) {
     return jsonResponse({ message: "OK" });
@@ -428,12 +458,12 @@ async function handleAssistantRequest(
 
   const todosSection =
     uncompletedTodos.length > 0
-      ? `### Top 3 Priorities
-Remaining priorities:
+      ? `### Daily Intentions
+Remaining intentions:
 ${uncompletedTodos.map((t: any) => `- ${t.text} (id: ${t.id}, position: ${t.position})`).join("\n")}
 
 Ask about each. For completed ones, call complete_todo.`
-      : "### Top 3 Priorities\nAll priorities done today — skip or mention great job.";
+      : "### Daily Intentions\nAll intentions completed today — acknowledge their follow-through and move on.";
 
   const habitsSection =
     uncompletedHabits.length > 0
@@ -451,7 +481,7 @@ If they simply didn't do it, acknowledge warmly and move on.`
 
 Walk through three topics in order:
 1. Daily Journal (win, tension, gratitude)
-2. Top 3 priorities for the day
+2. Daily intentions
 3. Habit check-in
 
 ### Journal
@@ -546,6 +576,9 @@ End with brief encouragement. Keep the call to 3-5 minutes.
     direction: "inbound",
   });
 
+  // Note: Vapi's assistant-request response does not support a top-level
+  // `metadata` field. For inbound calls, resolveCallUser falls back to
+  // looking up the user by phone number on subsequent tool-calls/end-of-call.
   return jsonResponse({
     assistant: {
       model: {
@@ -567,10 +600,6 @@ End with brief encouragement. Keep the call to 3-5 minutes.
         language: "en",
       },
       maxDurationSeconds: 600,
-    },
-    metadata: {
-      user_id: user.user_id,
-      call_date: today,
     },
   });
 }

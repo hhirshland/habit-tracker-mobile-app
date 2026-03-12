@@ -25,7 +25,7 @@ export default function Top3TodosSection({
   const itemRefs = useRef<(DailyTodoItemHandle | null)[]>([null, null, null]);
 
   const handleDelete = (todo: DailyTodo) => {
-    Alert.alert('Delete Todo', `Remove "${todo.text}"?`, [
+    Alert.alert('Remove Intention', `Remove "${todo.text}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => onDelete(todo) },
     ]);
@@ -42,7 +42,7 @@ export default function Top3TodosSection({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionLabel}>Top 3 Todos</Text>
+      <Text style={styles.sectionLabel}>Daily Intentions</Text>
       <View style={styles.card}>
         {[1, 2, 3].map((pos) => (
           <DailyTodoItem

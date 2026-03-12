@@ -46,13 +46,22 @@ export const EVENTS = {
   EVENING_CALL_DISABLED: 'evening_call_disabled',
   EVENING_CALL_TRIGGERED: 'evening_call_triggered',
   ACCOUNT_DELETED: 'account_deleted',
+  IDENTITY_CREATED: 'identity_created',
+  IDENTITY_UPDATED: 'identity_updated',
+  IDENTITY_DELETED: 'identity_deleted',
+  IDENTITY_ONBOARDING_COMPLETED: 'identity_onboarding_completed',
+  HABIT_IDENTITY_LINKED: 'habit_identity_linked',
+  HABIT_IDENTITY_UNLINKED: 'habit_identity_unlinked',
+  ONBOARDING_STEP_VIEWED: 'onboarding_step_viewed',
+  ONBOARDING_STEP_COMPLETED: 'onboarding_step_completed',
+  ONBOARDING_ABANDONED: 'onboarding_abandoned',
 } as const;
 
 type EventName = (typeof EVENTS)[keyof typeof EVENTS];
 
 type EventPropertiesMap = {
-  user_signed_up: { method: 'email' };
-  user_signed_in: { method: 'email' };
+  user_signed_up: { method: 'email' | 'apple' | 'google' };
+  user_signed_in: { method: 'email' | 'apple' | 'google' };
   user_signed_out: undefined;
   onboarding_started: undefined;
   onboarding_habit_added: {
@@ -189,6 +198,33 @@ type EventPropertiesMap = {
     goals: string[];
     goal_count: number;
   };
+  identity_created: {
+    statement: string;
+    emoji: string;
+    is_template: boolean;
+    source: 'onboarding' | 'settings' | 'existing_user_card';
+  };
+  identity_updated: {
+    identity_id: string;
+    fields_changed: string[];
+  };
+  identity_deleted: {
+    identity_id: string;
+  };
+  identity_onboarding_completed: {
+    identity_count: number;
+    template_count: number;
+    custom_count: number;
+  };
+  habit_identity_linked: {
+    habit_id: string;
+    identity_id: string;
+    source: 'onboarding' | 'habit_form' | 'existing_user_card';
+  };
+  habit_identity_unlinked: {
+    habit_id: string;
+    identity_id: string;
+  };
   onboarding_plan_viewed: {
     experience_level: string;
     challenge: string;
@@ -200,6 +236,19 @@ type EventPropertiesMap = {
   evening_call_disabled: undefined;
   evening_call_triggered: undefined;
   account_deleted: undefined;
+  onboarding_step_viewed: {
+    step_name: string;
+    step_number: number;
+  };
+  onboarding_step_completed: {
+    step_name: string;
+    step_number: number;
+    duration_seconds: number;
+  };
+  onboarding_abandoned: {
+    last_step_name: string;
+    last_step_number: number;
+  };
 };
 
 export function captureEvent<T extends EventName>(

@@ -1,0 +1,39 @@
+---
+description: Thrive product philosophy — north star, identity thesis, and decision-making lens for all product work
+alwaysApply: true
+---
+
+# Product Philosophy
+
+## North Star
+
+Help people become the person they want to be through identity-first habit building.
+
+## The Daily Loop
+
+Thrive's core experience is a daily cycle of intentionality:
+
+- **Morning:** Set Daily Intentions — choose the 3 things that matter most today
+- **Daytime:** Execute habits aligned with identity statements
+- **Evening:** Reflect via journal and/or AI-guided check-in call
+
+Every feature should strengthen one of these three moments or the connections between them.
+
+## Addition by Subtraction
+
+Before proposing a new feature or surface, first ask:
+
+1. Does this strengthen or dilute the identity thesis?
+2. Can an existing feature be repositioned to serve this need instead?
+3. Would removing something else make room for this to land better?
+
+Prefer removing, consolidating, or repositioning over adding. Features must earn their place — if a surface doesn't connect back to identity, intentionality, or self-trust, question whether it belongs.
+
+## Evaluating Features
+
+When reviewing or building features, apply this filter: *Does this help the user become the person they want to be, or does it just add functionality?* Functionality without identity alignment is clutter.
+
+## Key References
+
+- Product vision: `docs/prds/identity-first-habits.md`
+- Feature positioning: `docs/feature-positioning.md`

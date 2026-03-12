@@ -66,6 +66,22 @@ export interface Habit {
   metric_type: HealthMetricType | null; // linked health metric
   metric_threshold: number | null; // threshold to auto-complete
   auto_complete: boolean; // whether to auto-complete from health data
+  identity_statement_id?: string | null; // linked identity statement
+  created_at: string;
+  updated_at: string;
+}
+
+// ──────────────────────────────────────────────
+// Identity Statements
+// ──────────────────────────────────────────────
+
+export interface IdentityStatement {
+  id: string;
+  user_id: string;
+  statement: string;
+  emoji: string;
+  sort_order: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -76,7 +92,7 @@ export const METRIC_TYPE_LABELS: Record<HealthMetricType, string> = {
   resting_heart_rate: 'Resting HR (bpm)',
   workout_minutes: 'Workout Min',
   body_fat_percentage: 'Body Fat (%)',
-  lean_body_mass: 'Lean Mass (lbs)',
+  lean_body_mass: 'Lean Mass %',
   bmi: 'BMI',
   exercise_minutes: 'Exercise Min',
   time_in_daylight: 'Daylight (min)',
@@ -119,13 +135,14 @@ export interface HabitSnooze {
 export type GoalType =
   | 'weight'
   | 'running_pr'
-  | 'steps'
   | 'resting_hr'
-  | 'weekly_workouts'
   | 'body_fat'
   | 'bmi'
-  | 'lean_body_mass'
-  | 'custom';
+  | 'lean_body_mass_pct'
+  | 'custom'
+  | 'steps'             // deprecated — existing goals still render
+  | 'weekly_workouts'   // deprecated — existing goals still render
+  | 'lean_body_mass';   // deprecated — replaced by lean_body_mass_pct
 
 export interface Goal {
   id: string;
@@ -157,38 +174,45 @@ export interface GoalEntry {
 export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   weight: 'Target Weight',
   running_pr: 'Running PR',
-  steps: 'Daily Steps',
   resting_hr: 'Resting Heart Rate',
-  weekly_workouts: 'Weekly Workouts',
   body_fat: 'Body Fat %',
   bmi: 'BMI',
-  lean_body_mass: 'Lean Body Mass',
+  lean_body_mass_pct: 'Lean Body Mass %',
   custom: 'Custom Goal',
+  steps: 'Daily Steps',
+  weekly_workouts: 'Weekly Workouts',
+  lean_body_mass: 'Lean Body Mass',
 };
 
 export const GOAL_TYPE_ICONS: Record<GoalType, string> = {
   weight: 'balance-scale',
   running_pr: 'clock-o',
-  steps: 'road',
   resting_hr: 'heartbeat',
-  weekly_workouts: 'bolt',
   body_fat: 'pie-chart',
   bmi: 'calculator',
-  lean_body_mass: 'child',
+  lean_body_mass_pct: 'child',
   custom: 'star',
+  steps: 'road',
+  weekly_workouts: 'bolt',
+  lean_body_mass: 'child',
 };
 
 export const GOAL_TYPE_COLORS: Record<GoalType, string> = {
   weight: '#2196F3',
   running_pr: '#FF5722',
-  steps: '#4CAF50',
   resting_hr: '#E91E63',
-  weekly_workouts: '#F39C12',
   body_fat: '#9C27B0',
   bmi: '#607D8B',
-  lean_body_mass: '#00BCD4',
+  lean_body_mass_pct: '#00BCD4',
   custom: '#6C63FF',
+  steps: '#4CAF50',
+  weekly_workouts: '#F39C12',
+  lean_body_mass: '#00BCD4',
 };
+
+export const CREATABLE_GOAL_TYPES: GoalType[] = [
+  'weight', 'running_pr', 'resting_hr', 'body_fat', 'bmi', 'lean_body_mass_pct', 'custom',
+];
 
 export interface DailyJournalEntry {
   id: string;
@@ -235,6 +259,15 @@ export interface WeeklyRecapContent {
     gratitude_highlight: string | null;
   };
   looking_ahead: string;
+  identity_review?: {
+    identities: Array<{
+      statement: string;
+      emoji: string;
+      adherence_pct: number;
+      mapped_habit_count: number;
+    }>;
+    narrative: string;
+  } | null;
 }
 
 export interface WeeklyRecap {

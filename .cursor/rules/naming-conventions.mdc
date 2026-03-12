@@ -1,0 +1,33 @@
+---
+description: User-facing vs internal naming — when rebranding features, only change user-visible strings, never rename internal identifiers
+globs:
+  - components/**
+  - app/**
+alwaysApply: false
+---
+
+# User-Facing vs Internal Naming
+
+When a feature is rebranded or repositioned, there are two layers of naming:
+
+## User-facing strings (safe to change)
+
+UI labels, placeholder text, notification copy, AI system prompts, onboarding descriptions, App Store text. These can be updated freely to reflect new positioning.
+
+## Internal identifiers (do NOT rename)
+
+Database tables, column names, settings keys, analytics event names, component filenames, hook names, query keys, and route paths. These have persistence and backward compatibility implications — renaming them breaks older app versions, stored user data, or analytics pipelines.
+
+## When rebranding a feature
+
+1. Update all user-facing strings to the new name
+2. Keep all internal identifiers unchanged
+3. Update the feature's PRD to document the mapping between internal and external names (see `docs/prds/` for examples)
+4. Update `docs/feature-positioning.md` with the new user-facing name
+5. See `.cursor/rules/backward-compatibility.mdc` for the full backward compatibility policy
+
+## Current mappings
+
+| Internal key | User-facing name |
+|---|---|
+| `top3_todos_enabled`, `daily_todos`, `Top3TodosSection.tsx` | "Daily Intentions" |

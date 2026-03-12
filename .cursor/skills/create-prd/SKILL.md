@@ -54,6 +54,16 @@ Revise as many times as the user wants before saving.
 2. Derive a slug from the feature name (lowercase, hyphens, no special chars). Example: "Weekly Streak Rewards" becomes `weekly-streak-rewards`.
 3. Write the final PRD to `docs/prds/<feature-slug>.md`.
 
+### Step 5b: Updating an existing PRD
+
+When a feature has been repositioned, rebranded, or significantly changed:
+
+1. Read the existing PRD file first to understand what's there.
+2. Preserve the template structure (Part A / Part B) — update every section to reflect the new positioning.
+3. If a feature was rebranded (e.g., "Top 3 Todos" became "Daily Intentions"), update all user-facing references in the PRD while noting the internal naming mapping in the Implementation Notes section.
+4. Update `docs/feature-positioning.md` if the feature's role, name, or loop position changed.
+5. If committing, summarize what changed in the commit message (e.g., "Reframe Top 3 Todos PRD as Daily Intentions to reflect morning ritual positioning").
+
 ### Step 6: Add to Notion
 
 After saving locally, add the PRD to the **Thrive PRDs** Notion database.
@@ -173,6 +183,8 @@ The template has two halves:
 ### Implementation Notes
 
 [Rough technical considerations for handoff to implementation planning. Reference relevant parts of the codebase — screens, components, hooks, Supabase tables, edge functions, etc. Flag dependencies or risks. This section is a bridge to the engineering plan, not a substitute for it.]
+
+**Important:** If the feature touches the database, edge functions, or shared types, include a backward compatibility note. All backend changes must be safe for older app versions. See `.cursor/rules/backward-compatibility.mdc` for the full policy. At minimum, address: are migrations additive-only? Do edge functions handle the zero-data case? Are new type fields optional?
 ```
 
 ---

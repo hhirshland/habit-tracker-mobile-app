@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -20,9 +20,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { EVENTS, captureEvent } from '@/lib/analytics';
 import { createHabit } from '@/lib/habits';
+import { createIdentityStatements } from '@/lib/identityStatements';
 import { supabase } from '@/lib/supabase';
 import { normalizePhoneNumber, updateEveningCallPreferences } from '@/lib/eveningCalls';
 import OnboardingProgress from '@/components/OnboardingProgress';
+import SaveContactButton from '@/components/SaveContactButton';
 
 interface PendingHabit {
   id: string;
@@ -30,18 +32,25 @@ interface PendingHabit {
   description: string;
   frequency_per_week: number;
   specific_days: number[] | null;
+  identity_id?: string;
 }
 
-function parseHabitsParam(rawHabits: string | string[] | undefined): PendingHabit[] {
-  if (!rawHabits) return [];
-  const value = Array.isArray(rawHabits) ? rawHabits[0] : rawHabits;
-  if (!value) return [];
+interface OnboardingIdentity {
+  statement: string;
+  emoji: string;
+  categoryId: string;
+  suggestedHabits: Array<{ name: string; frequency_per_week: number }>;
+  isCustom: boolean;
+}
 
+function parseJsonParam<T>(raw: string | string[] | undefined): T[] {
+  if (!raw) return [];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value) return [];
   try {
     const parsed = JSON.parse(value);
     return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error('Invalid onboarding habits payload:', error);
+  } catch {
     return [];
   }
 }
@@ -51,8 +60,9 @@ export default function OnboardingFeaturesScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, refreshProfile } = useAuth();
   const { updateSettings } = useUserSettings();
-  const params = useLocalSearchParams<{ habits?: string | string[] }>();
-  const habits = useMemo(() => parseHabitsParam(params.habits), [params.habits]);
+  const params = useLocalSearchParams<{ habits?: string | string[]; identities?: string | string[] }>();
+  const habits = useMemo(() => parseJsonParam<PendingHabit>(params.habits), [params.habits]);
+  const identities = useMemo(() => parseJsonParam<OnboardingIdentity>(params.identities), [params.identities]);
 
   const [top3TodosEnabled, setTop3TodosEnabled] = useState(false);
   const [journalEnabled, setJournalEnabled] = useState(false);
@@ -61,6 +71,11 @@ export default function OnboardingFeaturesScreen() {
   const [saving, setSaving] = useState(false);
   const [phoneInputFocused, setPhoneInputFocused] = useState(false);
   const phoneInputRef = useRef<TextInput>(null);
+  const startTime = useRef(Date.now());
+
+  useEffect(() => {
+    captureEvent(EVENTS.ONBOARDING_STEP_VIEWED, { step_name: 'features', step_number: 5 });
+  }, []);
 
   const handleCompleteOnboarding = async () => {
     if (!user) return;
@@ -98,12 +113,32 @@ export default function OnboardingFeaturesScreen() {
         });
       }
 
+      // Create identity statements and build a lookup for linking habits
+      const identityLookup = new Map<string, string>();
+      if (identities.length > 0) {
+        const created = await createIdentityStatements(
+          user.id,
+          identities.map((identity, index) => ({
+            statement: identity.statement,
+            emoji: identity.emoji,
+            sort_order: index,
+          })),
+        );
+        for (const record of created) {
+          identityLookup.set(record.statement, record.id);
+        }
+      }
+
       for (const habit of habits) {
+        const identityStatementId = habit.identity_id
+          ? identityLookup.get(habit.identity_id) ?? null
+          : null;
         await createHabit(user.id, {
           name: habit.name,
           description: habit.description || undefined,
           frequency_per_week: habit.frequency_per_week,
           specific_days: habit.specific_days,
+          identity_statement_id: identityStatementId,
         });
       }
 
@@ -113,6 +148,11 @@ export default function OnboardingFeaturesScreen() {
         .eq('user_id', user.id);
 
       await refreshProfile();
+      captureEvent(EVENTS.ONBOARDING_STEP_COMPLETED, {
+        step_name: 'features',
+        step_number: 5,
+        duration_seconds: Math.round((Date.now() - startTime.current) / 1000),
+      });
       captureEvent(EVENTS.ONBOARDING_COMPLETED, {
         habits_count: habits.length,
         top3_todos_enabled: top3TodosEnabled,
@@ -130,7 +170,7 @@ export default function OnboardingFeaturesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <OnboardingProgress current={7} total={7} />
+      <OnboardingProgress current={5} total={5} />
       <View style={styles.header}>
         <Text style={styles.emoji}>✨</Text>
         <Text style={styles.title}>Choose Extra Features</Text>
@@ -153,7 +193,7 @@ export default function OnboardingFeaturesScreen() {
               <View style={styles.featureIcon}>
                 <FontAwesome name="list-ol" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.featureTitle}>Daily Top 3 Priorities</Text>
+              <Text style={styles.featureTitle}>Daily Intentions</Text>
             </View>
             <Switch
               value={top3TodosEnabled}
@@ -163,8 +203,8 @@ export default function OnboardingFeaturesScreen() {
             />
           </View>
           <Text style={styles.featureDescription}>
-            Each day, pick the three most important tasks you want to finish. Your Top 3 appear on
-            your home screen so your focus is clear before everything else.
+            Start each morning by choosing the three things that matter most. Your intentions appear
+            on your home screen — a daily practice of living with purpose.
           </Text>
         </View>
 
@@ -234,6 +274,7 @@ export default function OnboardingFeaturesScreen() {
                   </TouchableOpacity>
                 )}
               </View>
+              <SaveContactButton compact />
             </View>
           )}
         </View>

@@ -177,8 +177,8 @@ export async function rescheduleNotifications() {
     for (let weekday = 2; weekday <= 7; weekday++) {
       await scheduleWeeklyReminder({
         reminderId: TODO_REMINDER_ID,
-        title: 'Set your Top 3 todos',
-        body: 'Set your top 3 priorities for today.',
+        title: 'Set today\'s intentions',
+        body: 'What are the 3 things that matter most today?',
         weekday,
         hour: 8,
         minute: 0,

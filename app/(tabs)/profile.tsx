@@ -15,6 +15,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, ThemeColors } from '@/lib/theme';
@@ -33,6 +34,9 @@ import {
   hasProEntitlement,
 } from '@/lib/revenueCat';
 import { EVENTS, captureEvent } from '@/lib/analytics';
+import { getLinkedIdentities, isAppleAuthAvailable } from '@/lib/socialAuth';
+import { useIdentityStatements } from '@/hooks/useIdentityQuery';
+import { useHabits } from '@/hooks/useHabitsQuery';
 import type { ThemePreference } from '@/lib/userSettings';
 import {
   updateEveningCallPreferences,
@@ -43,11 +47,12 @@ import {
   formatPhoneDisplay,
   CALL_TIME_OPTIONS,
 } from '@/lib/eveningCalls';
+import SaveContactButton from '@/components/SaveContactButton';
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { user, profile, signOut, deleteAccount, refreshProfile } = useAuth();
+  const { user, profile, signOut, deleteAccount, refreshProfile, linkAppleIdentity, linkGoogleIdentity } = useAuth();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized, authFailed, missingMetrics, connect, requestMorePermissions } = useHealth();
   const { settings, setThemePreference, updateSettings } = useUserSettings();
   const { enabled: notificationsEnabled, toggle: toggleNotifications } = useNotificationsSetting();
@@ -66,6 +71,8 @@ export default function ProfileScreen() {
   const [connecting, setConnecting] = useState(false);
   const [updatingAppearance, setUpdatingAppearance] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
+  const { data: identityStatements = [] } = useIdentityStatements();
+  const { data: habits = [] } = useHabits();
   const top3TodosEnabled = settings.top3_todos_enabled;
   const journalEnabled = settings.journal_enabled;
   const preference = settings.theme_preference;
@@ -83,6 +90,40 @@ export default function ProfileScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [linkedProviders, setLinkedProviders] = useState<string[]>([]);
+  const [linkingProvider, setLinkingProvider] = useState<string | null>(null);
+
+  const fetchLinkedProviders = useCallback(async () => {
+    try {
+      const identities = await getLinkedIdentities();
+      setLinkedProviders(identities.map((i) => i.provider));
+    } catch {
+      // fail silently
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) fetchLinkedProviders();
+  }, [user, fetchLinkedProviders]);
+
+  const handleLinkProvider = useCallback(async (provider: 'apple' | 'google') => {
+    setLinkingProvider(provider);
+    try {
+      const fn = provider === 'apple' ? linkAppleIdentity : linkGoogleIdentity;
+      const { error } = await fn();
+      if (error) {
+        Alert.alert('Linking Failed', error.message);
+      } else {
+        await fetchLinkedProviders();
+        const name = provider === 'apple' ? 'Apple' : 'Google';
+        Alert.alert('Connected', `Your ${name} account has been linked successfully.`);
+      }
+    } catch (err: any) {
+      Alert.alert('Linking Failed', err.message ?? 'Something went wrong.');
+    } finally {
+      setLinkingProvider(null);
+    }
+  }, [linkAppleIdentity, linkGoogleIdentity, fetchLinkedProviders]);
 
   const profileHasChanges = useMemo(() => {
     if (!profile) return false;
@@ -445,6 +486,54 @@ export default function ProfileScreen() {
 
         <View style={styles.divider} />
 
+        {/* My Identity */}
+        <View style={styles.healthSection}>
+          <Text style={styles.sectionLabel}>Identity</Text>
+          <TouchableOpacity
+            style={styles.healthCard}
+            onPress={() => router.push('/identity-setup')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                <FontAwesome name="star" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>My Identity</Text>
+                <Text style={styles.healthStatus}>
+                  {identityStatements.length > 0
+                    ? `${identityStatements.length} active identit${identityStatements.length === 1 ? 'y' : 'ies'}`
+                    : 'Set up your identity'}
+                </Text>
+              </View>
+            </View>
+            <FontAwesome name="chevron-right" size={14} color={colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.healthCard}
+            onPress={() => router.push('/manage-habits')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                <FontAwesome name="list-ul" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>My Habits</Text>
+                <Text style={styles.healthStatus}>
+                  {habits.length > 0
+                    ? `${habits.length} active habit${habits.length === 1 ? '' : 's'}`
+                    : 'Set up your habits'}
+                </Text>
+              </View>
+            </View>
+            <FontAwesome name="chevron-right" size={14} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.divider} />
+
         {/* Features */}
         <View style={styles.healthSection}>
           <Text style={styles.sectionLabel}>Features</Text>
@@ -454,9 +543,9 @@ export default function ProfileScreen() {
                 <FontAwesome name="list-ol" size={18} color={colors.primary} />
               </View>
               <View style={styles.healthInfo}>
-                <Text style={styles.healthTitle}>Top 3 Todos</Text>
+                <Text style={styles.healthTitle}>Daily Intentions</Text>
                 <Text style={styles.healthStatus}>
-                  Set your top 3 priorities each day
+                  Start each day with purpose
                 </Text>
               </View>
             </View>
@@ -496,7 +585,7 @@ export default function ProfileScreen() {
               <View style={styles.healthInfo}>
                 <Text style={styles.healthTitle}>Daily Reminders</Text>
                 <Text style={styles.healthStatus}>
-                  8am Top 3 todos and 8pm habits check-in
+                  8am intentions and 8pm habits check-in
                 </Text>
               </View>
             </View>
@@ -600,6 +689,7 @@ export default function ProfileScreen() {
                     )}
                   </TouchableOpacity>
                 )}
+                <SaveContactButton />
               </View>
             )}
           </View>
@@ -652,12 +742,12 @@ export default function ProfileScreen() {
               <View style={styles.healthCardLeft}>
                 <View style={[
                   styles.healthIconContainer,
-                  { backgroundColor: healthAuthorized ? colors.successLight : colors.borderLight },
+                  { backgroundColor: colors.primaryLightOverlay30 },
                 ]}>
                   <FontAwesome
                     name="heartbeat"
                     size={18}
-                    color={healthAuthorized ? colors.success : colors.textMuted}
+                    color={colors.primary}
                   />
                 </View>
                 <View style={styles.healthInfo}>
@@ -791,12 +881,12 @@ export default function ProfileScreen() {
           <View style={styles.healthCard}>
             <View style={styles.healthCardLeft}>
               <View style={[styles.healthIconContainer, {
-                backgroundColor: subActive ? colors.successLight : colors.warningBackground,
+                backgroundColor: colors.primaryLightOverlay30,
               }]}>
                 <FontAwesome
                   name="diamond"
                   size={18}
-                  color={subActive ? colors.success : colors.warning}
+                  color={colors.primary}
                 />
               </View>
               <View style={styles.healthInfo}>
@@ -851,6 +941,94 @@ export default function ProfileScreen() {
               <Text style={styles.manageSubText}>Manage Subscription</Text>
             </TouchableOpacity>
           )}
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Connected Accounts */}
+        <View style={styles.healthSection}>
+          <Text style={styles.sectionLabel}>Login Methods</Text>
+
+          <View style={styles.healthCard}>
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                <FontAwesome name="envelope" size={16} color={colors.primary} />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>Email</Text>
+                <Text style={styles.healthStatus}>{user?.email ?? 'Not set'}</Text>
+              </View>
+            </View>
+            <View style={styles.connectedBadge}>
+              <FontAwesome name="check-circle" size={16} color={colors.success} />
+            </View>
+          </View>
+
+          {isAppleAuthAvailable() && (
+            <View style={[styles.healthCard, { marginTop: theme.spacing.sm }]}>
+              <View style={styles.healthCardLeft}>
+                <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                  <FontAwesome name="apple" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.healthInfo}>
+                  <Text style={styles.healthTitle}>Apple</Text>
+                  <Text style={styles.healthStatus}>
+                    {linkedProviders.includes('apple') ? 'Connected' : 'Not connected'}
+                  </Text>
+                </View>
+              </View>
+              {linkedProviders.includes('apple') ? (
+                <View style={styles.connectedBadge}>
+                  <FontAwesome name="check-circle" size={16} color={colors.success} />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.connectButton, linkingProvider === 'apple' && { opacity: 0.6 }]}
+                  onPress={() => handleLinkProvider('apple')}
+                  disabled={!!linkingProvider}
+                  activeOpacity={0.8}
+                >
+                  {linkingProvider === 'apple' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.connectButtonText}>Connect</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <View style={[styles.healthCard, { marginTop: theme.spacing.sm }]}>
+            <View style={styles.healthCardLeft}>
+              <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
+                <FontAwesome name="google" size={16} color={colors.primary} />
+              </View>
+              <View style={styles.healthInfo}>
+                <Text style={styles.healthTitle}>Google</Text>
+                <Text style={styles.healthStatus}>
+                  {linkedProviders.includes('google') ? 'Connected' : 'Not connected'}
+                </Text>
+              </View>
+            </View>
+            {linkedProviders.includes('google') ? (
+              <View style={styles.connectedBadge}>
+                <FontAwesome name="check-circle" size={16} color={colors.success} />
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.connectButton, linkingProvider === 'google' && { opacity: 0.6 }]}
+                onPress={() => handleLinkProvider('google')}
+                disabled={!!linkingProvider}
+                activeOpacity={0.8}
+              >
+                {linkingProvider === 'google' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.connectButtonText}>Connect</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <View style={styles.divider} />
@@ -1099,6 +1277,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // Apple Health section
   healthSection: {
     paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.sm,
   },
   sectionLabel: {
     fontSize: theme.fontSize.sm,

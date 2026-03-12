@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,9 @@ import { captureEvent, EVENTS } from '@/lib/analytics';
 import HabitForm from '@/components/HabitForm';
 import OnboardingProgress from '@/components/OnboardingProgress';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { CATEGORY_ICONS } from '@/components/CategoryPicker';
+import type { IdentityStatement } from '@/lib/types';
+import type { SelectedIdentity } from './identity';
 
 interface PendingHabit {
   id: string;
@@ -24,17 +27,50 @@ interface PendingHabit {
   description: string;
   frequency_per_week: number;
   specific_days: number[] | null;
+  identity_id?: string;
+}
+
+function parseIdentitiesParam(raw: string | string[] | undefined): SelectedIdentity[] {
+  if (!raw) return [];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function OnboardingHabitsScreen() {
   const colors = useThemeColors();
   const params = useLocalSearchParams<{
-    goals?: string;
+    identities?: string;
     experience?: string;
     challenge?: string;
+    archetype?: string;
   }>();
+  const identities = useMemo(() => parseIdentitiesParam(params.identities), [params.identities]);
+  const tempIdentityStatements: IdentityStatement[] = useMemo(
+    () =>
+      identities.map((identity, i) => ({
+        id: identity.statement,
+        user_id: '',
+        statement: identity.statement,
+        emoji: identity.emoji,
+        sort_order: i,
+        is_active: true,
+        created_at: '',
+        updated_at: '',
+      })),
+    [identities],
+  );
   const [habits, setHabits] = useState<PendingHabit[]>([]);
-  const [showForm, setShowForm] = useState(true);
+  const [showForm, setShowForm] = useState(identities.length === 0);
+  const startTime = useRef(Date.now());
+
+  useEffect(() => {
+    captureEvent(EVENTS.ONBOARDING_STEP_VIEWED, { step_name: 'habits', step_number: 4 });
+  }, []);
 
   const styles = useMemo(
     () =>
@@ -48,6 +84,55 @@ export default function OnboardingHabitsScreen() {
           alignItems: 'center',
           paddingTop: theme.spacing.xl,
           marginBottom: theme.spacing.lg,
+        },
+        suggestionsSection: {
+          marginBottom: theme.spacing.lg,
+        },
+        identityHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+          marginBottom: theme.spacing.sm,
+        },
+        identityEmoji: {
+          fontSize: 20,
+        },
+        identityLabel: {
+          fontSize: theme.fontSize.md,
+          fontWeight: theme.fontWeight.semibold,
+          color: colors.textPrimary,
+        },
+        suggestedChips: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: theme.spacing.sm,
+        },
+        suggestedChip: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: theme.borderRadius.full,
+          paddingHorizontal: theme.spacing.md,
+          paddingVertical: theme.spacing.xs + 2,
+        },
+        suggestedChipAdded: {
+          backgroundColor: colors.primaryLightOverlay15,
+          borderColor: colors.primary,
+        },
+        suggestedChipText: {
+          fontSize: theme.fontSize.sm,
+          fontWeight: theme.fontWeight.medium,
+          color: colors.textPrimary,
+        },
+        suggestedChipTextAdded: {
+          color: colors.primary,
+        },
+        identityBadge: {
+          fontSize: 14,
+          marginRight: 2,
         },
         emoji: {
           fontSize: 48,
@@ -150,6 +235,28 @@ export default function OnboardingHabitsScreen() {
     [colors]
   );
 
+  const addSuggestedHabit = (
+    name: string,
+    frequencyPerWeek: number,
+    identityStatement: string,
+  ) => {
+    if (habits.some((h) => h.name === name)) return;
+    const newHabit: PendingHabit = {
+      id: Date.now().toString(),
+      name,
+      description: '',
+      frequency_per_week: frequencyPerWeek,
+      specific_days: null,
+      identity_id: identityStatement,
+    };
+    setHabits((prev) => [...prev, newHabit]);
+    captureEvent(EVENTS.ONBOARDING_HABIT_ADDED, {
+      habit_name: name,
+      has_health_metric: false,
+      position: habits.length + 1,
+    });
+  };
+
   const handleAddHabit = (data: {
     name: string;
     description: string;
@@ -179,11 +286,16 @@ export default function OnboardingHabitsScreen() {
       return;
     }
 
+    captureEvent(EVENTS.ONBOARDING_STEP_COMPLETED, {
+      step_name: 'habits',
+      step_number: 4,
+      duration_seconds: Math.round((Date.now() - startTime.current) / 1000),
+    });
     router.push({
       pathname: '/(onboarding)/features',
       params: {
         habits: JSON.stringify(habits),
-        goals: params.goals ?? '[]',
+        identities: params.identities ?? '[]',
         experience: params.experience ?? 'beginner',
         challenge: params.challenge ?? 'motivation',
       },
@@ -200,7 +312,7 @@ export default function OnboardingHabitsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <OnboardingProgress current={6} total={7} />
+      <OnboardingProgress current={4} total={5} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={{ flex: 1 }}>
       <View style={styles.header}>
@@ -217,23 +329,95 @@ export default function OnboardingHabitsScreen() {
             onSubmit={handleAddHabit}
             onCancel={habits.length > 0 ? () => setShowForm(false) : undefined}
             submitLabel="Add Habit"
+            identityStatements={tempIdentityStatements}
           />
         </View>
       ) : (
-        <>
+        <ScrollView
+          style={styles.habitsScroll}
+          contentContainerStyle={styles.habitsScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {identities.length > 0 && (
+            <View style={styles.suggestionsSection}>
+              <Text style={styles.sectionTitle}>Suggested Habits</Text>
+              {identities.map((identity) => {
+                if (!identity.suggestedHabits?.length) return null;
+                return (
+                  <View key={identity.statement} style={{ marginBottom: theme.spacing.md }}>
+                    <View style={styles.identityHeader}>
+                      <FontAwesome
+                        name={(CATEGORY_ICONS[identity.categoryId] ?? 'star') as any}
+                        size={16}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.identityLabel}>{identity.statement}</Text>
+                    </View>
+                    <View style={styles.suggestedChips}>
+                      {identity.suggestedHabits.map((sh) => {
+                        const isAdded = habits.some((h) => h.name === sh.name);
+                        return (
+                          <TouchableOpacity
+                            key={sh.name}
+                            style={[
+                              styles.suggestedChip,
+                              isAdded && styles.suggestedChipAdded,
+                            ]}
+                            onPress={() =>
+                              isAdded
+                                ? handleRemoveHabit(
+                                    habits.find((h) => h.name === sh.name)?.id ?? '',
+                                  )
+                                : addSuggestedHabit(
+                                    sh.name,
+                                    sh.frequency_per_week,
+                                    identity.statement,
+                                  )
+                            }
+                            activeOpacity={0.7}
+                          >
+                            <FontAwesome
+                              name={isAdded ? 'check' : 'plus'}
+                              size={12}
+                              color={isAdded ? colors.primary : colors.textSecondary}
+                            />
+                            <Text
+                              style={[
+                                styles.suggestedChipText,
+                                isAdded && styles.suggestedChipTextAdded,
+                              ]}
+                            >
+                              {sh.name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
           {habits.length > 0 && (
             <View style={styles.habitsList}>
               <Text style={styles.sectionTitle}>Your Habits ({habits.length})</Text>
-              <ScrollView
-                style={styles.habitsScroll}
-                contentContainerStyle={styles.habitsScrollContent}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                {habits.map((habit) => (
+              {habits.map((habit) => {
+                const identityMatch = identities.find(
+                  (i) => i.statement === habit.identity_id,
+                );
+                return (
                   <View key={habit.id} style={styles.habitCard}>
                     <View style={styles.habitInfo}>
                       <View style={styles.habitNameRow}>
+                        {identityMatch && (
+                          <FontAwesome
+                            name={(CATEGORY_ICONS[identityMatch.categoryId] ?? 'star') as any}
+                            size={14}
+                            color={colors.primary}
+                          />
+                        )}
                         <Text style={styles.habitName}>{habit.name}</Text>
                       </View>
                       <Text style={styles.habitFrequency}>{getDaysLabel(habit)}</Text>
@@ -245,8 +429,8 @@ export default function OnboardingHabitsScreen() {
                       <FontAwesome name="times-circle" size={22} color={colors.textMuted} />
                     </TouchableOpacity>
                   </View>
-                ))}
-              </ScrollView>
+                );
+              })}
             </View>
           )}
 
@@ -257,7 +441,7 @@ export default function OnboardingHabitsScreen() {
               activeOpacity={0.8}
             >
               <FontAwesome name="plus" size={16} color={colors.primary} />
-              <Text style={styles.addMoreText}>Add Another Habit</Text>
+              <Text style={styles.addMoreText}>Add Custom Habit</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -270,7 +454,7 @@ export default function OnboardingHabitsScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </>
+        </ScrollView>
       )}
       </View>
       </TouchableWithoutFeedback>

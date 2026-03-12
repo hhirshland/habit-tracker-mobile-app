@@ -50,6 +50,15 @@ export const ALL_METRICS: MetricDefinition[] = [
     formatValue: (v) => (v === null ? '—' : `${v} lbs`),
   },
   {
+    key: 'bmi',
+    title: 'BMI',
+    icon: 'calculator',
+    color: '#607D8B',
+    unit: '',
+    getValue: (m) => m.bodyMassIndex,
+    formatValue: (v) => (v === null ? '—' : `${v}`),
+  },
+  {
     key: 'bodyFat',
     title: 'Body Fat',
     icon: 'pie-chart',
@@ -60,21 +69,15 @@ export const ALL_METRICS: MetricDefinition[] = [
   },
   {
     key: 'leanMass',
-    title: 'Lean Mass',
+    title: 'Lean Mass %',
     icon: 'child',
     color: '#00BCD4',
-    unit: 'lbs',
-    getValue: (m) => m.leanBodyMass,
-    formatValue: (v) => (v === null ? '—' : `${v} lbs`),
-  },
-  {
-    key: 'bmi',
-    title: 'BMI',
-    icon: 'calculator',
-    color: '#607D8B',
-    unit: '',
-    getValue: (m) => m.bodyMassIndex,
-    formatValue: (v) => (v === null ? '—' : `${v}`),
+    unit: '%',
+    getValue: (m) => {
+      if (m.leanBodyMass === null || m.weight === null || m.weight === 0) return null;
+      return Math.round((m.leanBodyMass / m.weight) * 1000) / 10;
+    },
+    formatValue: (v) => (v === null ? '—' : `${v}%`),
   },
   {
     key: 'restingHR',
@@ -118,8 +121,10 @@ export const ALL_METRICS: MetricDefinition[] = [
   },
 ];
 
-/** Default ordered list of all metric keys (all visible) */
-export const DEFAULT_VISIBLE_KEYS = ALL_METRICS.map((m) => m.key);
+/** Default visible metrics — excludes daylight and workouts */
+export const DEFAULT_VISIBLE_KEYS = ALL_METRICS
+  .filter((m) => m.key !== 'daylight' && m.key !== 'workouts')
+  .map((m) => m.key);
 
 /** Look up a metric definition by key */
 export function getMetricByKey(key: string): MetricDefinition | undefined {

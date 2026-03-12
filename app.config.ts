@@ -66,7 +66,23 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         background: false,
       },
     ],
+    "expo-apple-authentication",
+    [
+      "@react-native-google-signin/google-signin",
+      {
+        iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+          ? `com.googleusercontent.apps.${process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID.split('.')[0]}`
+          : "com.googleusercontent.apps.PLACEHOLDER",
+      },
+    ],
     "expo-localization",
+    [
+      "expo-contacts",
+      {
+        contactsPermission:
+          "Thrive uses contacts to save the Thrive phone number so you recognize our evening check-in calls.",
+      },
+    ],
     [
       "expo-splash-screen",
       {

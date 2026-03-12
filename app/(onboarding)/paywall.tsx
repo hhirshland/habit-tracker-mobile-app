@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -38,11 +38,6 @@ export default function PaywallScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const { refetch: refetchSubscription } = useSubscription();
-  const params = useLocalSearchParams<{
-    goals?: string;
-    experience?: string;
-    challenge?: string;
-  }>();
 
   const isAuthenticated = !!user;
 
@@ -54,9 +49,12 @@ export default function PaywallScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const startTime = useRef(Date.now());
+
   useEffect(() => {
     loadOfferings();
     captureEvent(EVENTS.PAYWALL_VIEWED, { source: 'onboarding' });
+    captureEvent(EVENTS.ONBOARDING_STEP_VIEWED, { step_name: 'paywall', step_number: 1 });
   }, []);
 
   const loadOfferings = async () => {
@@ -132,23 +130,16 @@ export default function PaywallScreen() {
     }
   }, [refetchSubscription, isAuthenticated]);
 
-  const onboardingParams = {
-    goals: params.goals ?? '[]',
-    experience: params.experience ?? 'beginner',
-    challenge: params.challenge ?? 'motivation',
-  };
-
   const navigateAfterPurchase = () => {
+    captureEvent(EVENTS.ONBOARDING_STEP_COMPLETED, {
+      step_name: 'paywall',
+      step_number: 1,
+      duration_seconds: Math.round((Date.now() - startTime.current) / 1000),
+    });
     if (isAuthenticated) {
-      router.push({
-        pathname: '/(onboarding)/habits',
-        params: onboardingParams,
-      });
+      router.push('/(onboarding)/identity');
     } else {
-      router.push({
-        pathname: '/(auth)/sign-up',
-        params: onboardingParams,
-      });
+      router.push('/(onboarding)/signup');
     }
   };
 
@@ -162,7 +153,7 @@ export default function PaywallScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <OnboardingProgress current={5} total={7} />
+      <OnboardingProgress current={1} total={5} />
 
       <ScrollView
         style={styles.scroll}
@@ -170,9 +161,12 @@ export default function PaywallScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Start Your{'\n'}7-Day Free Trial</Text>
+          <View style={styles.readyBadge}>
+            <FontAwesome name="check" size={20} color="#fff" />
+          </View>
+          <Text style={styles.title}>Your Plan is Ready</Text>
           <Text style={styles.subtitle}>
-            Full access to everything in Thrive.{'\n'}Cancel anytime.
+            Start your 7-day free trial.{'\n'}Full access to everything. Cancel anytime.
           </Text>
         </View>
 
@@ -235,6 +229,21 @@ export default function PaywallScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What You'll Get</Text>
+          {[
+            { icon: 'check-circle', text: 'Habit tracking with streaks' },
+            { icon: 'check-circle', text: 'Goal setting with progress charts' },
+            { icon: 'check-circle', text: 'Daily journal for reflection' },
+            { icon: 'check-circle', text: 'AI-powered weekly recaps' },
+            { icon: 'check-circle', text: 'Apple Health integration' },
+          ].map((item, i) => (
+            <View key={i} style={styles.benefitRow}>
+              <FontAwesome name={item.icon as any} size={16} color={colors.success} />
+              <Text style={styles.benefitText}>{item.text}</Text>
+            </View>
+          ))}
+        </View>
       </ScrollView>
 
       <View style={styles.bottom}>
@@ -306,18 +315,48 @@ const createStyles = (colors: ThemeColors) =>
       paddingTop: theme.spacing.md,
       marginBottom: theme.spacing.lg,
     },
+    readyBadge: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: colors.success,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: theme.spacing.md,
+    },
     title: {
       fontSize: theme.fontSize.xxl,
       fontWeight: theme.fontWeight.bold,
       color: colors.textPrimary,
       textAlign: 'center',
-      marginBottom: theme.spacing.sm,
+      marginBottom: theme.spacing.xs,
     },
     subtitle: {
       fontSize: theme.fontSize.md,
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
+    },
+    section: {
+      marginBottom: theme.spacing.lg,
+    },
+    sectionTitle: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: theme.spacing.sm,
+    },
+    benefitRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs + 2,
+    },
+    benefitText: {
+      fontSize: theme.fontSize.md,
+      color: colors.textPrimary,
     },
     timeline: {
       marginBottom: theme.spacing.lg,

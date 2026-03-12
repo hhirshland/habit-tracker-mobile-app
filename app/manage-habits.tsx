@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { router } from 'expo-router';
 import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +26,7 @@ import {
 import HabitItem from '@/components/HabitItem';
 import HabitForm from '@/components/HabitForm';
 
-export default function HabitsScreen() {
+export default function ManageHabitsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
@@ -138,6 +139,9 @@ export default function HabitsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <FontAwesome name="chevron-left" size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
         <Text style={styles.title}>My Habits</Text>
         <TouchableOpacity
           style={styles.addButton}
@@ -297,7 +301,7 @@ function createStyles(colors: ThemeColors) {
     },
     list: {
       paddingHorizontal: theme.spacing.lg,
-      paddingBottom: theme.spacing.tabBarClearance,
+      paddingBottom: theme.spacing.lg,
     },
     itemWrapper: {
       marginBottom: theme.spacing.sm,

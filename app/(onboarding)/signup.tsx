@@ -1,8 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -10,19 +9,36 @@ import {
   Pressable,
   ScrollView,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ThriveLogo from '@/components/ThriveLogo';
+import OnboardingProgress from '@/components/OnboardingProgress';
 import SignUpForm from '@/components/SignUpForm';
+import { EVENTS, captureEvent } from '@/lib/analytics';
 
-export default function SignUpScreen() {
+export default function OnboardingSignUpScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const startTime = useRef(Date.now());
+
+  useEffect(() => {
+    captureEvent(EVENTS.ONBOARDING_STEP_VIEWED, { step_name: 'signup', step_number: 2 });
+  }, []);
+
+  const handleSuccess = () => {
+    captureEvent(EVENTS.ONBOARDING_STEP_COMPLETED, {
+      step_name: 'signup',
+      step_number: 2,
+      duration_seconds: Math.round((Date.now() - startTime.current) / 1000),
+    });
+    router.replace('/(onboarding)/identity');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
+      <OnboardingProgress current={2} total={5} />
       <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -35,26 +51,17 @@ export default function SignUpScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.header}>
-              <View style={styles.wordmarkRow}>
-                <ThriveLogo size={40} style={{ marginRight: 10 }} />
-                <Text style={styles.wordmark}>Thrive</Text>
+              <View style={styles.successBadge}>
+                <FontAwesome name="check-circle" size={20} color={colors.success} />
+                <Text style={styles.successText}>Subscription activated!</Text>
               </View>
-              <Text style={styles.title}>Get Started</Text>
+              <Text style={styles.title}>Create Your Account</Text>
               <Text style={styles.subtitle}>
-                Create an account to start building better habits
+                Save your progress and keep your data safe
               </Text>
             </View>
 
-            <SignUpForm onSuccess={() => {}} />
-
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account? </Text>
-              <Link href="/(auth)/sign-in" asChild>
-                <TouchableOpacity>
-                  <Text style={styles.linkText}>Sign In</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
+            <SignUpForm onSuccess={handleSuccess} />
           </ScrollView>
         </KeyboardAvoidingView>
       </Pressable>
@@ -80,19 +87,23 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       marginBottom: theme.spacing.lg,
     },
-    wordmarkRow: {
+    successBadge: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: theme.spacing.xs,
+      backgroundColor: colors.successLight,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.borderRadius.full,
       marginBottom: theme.spacing.md,
     },
-    wordmark: {
-      fontSize: theme.fontSize.xxxl,
-      fontWeight: theme.fontWeight.bold,
-      color: colors.primary,
-      letterSpacing: -0.5,
+    successText: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.success,
     },
     title: {
-      fontSize: theme.fontSize.xxxl,
+      fontSize: theme.fontSize.xxl,
       fontWeight: theme.fontWeight.bold,
       color: colors.textPrimary,
       marginBottom: theme.spacing.xs,
@@ -101,20 +112,5 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: theme.fontSize.md,
       color: colors.textSecondary,
       textAlign: 'center',
-    },
-    footer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      marginTop: theme.spacing.lg,
-      marginBottom: theme.spacing.md,
-    },
-    footerText: {
-      fontSize: theme.fontSize.sm,
-      color: colors.textSecondary,
-    },
-    linkText: {
-      fontSize: theme.fontSize.sm,
-      color: colors.primary,
-      fontWeight: theme.fontWeight.semibold,
     },
   });

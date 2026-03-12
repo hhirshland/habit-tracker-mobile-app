@@ -21,6 +21,7 @@ interface PriorityItemProps {
   onToggle: () => void;
   onSnooze?: () => void;
   onUnsnooze?: () => void;
+  identityIcon?: React.ComponentProps<typeof FontAwesome>['name'];
 }
 
 export default function PriorityItem({
@@ -32,6 +33,7 @@ export default function PriorityItem({
   onToggle,
   onSnooze,
   onUnsnooze,
+  identityIcon,
 }: PriorityItemProps) {
   const swipeableRef = useRef<Swipeable>(null);
   const colors = useThemeColors();
@@ -104,6 +106,9 @@ export default function PriorityItem({
 
       <View style={styles.content}>
         <View style={styles.nameRow}>
+          {identityIcon && (
+            <FontAwesome name={identityIcon} size={14} color={colors.primary} />
+          )}
           <Text style={[styles.name, isCompleted && styles.nameCompleted]} numberOfLines={1}>
             {habit.name}
           </Text>
@@ -219,6 +224,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
+  },
+  identityIcon: {
+    marginRight: 2,
   },
   name: {
     fontSize: theme.fontSize.md,

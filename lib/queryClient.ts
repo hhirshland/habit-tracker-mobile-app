@@ -58,4 +58,7 @@ export const queryKeys = {
     qualifyingWeeks: ['weeklyRecaps', 'qualifyingWeeks'] as const,
   },
   subscription: ['subscription'] as const,
+  identity: {
+    all: ['identity'] as const,
+  },
 } as const;

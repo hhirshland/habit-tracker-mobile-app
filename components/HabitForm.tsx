@@ -11,16 +11,20 @@ import {
   Pressable,
 } from 'react-native';
 
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import {
   DAY_LABELS,
   DayOfWeek,
   HealthMetricType,
+  IdentityStatement,
   METRIC_TYPE_LABELS,
   METRIC_TYPE_DEFAULTS,
 } from '@/lib/types';
 import { useHealth } from '@/contexts/HealthContext';
+import { CATEGORY_ICONS } from '@/components/CategoryPicker';
+import { getCategoryIdForStatement } from '@/lib/identityTemplates';
 
 interface HabitFormData {
   name: string;
@@ -30,6 +34,7 @@ interface HabitFormData {
   metric_type: HealthMetricType | null;
   metric_threshold: number | null;
   auto_complete: boolean;
+  identity_statement_id: string | null;
 }
 
 interface HabitFormProps {
@@ -37,6 +42,8 @@ interface HabitFormProps {
   onSubmit: (data: HabitFormData) => void;
   onCancel?: () => void;
   submitLabel?: string;
+  identityStatements?: IdentityStatement[];
+  defaultIdentityId?: string | null;
 }
 
 export default function HabitForm({
@@ -44,6 +51,8 @@ export default function HabitForm({
   onSubmit,
   onCancel,
   submitLabel = 'Save Habit',
+  identityStatements,
+  defaultIdentityId,
 }: HabitFormProps) {
   const colors = useThemeColors();
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized } = useHealth();
@@ -55,6 +64,9 @@ export default function HabitForm({
     initialData?.specific_days != null && initialData.specific_days.length > 0
   );
   const [specificDays, setSpecificDays] = useState<number[]>(initialData?.specific_days || []);
+  const [selectedIdentityId, setSelectedIdentityId] = useState<string | null>(
+    initialData?.identity_statement_id ?? defaultIdentityId ?? null,
+  );
 
   // Health metric linking state
   const [linkMetric, setLinkMetric] = useState(initialData?.auto_complete || false);
@@ -85,6 +97,7 @@ export default function HabitForm({
       metric_type: linkMetric ? metricType : null,
       metric_threshold: linkMetric && metricThreshold ? parseFloat(metricThreshold) : null,
       auto_complete: linkMetric,
+      identity_statement_id: selectedIdentityId,
     });
   };
 
@@ -116,6 +129,57 @@ export default function HabitForm({
           textAlignVertical="top"
         />
       </View>
+
+      {identityStatements && identityStatements.length > 0 && (
+        <View style={styles.field}>
+          <Text style={styles.label}>Which identity does this represent?</Text>
+          <View style={styles.identityPicker}>
+            <TouchableOpacity
+              style={[
+                styles.identityPill,
+                selectedIdentityId === null && styles.identityPillActive,
+              ]}
+              onPress={() => setSelectedIdentityId(null)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.identityPillText,
+                  selectedIdentityId === null && styles.identityPillTextActive,
+                ]}
+              >
+                None
+              </Text>
+            </TouchableOpacity>
+            {identityStatements.map((identity) => (
+              <TouchableOpacity
+                key={identity.id}
+                style={[
+                  styles.identityPill,
+                  selectedIdentityId === identity.id && styles.identityPillActive,
+                ]}
+                onPress={() => setSelectedIdentityId(identity.id)}
+                activeOpacity={0.7}
+              >
+                <FontAwesome
+                  name={(CATEGORY_ICONS[getCategoryIdForStatement(identity.statement)] ?? 'star') as any}
+                  size={14}
+                  color={selectedIdentityId === identity.id ? '#fff' : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.identityPillText,
+                    selectedIdentityId === identity.id && styles.identityPillTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {identity.statement.replace(/^I am\s*/i, '')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       <View style={styles.field}>
         <View style={styles.switchRow}>
@@ -444,6 +508,38 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   metricButtonTextActive: {
+    color: '#fff',
+  },
+  identityPicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  identityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: theme.spacing.xs + 2,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  identityPillActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  identityPillIcon: {
+    marginRight: 2,
+  },
+  identityPillText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+    maxWidth: 120,
+  },
+  identityPillTextActive: {
     color: '#fff',
   },
 });
