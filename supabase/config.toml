@@ -1,2 +1,8 @@
 [functions.delete-account]
 verify_jwt = false
+
+[functions.schedule-evening-calls]
+verify_jwt = false
+
+[functions.vapi-server]
+verify_jwt = false

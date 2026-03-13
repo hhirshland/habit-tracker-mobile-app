@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   Switch,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
+import AppHeader from '@/components/AppHeader';
 import { ALL_METRICS, MetricDefinition } from '@/lib/metricsConfig';
 
 interface EditMetricsSheetProps {
@@ -32,6 +33,7 @@ export default function EditMetricsSheet({
   onSave,
 }: EditMetricsSheetProps) {
   const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   // Build the ordered list: visible keys in order first, then hidden ones
   const [items, setItems] = useState<MetricItem[]>(() => buildItemList(visibleKeys));
 
@@ -89,16 +91,11 @@ export default function EditMetricsSheet({
       onRequestClose={handleCancel}
     >
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleCancel} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.cancelButton}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Metrics</Text>
-          <TouchableOpacity onPress={handleSave} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.saveButton}>Done</Text>
-          </TouchableOpacity>
-        </View>
+        <AppHeader
+          title="Edit Metrics"
+          onBack={handleCancel}
+          rightAction={{ label: 'Done', onPress: handleSave }}
+        />
 
         <Text style={styles.subtitle}>
           Toggle metrics on or off, and use the arrows to reorder.
@@ -119,13 +116,13 @@ export default function EditMetricsSheet({
                 <View
                   style={[
                     styles.metricIcon,
-                    { backgroundColor: item.visible ? `${item.metric.color}18` : theme.colors.textMutedOverlay18 },
+                    { backgroundColor: item.visible ? `${item.metric.color}18` : colors.textMutedOverlay18 },
                   ]}
                 >
                   <FontAwesome
                     name={item.metric.icon}
                     size={14}
-                    color={item.visible ? item.metric.color : theme.colors.textMuted}
+                    color={item.visible ? item.metric.color : colors.textMuted}
                   />
                 </View>
                 <Text
@@ -151,7 +148,7 @@ export default function EditMetricsSheet({
                     <FontAwesome
                       name="chevron-up"
                       size={12}
-                      color={index === 0 ? theme.colors.borderLight : theme.colors.textSecondary}
+                      color={index === 0 ? colors.borderLight : colors.textSecondary}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -168,8 +165,8 @@ export default function EditMetricsSheet({
                       size={12}
                       color={
                         index === items.length - 1
-                          ? theme.colors.borderLight
-                          : theme.colors.textSecondary
+                          ? colors.borderLight
+                          : colors.textSecondary
                       }
                     />
                   </TouchableOpacity>
@@ -221,102 +218,74 @@ function buildItemList(visibleKeys: string[]): MetricItem[] {
   return items;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-  },
-  cancelButton: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textSecondary,
-    fontWeight: theme.fontWeight.medium,
-    minWidth: 60,
-  },
-  headerTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.textPrimary,
-  },
-  saveButton: {
-    fontSize: theme.fontSize.md,
-    color: theme.colors.primary,
-    fontWeight: theme.fontWeight.semibold,
-    minWidth: 60,
-    textAlign: 'right',
-  },
-  subtitle: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textSecondary,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: 120,
-  },
-
-  // Row
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    ...theme.shadow.sm,
-  },
-  rowHidden: {
-    opacity: 0.6,
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    flex: 1,
-  },
-  metricIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: theme.borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metricTitle: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textPrimary,
-  },
-  metricTitleHidden: {
-    color: theme.colors.textMuted,
-  },
-  rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  arrows: {
-    gap: 2,
-  },
-  arrowButton: {
-    padding: 4,
-    alignItems: 'center',
-  },
-  arrowDisabled: {
-    opacity: 0.3,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    subtitle: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.sm,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingBottom: 120,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surface,
+      borderRadius: theme.borderRadius.md,
+      padding: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+      ...theme.shadow.sm,
+    },
+    rowHidden: {
+      opacity: 0.6,
+    },
+    rowLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      flex: 1,
+    },
+    metricIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.borderRadius.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    metricTitle: {
+      fontSize: theme.fontSize.md,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textPrimary,
+    },
+    metricTitleHidden: {
+      color: colors.textMuted,
+    },
+    rowRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+    },
+    arrows: {
+      gap: 2,
+    },
+    arrowButton: {
+      padding: 4,
+      alignItems: 'center',
+    },
+    arrowDisabled: {
+      opacity: 0.3,
+    },
+  });
+}

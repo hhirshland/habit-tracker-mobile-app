@@ -19,6 +19,7 @@ import { theme, ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { captureEvent, EVENTS } from '@/lib/analytics';
+import AppHeader from '@/components/AppHeader';
 import {
   useIdentityStatements,
   useCreateIdentityStatements,
@@ -156,13 +157,7 @@ export default function IdentitySetupScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-          <FontAwesome name="arrow-left" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Define Your Identity</Text>
-        <View style={{ width: 20 }} />
-      </View>
+      <AppHeader title="Define Your Identity" />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -336,8 +331,6 @@ export default function IdentitySetupScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md },
-    topBarTitle: { fontSize: theme.fontSize.lg, fontWeight: theme.fontWeight.semibold, color: colors.textPrimary },
     scroll: { flex: 1 },
     scrollContent: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.md },
     header: { paddingTop: theme.spacing.sm, marginBottom: theme.spacing.lg },

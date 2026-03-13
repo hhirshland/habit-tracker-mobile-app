@@ -13,6 +13,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
+import AppHeader from '@/components/AppHeader';
 import { DailyJournalEntry } from '@/lib/types';
 
 interface DailyJournalSectionProps {
@@ -166,22 +167,11 @@ export default function DailyJournalSection({
           style={styles.modalContainer}
           behavior={Platform.OS === 'android' ? 'height' : undefined}
         >
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Daily Journal</Text>
-            <TouchableOpacity onPress={handleSubmit} disabled={!canSave}>
-              <Text
-                style={[
-                  styles.modalDone,
-                  !canSave && styles.modalDoneDisabled,
-                ]}
-              >
-                Save
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <AppHeader
+            title="Daily Journal"
+            onBack={() => setModalVisible(false)}
+            rightAction={{ label: 'Save', onPress: handleSubmit, disabled: !canSave }}
+          />
 
           <ScrollView
             ref={scrollViewRef}
@@ -336,33 +326,6 @@ function createStyles(colors: import('@/lib/theme').ThemeColors) {
     modalContainer: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    modalCancel: {
-      fontSize: theme.fontSize.md,
-      color: colors.textSecondary,
-    },
-    modalTitle: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: theme.fontWeight.semibold as any,
-      color: colors.textPrimary,
-    },
-    modalDone: {
-      fontSize: theme.fontSize.md,
-      fontWeight: theme.fontWeight.semibold as any,
-      color: colors.primary,
-    },
-    modalDoneDisabled: {
-      color: colors.textMuted,
     },
     modalBody: {
       flex: 1,

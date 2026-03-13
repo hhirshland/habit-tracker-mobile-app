@@ -268,6 +268,46 @@ async function handleToolCalls(
           break;
         }
 
+        case "set_tomorrow_intentions": {
+          const { intention_1, intention_2, intention_3 } = args;
+          const tomorrow = new Date(callDate + "T12:00:00");
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowDate = tomorrow.toISOString().split("T")[0];
+
+          const intentions = [
+            { position: 1, text: intention_1 },
+            { position: 2, text: intention_2 },
+            { position: 3, text: intention_3 },
+          ].filter((i) => i.text);
+
+          const rows = intentions.map((i) => ({
+            user_id: userId,
+            todo_date: tomorrowDate,
+            position: i.position,
+            text: i.text,
+            is_completed: false,
+          }));
+
+          const { error } = await supabase
+            .from("daily_todos")
+            .upsert(rows, { onConflict: "user_id,todo_date,position" });
+
+          if (error) {
+            console.error("Error setting tomorrow's intentions:", error);
+            result = "Had a small issue saving, but no worries.";
+          } else {
+            for (const i of intentions) {
+              capturePosthogEvent(posthogKey, userId, "todo_created", {
+                position: i.position,
+                source: "evening_call",
+                for_tomorrow: true,
+              });
+            }
+            result = `Tomorrow's intentions are set! ${intentions.length} intention${intentions.length === 1 ? "" : "s"} saved.`;
+          }
+          break;
+        }
+
         default:
           result = `Unknown function: ${fnName}`;
       }
@@ -393,7 +433,7 @@ async function handleAssistantRequest(
 
   const { data: user } = await supabase
     .from("profiles")
-    .select("user_id, full_name, phone_number, timezone")
+    .select("user_id, full_name, phone_number, timezone, settings")
     .eq("phone_number", callerNumber)
     .maybeSingle();
 
@@ -476,13 +516,31 @@ If the user wants to skip a habit for today, call snooze_habit.
 If they simply didn't do it, acknowledge warmly and move on.`
       : "### Habits\nAll habits done today — skip or congratulate them.";
 
-  const firstName = user.full_name?.split(" ")[0] || "The user";
-  const systemPrompt = `You are a friendly evening check-in assistant for Thrive. ${firstName} is calling in for their nightly reflection.
+  const top3Enabled = (user as any).settings?.top3_todos_enabled === true;
 
-Walk through three topics in order:
+  const tomorrowIntentionsSection = top3Enabled
+    ? `### Tomorrow's Intentions
+After finishing the habit check-in, ask if they'd like to set their top 3 intentions for tomorrow.
+If yes, ask what their 3 most important things for tomorrow are.
+Once you have them, call set_tomorrow_intentions with the intentions.
+If they don't want to, that's totally fine — move to wrap up.`
+    : "";
+
+  const topicsList = top3Enabled
+    ? `Walk through these topics in order:
 1. Daily Journal (win, tension, gratitude)
 2. Daily intentions
 3. Habit check-in
+4. Tomorrow's intentions (optional)`
+    : `Walk through three topics in order:
+1. Daily Journal (win, tension, gratitude)
+2. Daily intentions
+3. Habit check-in`;
+
+  const firstName = user.full_name?.split(" ")[0] || "The user";
+  const systemPrompt = `You are a friendly evening check-in assistant for Thrive. ${firstName} is calling in for their nightly reflection.
+
+${topicsList}
 
 ### Journal
 Ask conversationally about their win, then tension, then gratitude.
@@ -491,6 +549,8 @@ After getting all three, call save_journal with concise 1-3 sentence summaries. 
 ${todosSection}
 
 ${habitsSection}
+
+${tomorrowIntentionsSection}
 
 ### Wrap Up
 End with brief encouragement. Keep the call to 3-5 minutes.
@@ -566,6 +626,26 @@ End with brief encouragement. Keep the call to 3-5 minutes.
       server: { url: serverUrl },
     },
   ];
+
+  if (top3Enabled) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "set_tomorrow_intentions",
+        description: "Set the user's top 3 intentions for tomorrow.",
+        parameters: {
+          type: "object",
+          properties: {
+            intention_1: { type: "string", description: "First intention for tomorrow" },
+            intention_2: { type: "string", description: "Second intention for tomorrow" },
+            intention_3: { type: "string", description: "Third intention for tomorrow" },
+          },
+          required: ["intention_1"],
+        },
+      },
+      server: { url: serverUrl },
+    });
+  }
 
   // Log the inbound call
   await supabase.from("evening_call_log").insert({

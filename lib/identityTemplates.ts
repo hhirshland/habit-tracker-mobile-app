@@ -235,3 +235,19 @@ for (const cat of IDENTITY_CATEGORIES) {
 export function getCategoryIdForStatement(statement: string): string {
   return _statementCategoryMap.get(statement.toLowerCase()) ?? 'custom';
 }
+
+export function getSuggestedHabitsForCategory(categoryId: string): SuggestedHabit[] {
+  const category = IDENTITY_CATEGORIES.find((c) => c.id === categoryId);
+  if (!category) return [];
+  const seen = new Set<string>();
+  const habits: SuggestedHabit[] = [];
+  for (const template of category.templates) {
+    for (const habit of template.suggestedHabits) {
+      if (!seen.has(habit.name)) {
+        seen.add(habit.name);
+        habits.push(habit);
+      }
+    }
+  }
+  return habits;
+}

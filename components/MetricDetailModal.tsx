@@ -13,6 +13,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import type { ThemeColors } from '@/lib/theme';
+import AppHeader from '@/components/AppHeader';
 import { HealthMetrics } from '@/lib/health';
 import { MetricDefinition } from '@/lib/metricsConfig';
 import { useMetricHistory } from '@/hooks/useHealthQuery';
@@ -78,19 +79,7 @@ export default function MetricDetailModal({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.headerButton}>Close</Text>
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <View style={[styles.headerIcon, { backgroundColor: metric.color + '18' }]}>
-              <FontAwesome name={metric.icon} size={14} color={metric.color} />
-            </View>
-            <Text style={styles.headerTitle}>{metric.title}</Text>
-          </View>
-          <View style={{ width: 44 }} />
-        </View>
+        <AppHeader title={metric.title} onBack={onClose} />
 
         <ScrollView
           style={styles.scrollView}
@@ -212,39 +201,6 @@ function createStyles(colors: ThemeColors) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-    },
-    headerButton: {
-      fontSize: theme.fontSize.md,
-      color: colors.primary,
-      fontWeight: theme.fontWeight.medium,
-      minWidth: 44,
-    },
-    headerCenter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    headerIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: theme.borderRadius.sm,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    headerTitle: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: theme.fontWeight.bold,
-      color: colors.textPrimary,
     },
     scrollView: {
       flex: 1,

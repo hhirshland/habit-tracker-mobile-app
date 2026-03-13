@@ -17,9 +17,11 @@ import { useThemeColors } from '@/hooks/useTheme';
 
 interface SignUpFormProps {
   onSuccess: () => void;
+  mode?: 'buttons' | 'email';
+  onEmailPress?: () => void;
 }
 
-export default function SignUpForm({ onSuccess }: SignUpFormProps) {
+export default function SignUpForm({ onSuccess, mode = 'buttons', onEmailPress }: SignUpFormProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { signUp, signInWithApple, signInWithGoogle } = useAuth();
@@ -81,6 +83,71 @@ export default function SignUpForm({ onSuccess }: SignUpFormProps) {
     }
   };
 
+  if (mode === 'email') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="John Doe"
+              placeholderTextColor={colors.textMuted}
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+              autoComplete="name"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="you@example.com"
+              placeholderTextColor={colors.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter a password"
+              placeholderTextColor={colors.textMuted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
+            />
+            <Text style={styles.passwordHint}>
+              At least 8 characters, 1 uppercase letter, 1 number
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.submitButton, isBusy && styles.buttonDisabled]}
+            onPress={handleEmailSignUp}
+            disabled={isBusy}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Create Account</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.socialButtons}>
@@ -125,64 +192,15 @@ export default function SignUpForm({ onSuccess }: SignUpFormProps) {
         <View style={styles.dividerLine} />
       </View>
 
-      <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="John Doe"
-            placeholderTextColor={colors.textMuted}
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-            autoComplete="name"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="you@example.com"
-            placeholderTextColor={colors.textMuted}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter a password"
-            placeholderTextColor={colors.textMuted}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="new-password"
-            textContentType="newPassword"
-          />
-          <Text style={styles.passwordHint}>
-            At least 8 characters, 1 uppercase letter, 1 number
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.emailButton, isBusy && styles.buttonDisabled]}
-          onPress={handleEmailSignUp}
-          disabled={isBusy}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <Text style={styles.emailButtonText}>Continue with email</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.emailButton}
+        onPress={onEmailPress}
+        disabled={isBusy}
+        activeOpacity={0.8}
+      >
+        <FontAwesome name="envelope-o" size={18} color={colors.textPrimary} />
+        <Text style={styles.emailButtonText}>Continue with Email</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -262,20 +280,35 @@ const createStyles = (colors: ThemeColors) =>
       marginLeft: theme.spacing.xs,
     },
     emailButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.sm,
       backgroundColor: colors.surface,
       borderRadius: theme.borderRadius.md,
       borderWidth: 1,
       borderColor: colors.border,
       paddingVertical: 16,
-      alignItems: 'center',
-      marginTop: theme.spacing.sm,
-    },
-    buttonDisabled: {
-      opacity: 0.7,
     },
     emailButtonText: {
       color: colors.textPrimary,
       fontSize: theme.fontSize.lg,
       fontWeight: theme.fontWeight.semibold,
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 16,
+      alignItems: 'center',
+      marginTop: theme.spacing.sm,
+      ...theme.shadow.sm,
+    },
+    submitButtonText: {
+      color: '#fff',
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.semibold,
+    },
+    buttonDisabled: {
+      opacity: 0.7,
     },
   });

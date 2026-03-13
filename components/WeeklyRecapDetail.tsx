@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
+import AppHeader from '@/components/AppHeader';
 import { formatWeekLabel } from '@/lib/weeklyRecaps';
 import { useGenerateRecap, useMarkRecapRead, useDeleteRecap } from '@/hooks/useWeeklyRecapsQuery';
 import { captureEvent, EVENTS } from '@/lib/analytics';
@@ -131,26 +132,16 @@ export default function WeeklyRecapDetail({
       onRequestClose={handleClose}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Weekly Recap</Text>
-            <Text style={styles.headerSubtitle}>{weekLabel}</Text>
-          </View>
-          <View style={styles.headerRight}>
-            {__DEV__ && displayRecap && (
-              <TouchableOpacity
-                onPress={handleDelete}
-                style={styles.devDeleteButton}
-                activeOpacity={0.7}
-              >
-                <FontAwesome name="trash" size={14} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <FontAwesome name="times" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <AppHeader
+          title="Weekly Recap"
+          subtitle={weekLabel}
+          onBack={handleClose}
+          rightAction={
+            __DEV__ && displayRecap
+              ? { icon: 'trash', onPress: handleDelete, color: '#E53935' }
+              : undefined
+          }
+        />
 
         {isGenerating && (
           <View style={styles.centered}>
@@ -327,42 +318,6 @@ function createStyles(colors: ThemeColors) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.sm,
-    },
-    headerLeft: {
-      flex: 1,
-    },
-    headerRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: theme.spacing.xs,
-    },
-    devDeleteButton: {
-      backgroundColor: '#E53935',
-      borderRadius: theme.borderRadius.sm,
-      padding: 6,
-    },
-    headerTitle: {
-      fontSize: theme.fontSize.xl,
-      fontWeight: theme.fontWeight.bold,
-      color: colors.textPrimary,
-    },
-    headerSubtitle: {
-      fontSize: theme.fontSize.sm,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-    closeButton: {
-      padding: theme.spacing.sm,
-      marginTop: -theme.spacing.xs,
-      marginRight: -theme.spacing.xs,
     },
     scrollView: {
       flex: 1,

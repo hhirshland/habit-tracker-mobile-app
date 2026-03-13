@@ -1,8 +1,12 @@
 name: Build & Submit
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: 'Build notes (optional)'
+        required: false
+        type: string
 
 permissions:
   contents: write

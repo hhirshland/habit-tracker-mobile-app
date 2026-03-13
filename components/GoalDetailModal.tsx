@@ -17,6 +17,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import type { ThemeColors } from '@/lib/theme';
+import AppHeader from '@/components/AppHeader';
 import { Goal, GOAL_TYPE_COLORS, GOAL_TYPE_ICONS } from '@/lib/types';
 import { MetricDataPoint } from '@/lib/health';
 import { getGoalHistoryData, getGoalCurrentValue } from '@/lib/goals';
@@ -297,16 +298,11 @@ export default function GoalDetailModal({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={styles.headerButton}>Close</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{goal.title}</Text>
-          <TouchableOpacity onPress={handleDelete}>
-            <FontAwesome name="trash-o" size={18} color={colors.danger} />
-          </TouchableOpacity>
-        </View>
+        <AppHeader
+          title={goal.title}
+          onBack={onClose}
+          rightAction={{ icon: 'trash-o', onPress: handleDelete, color: colors.danger }}
+        />
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -559,29 +555,6 @@ function createStyles(colors: ThemeColors) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-    },
-    headerButton: {
-      fontSize: theme.fontSize.md,
-      color: colors.primary,
-      fontWeight: theme.fontWeight.medium,
-    },
-    headerTitle: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: theme.fontWeight.bold,
-      color: colors.textPrimary,
-      flex: 1,
-      textAlign: 'center',
-      marginHorizontal: theme.spacing.sm,
     },
     scrollView: {
       flex: 1,

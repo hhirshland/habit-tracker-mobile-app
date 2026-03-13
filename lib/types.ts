@@ -86,6 +86,8 @@ export interface IdentityStatement {
   updated_at: string;
 }
 
+export const HABIT_LINKABLE_METRICS: HealthMetricType[] = ['steps', 'workout_minutes'];
+
 export const METRIC_TYPE_LABELS: Record<HealthMetricType, string> = {
   steps: 'Steps',
   weight: 'Weight (lbs)',

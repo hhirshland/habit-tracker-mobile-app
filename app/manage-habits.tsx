@@ -25,6 +25,7 @@ import {
 } from '@/hooks/useHabitsQuery';
 import HabitItem from '@/components/HabitItem';
 import HabitForm from '@/components/HabitForm';
+import AppHeader from '@/components/AppHeader';
 
 export default function ManageHabitsScreen() {
   const colors = useThemeColors();
@@ -138,19 +139,10 @@ export default function ManageHabitsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <FontAwesome name="chevron-left" size={18} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>My Habits</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowForm(true)}
-          activeOpacity={0.8}
-        >
-          <FontAwesome name="plus" size={16} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      <AppHeader
+        title="My Habits"
+        rightAction={{ icon: 'plus', onPress: () => setShowForm(true) }}
+      />
 
       {habits.length === 0 ? (
         <View style={styles.emptyState}>
@@ -211,12 +203,7 @@ export default function ManageHabitsScreen() {
         onRequestClose={() => setShowForm(false)}
       >
         <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>New Habit</Text>
-            <TouchableOpacity onPress={() => setShowForm(false)}>
-              <FontAwesome name="times" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+          <AppHeader title="New Habit" onBack={() => setShowForm(false)} />
           <View style={styles.modalContent}>
             <HabitForm
               onSubmit={handleCreate}
@@ -235,12 +222,7 @@ export default function ManageHabitsScreen() {
         onRequestClose={() => setEditingHabit(null)}
       >
         <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Edit Habit</Text>
-            <TouchableOpacity onPress={() => setEditingHabit(null)}>
-              <FontAwesome name="times" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+          <AppHeader title="Edit Habit" onBack={() => setEditingHabit(null)} />
           <View style={styles.modalContent}>
             {editingHabit && (
               <HabitForm
@@ -276,28 +258,6 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.background,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.md,
-    },
-    title: {
-      fontSize: theme.fontSize.xxl,
-      fontWeight: theme.fontWeight.bold,
-      color: colors.textPrimary,
-    },
-    addButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      ...theme.shadow.md,
     },
     list: {
       paddingHorizontal: theme.spacing.lg,
@@ -347,20 +307,6 @@ function createStyles(colors: ThemeColors) {
     modalContainer: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    modalTitle: {
-      fontSize: theme.fontSize.xl,
-      fontWeight: theme.fontWeight.bold,
-      color: colors.textPrimary,
     },
     modalContent: {
       flex: 1,

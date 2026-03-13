@@ -20,6 +20,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="paywall" />
       <Stack.Screen name="signup" />
+      <Stack.Screen name="email-signup" />
       <Stack.Screen name="identity" />
       <Stack.Screen name="habits" />
       <Stack.Screen name="features" />

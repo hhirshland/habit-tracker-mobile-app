@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,12 @@ import {
 } from 'react-native';
 
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { theme } from '@/lib/theme';
+import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import {
   DAY_LABELS,
   DayOfWeek,
+  HABIT_LINKABLE_METRICS,
   HealthMetricType,
   IdentityStatement,
   METRIC_TYPE_LABELS,
@@ -44,6 +45,7 @@ interface HabitFormProps {
   submitLabel?: string;
   identityStatements?: IdentityStatement[];
   defaultIdentityId?: string | null;
+  showDescription?: boolean;
 }
 
 export default function HabitForm({
@@ -53,8 +55,10 @@ export default function HabitForm({
   submitLabel = 'Save Habit',
   identityStatements,
   defaultIdentityId,
+  showDescription = true,
 }: HabitFormProps) {
   const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { isAvailable: healthAvailable, isAuthorized: healthAuthorized } = useHealth();
 
   const [name, setName] = useState(initialData?.name || '');
@@ -109,26 +113,28 @@ export default function HabitForm({
         <TextInput
           style={styles.input}
           placeholder="e.g., Morning meditation"
-          placeholderTextColor={theme.colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={name}
           onChangeText={setName}
           autoCapitalize="sentences"
         />
       </View>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Description (optional)</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Add notes about this habit..."
-          placeholderTextColor={theme.colors.textMuted}
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-        />
-      </View>
+      {showDescription && (
+        <View style={styles.field}>
+          <Text style={styles.label}>Description (optional)</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Add notes about this habit..."
+            placeholderTextColor={colors.textMuted}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+        </View>
+      )}
 
       {identityStatements && identityStatements.length > 0 && (
         <View style={styles.field}>
@@ -288,7 +294,7 @@ export default function HabitForm({
               <View style={styles.field}>
                 <Text style={styles.label}>Metric</Text>
                 <View style={styles.metricRow}>
-                  {(Object.keys(METRIC_TYPE_LABELS) as HealthMetricType[]).map((type) => (
+                  {HABIT_LINKABLE_METRICS.map((type) => (
                     <TouchableOpacity
                       key={type}
                       style={[
@@ -322,7 +328,7 @@ export default function HabitForm({
                 <TextInput
                   style={styles.input}
                   placeholder="e.g., 10000"
-                  placeholderTextColor={theme.colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   value={metricThreshold}
                   onChangeText={setMetricThreshold}
                   keyboardType="numeric"
@@ -358,188 +364,190 @@ export default function HabitForm({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  field: {
-    marginBottom: theme.spacing.lg,
-  },
-  label: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
-  },
-  helperText: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
-  },
-  input: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 14,
-    fontSize: theme.fontSize.md,
-    color: theme.colors.textPrimary,
-  },
-  textArea: {
-    minHeight: 80,
-    paddingTop: 14,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-  },
-  switchLabelContainer: {
-    flex: 1,
-    marginRight: theme.spacing.md,
-  },
-  daysRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: theme.spacing.xs,
-  },
-  dayButton: {
-    flex: 1,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-  },
-  dayButtonActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  dayButtonText: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
-  },
-  dayButtonTextActive: {
-    color: '#fff',
-  },
-  frequencyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: theme.spacing.xs,
-  },
-  frequencyButton: {
-    flex: 1,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-  },
-  frequencyButtonActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  frequencyButtonText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
-  },
-  frequencyButtonTextActive: {
-    color: '#fff',
-  },
-  actions: {
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xxl,
-  },
-  submitButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    ...theme.shadow.md,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
-  },
-  cancelButton: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: theme.colors.textSecondary,
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.medium,
-  },
-  metricRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-  },
-  metricButton: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  metricButtonActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  metricButtonText: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
-  },
-  metricButtonTextActive: {
-    color: '#fff',
-  },
-  identityPicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-  },
-  identityPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: theme.spacing.xs + 2,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  identityPillActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  identityPillIcon: {
-    marginRight: 2,
-  },
-  identityPillText: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
-    maxWidth: 120,
-  },
-  identityPillTextActive: {
-    color: '#fff',
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    field: {
+      marginBottom: theme.spacing.lg,
+    },
+    label: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.semibold,
+      color: colors.textPrimary,
+      marginBottom: theme.spacing.xs,
+    },
+    helperText: {
+      fontSize: theme.fontSize.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: theme.borderRadius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: 14,
+      fontSize: theme.fontSize.md,
+      color: colors.textPrimary,
+    },
+    textArea: {
+      minHeight: 80,
+      paddingTop: 14,
+    },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: theme.borderRadius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.md,
+    },
+    switchLabelContainer: {
+      flex: 1,
+      marginRight: theme.spacing.md,
+    },
+    daysRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: theme.spacing.xs,
+    },
+    dayButton: {
+      flex: 1,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.borderRadius.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+    },
+    dayButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    dayButtonText: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textSecondary,
+    },
+    dayButtonTextActive: {
+      color: '#fff',
+    },
+    frequencyRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: theme.spacing.xs,
+    },
+    frequencyButton: {
+      flex: 1,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.borderRadius.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+    },
+    frequencyButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    frequencyButtonText: {
+      fontSize: theme.fontSize.sm,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textSecondary,
+    },
+    frequencyButtonTextActive: {
+      color: '#fff',
+    },
+    actions: {
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.xxl,
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      borderRadius: theme.borderRadius.md,
+      paddingVertical: 16,
+      alignItems: 'center',
+      ...theme.shadow.md,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    submitButtonText: {
+      color: '#fff',
+      fontSize: theme.fontSize.lg,
+      fontWeight: theme.fontWeight.semibold,
+    },
+    cancelButton: {
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    cancelButtonText: {
+      color: colors.textSecondary,
+      fontSize: theme.fontSize.md,
+      fontWeight: theme.fontWeight.medium,
+    },
+    metricRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.xs,
+    },
+    metricButton: {
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      borderRadius: theme.borderRadius.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    metricButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    metricButtonText: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textSecondary,
+    },
+    metricButtonTextActive: {
+      color: '#fff',
+    },
+    identityPicker: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.xs,
+    },
+    identityPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: theme.spacing.xs + 2,
+      paddingHorizontal: theme.spacing.md,
+      borderRadius: theme.borderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    identityPillActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    identityPillIcon: {
+      marginRight: 2,
+    },
+    identityPillText: {
+      fontSize: theme.fontSize.xs,
+      fontWeight: theme.fontWeight.medium,
+      color: colors.textSecondary,
+      maxWidth: 120,
+    },
+    identityPillTextActive: {
+      color: '#fff',
+    },
+  });
+}

@@ -26,7 +26,6 @@ import {
 } from '@/lib/revenueCat';
 import { captureEvent, EVENTS } from '@/lib/analytics';
 import { captureError } from '@/lib/sentry';
-import OnboardingProgress from '@/components/OnboardingProgress';
 
 const PRIVACY_POLICY_URL = 'https://thrive.hyperactivestudio.xyz/privacy';
 const TERMS_OF_USE_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
@@ -153,21 +152,13 @@ export default function PaywallScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <OnboardingProgress current={1} total={5} />
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View style={styles.readyBadge}>
-            <FontAwesome name="check" size={20} color="#fff" />
-          </View>
-          <Text style={styles.title}>Your Plan is Ready</Text>
-          <Text style={styles.subtitle}>
-            Start your 7-day free trial.{'\n'}Full access to everything. Cancel anytime.
-          </Text>
+          <Text style={styles.title}>Try Thrive Free for 7 Days</Text>
         </View>
 
         <View style={styles.timeline}>
@@ -229,14 +220,22 @@ export default function PaywallScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.socialProof}>
+          <FontAwesome name="star" size={14} color={colors.warning} />
+          <Text style={styles.socialProofText}>
+            Join thousands becoming the person they want to be
+          </Text>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What You'll Get</Text>
           {[
-            { icon: 'check-circle', text: 'Habit tracking with streaks' },
-            { icon: 'check-circle', text: 'Goal setting with progress charts' },
-            { icon: 'check-circle', text: 'Daily journal for reflection' },
-            { icon: 'check-circle', text: 'AI-powered weekly recaps' },
-            { icon: 'check-circle', text: 'Apple Health integration' },
+            { icon: 'check-circle', text: 'Daily intentions to focus on what matters most' },
+            { icon: 'check-circle', text: 'Daily habits to show up as your best self' },
+            { icon: 'check-circle', text: 'Nightly reflections to celebrate wins and spot tensions' },
+            { icon: 'check-circle', text: 'Nightly AI check-in calls to keep you accountable' },
+            { icon: 'check-circle', text: 'Weekly insights on your growth' },
+            { icon: 'check-circle', text: 'Health data synced to your identity' },
           ].map((item, i) => (
             <View key={i} style={styles.benefitRow}>
               <FontAwesome name={item.icon as any} size={16} color={colors.success} />
@@ -279,7 +278,7 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <Text style={styles.legalDisclosure}>
-          After your 7-day free trial, subscription automatically renews at {selectedPlan === 'yearly' ? `${yearlyPrice}/year` : `${monthlyPrice}/month`} unless
+          After your 7-day free trial, subscription renews at {selectedPlan === 'yearly' ? `${yearlyPrice}/year` : `${monthlyPrice}/month`} unless
           cancelled at least 24 hours before the end of the current period.
           Payment will be charged to your Apple ID account.
         </Text>
@@ -315,27 +314,12 @@ const createStyles = (colors: ThemeColors) =>
       paddingTop: theme.spacing.md,
       marginBottom: theme.spacing.lg,
     },
-    readyBadge: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      backgroundColor: colors.success,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: theme.spacing.md,
-    },
     title: {
       fontSize: theme.fontSize.xxl,
       fontWeight: theme.fontWeight.bold,
       color: colors.textPrimary,
       textAlign: 'center',
       marginBottom: theme.spacing.xs,
-    },
-    subtitle: {
-      fontSize: theme.fontSize.md,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 22,
     },
     section: {
       marginBottom: theme.spacing.lg,
@@ -404,6 +388,18 @@ const createStyles = (colors: ThemeColors) =>
     plans: {
       gap: theme.spacing.md,
       marginBottom: theme.spacing.md,
+    },
+    socialProof: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.xs,
+      marginBottom: theme.spacing.lg,
+    },
+    socialProofText: {
+      fontSize: theme.fontSize.sm,
+      color: colors.textSecondary,
+      fontWeight: theme.fontWeight.medium,
     },
     planCard: {
       backgroundColor: colors.surface,

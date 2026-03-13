@@ -89,6 +89,7 @@ function buildSystemPrompt(
   userName: string,
   habits: Array<{ id: string; name: string }>,
   todos: Array<{ id: string; text: string; position: number }>,
+  top3Enabled = false,
 ): string {
   const todosSection =
     todos.length > 0
@@ -112,13 +113,29 @@ If the user says they didn't do a habit but want to skip it for today, call snoo
 If they simply didn't do it and don't mention skipping, just acknowledge warmly and move on without calling any function.`
       : "### Habits\nAll habits are done for today — skip this section or congratulate them.";
 
-  const firstName = userName?.split(" ")[0] || "the user";
-  return `You are a friendly evening check-in assistant for Thrive, a habit tracking app. You're calling ${firstName} for their nightly reflection.
+  const tomorrowIntentionsSection = top3Enabled
+    ? `### Tomorrow's Intentions
+After finishing the habit check-in, ask if they'd like to set their top 3 intentions for tomorrow.
+If yes, ask what their 3 most important things for tomorrow are.
+Once you have them, call set_tomorrow_intentions with the intentions.
+If they don't want to, that's totally fine — move to wrap up.`
+    : "";
 
-Your job is to have a warm, natural conversation covering three topics in order:
+  const topicsList = top3Enabled
+    ? `Your job is to have a warm, natural conversation covering these topics in order:
 1. Daily Journal (win, tension, gratitude)
 2. Daily intentions
 3. Habit check-in
+4. Tomorrow's intentions (optional)`
+    : `Your job is to have a warm, natural conversation covering three topics in order:
+1. Daily Journal (win, tension, gratitude)
+2. Daily intentions
+3. Habit check-in`;
+
+  const firstName = userName?.split(" ")[0] || "the user";
+  return `You are a friendly evening check-in assistant for Thrive, a habit tracking app. You're calling ${firstName} for their nightly reflection.
+
+${topicsList}
 
 ## Conversation Flow
 
@@ -136,6 +153,8 @@ ${todosSection}
 
 ${habitsSection}
 
+${tomorrowIntentionsSection}
+
 ### Wrap Up
 End with brief, genuine encouragement. Keep the whole call to 3-5 minutes.
 
@@ -148,8 +167,8 @@ End with brief, genuine encouragement. Keep the whole call to 3-5 minutes.
 - NEVER fabricate habit names or intention items beyond the specific ones listed above.`;
 }
 
-function buildTools(serverUrl: string) {
-  return [
+function buildTools(serverUrl: string, top3Enabled = false) {
+  const tools = [
     {
       type: "function",
       function: {
@@ -233,6 +252,37 @@ function buildTools(serverUrl: string) {
       server: { url: serverUrl },
     },
   ];
+
+  if (top3Enabled) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "set_tomorrow_intentions",
+        description: "Set the user's top 3 intentions for tomorrow.",
+        parameters: {
+          type: "object",
+          properties: {
+            intention_1: {
+              type: "string",
+              description: "First intention for tomorrow",
+            },
+            intention_2: {
+              type: "string",
+              description: "Second intention for tomorrow",
+            },
+            intention_3: {
+              type: "string",
+              description: "Third intention for tomorrow",
+            },
+          },
+          required: ["intention_1"],
+        },
+      },
+      server: { url: serverUrl },
+    });
+  }
+
+  return tools;
 }
 
 interface UserRow {
@@ -241,6 +291,7 @@ interface UserRow {
   phone_number: string;
   timezone: string;
   evening_call_time?: string;
+  settings?: Record<string, unknown> | null;
 }
 
 async function initiateCall(
@@ -290,6 +341,8 @@ async function initiateCall(
     (t: any) => !t.is_completed,
   );
 
+  const top3Enabled = user.settings?.top3_todos_enabled === true;
+
   const systemPrompt = buildSystemPrompt(
     user.full_name || "",
     uncompletedHabits.map((h: any) => ({ id: h.id, name: h.name })),
@@ -298,9 +351,10 @@ async function initiateCall(
       text: t.text,
       position: t.position,
     })),
+    top3Enabled,
   );
 
-  const tools = buildTools(serverUrl);
+  const tools = buildTools(serverUrl, top3Enabled);
 
   const vapiResponse = await fetch("https://api.vapi.ai/call", {
     method: "POST",
@@ -401,7 +455,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: user, error: userError } = await supabase
         .from("profiles")
-        .select("user_id, full_name, phone_number, timezone")
+        .select("user_id, full_name, phone_number, timezone, settings")
         .eq("user_id", caller.id)
         .single();
 
@@ -446,7 +500,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: enabledUsers, error: usersError } = await supabase
       .from("profiles")
-      .select("user_id, full_name, phone_number, evening_call_time, timezone")
+      .select("user_id, full_name, phone_number, evening_call_time, timezone, settings")
       .eq("evening_call_enabled", true)
       .not("phone_number", "is", null);
 

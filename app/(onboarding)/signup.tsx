@@ -1,14 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, ThemeColors } from '@/lib/theme';
@@ -39,32 +30,27 @@ export default function OnboardingSignUpScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <OnboardingProgress current={2} total={5} />
-      <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            bounces={false}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.header}>
-              <View style={styles.successBadge}>
-                <FontAwesome name="check-circle" size={20} color={colors.success} />
-                <Text style={styles.successText}>Subscription activated!</Text>
-              </View>
-              <Text style={styles.title}>Create Your Account</Text>
-              <Text style={styles.subtitle}>
-                Save your progress and keep your data safe
-              </Text>
-            </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={styles.successBadge}>
+            <FontAwesome name="check-circle" size={20} color={colors.success} />
+            <Text style={styles.successText}>Subscription activated!</Text>
+          </View>
+          <Text style={styles.title}>You're In!</Text>
+          <Text style={styles.subtitle}>
+            Finish setting up your account
+          </Text>
+        </View>
 
-            <SignUpForm onSuccess={handleSuccess} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Pressable>
+        <SignUpForm
+          onSuccess={handleSuccess}
+          onEmailPress={() => router.push('/(onboarding)/email-signup')}
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -74,9 +60,6 @@ const createStyles = (colors: ThemeColors) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    keyboardView: {
-      flex: 1,
     },
     scrollContent: {
       flexGrow: 1,

@@ -14,6 +14,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import type { ThemeColors } from '@/lib/theme';
+import AppHeader from '@/components/AppHeader';
 import { GoalType, GOAL_TYPE_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_COLORS } from '@/lib/types';
 
 // ──────────────────────────────────────────────
@@ -339,18 +340,10 @@ export default function AddGoalSheet({
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
-        <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={step === 'form' ? () => setStep('pick') : handleClose}>
-            <Text style={styles.modalHeaderButton}>
-              {step === 'form' ? 'Back' : 'Cancel'}
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.modalTitle}>
-            {step === 'pick' ? 'Add Goal' : selectedTemplate?.label ?? 'New Goal'}
-          </Text>
-          <View style={{ minWidth: 60 }} />
-        </View>
+        <AppHeader
+          title={step === 'pick' ? 'Add Goal' : selectedTemplate?.label ?? 'New Goal'}
+          onBack={step === 'form' ? () => setStep('pick') : handleClose}
+        />
 
         {step === 'pick' ? (
           <ScrollView style={styles.templateList} contentContainerStyle={styles.templateListContent}>
@@ -607,28 +600,6 @@ function createStyles(colors: ThemeColors) {
       flex: 1,
       backgroundColor: colors.background,
     },
-    modalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: theme.spacing.lg,
-      paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-    },
-    modalHeaderButton: {
-      fontSize: theme.fontSize.md,
-      color: colors.primary,
-      fontWeight: theme.fontWeight.medium,
-      minWidth: 60,
-    },
-    modalTitle: {
-      fontSize: theme.fontSize.lg,
-      fontWeight: theme.fontWeight.bold,
-      color: colors.textPrimary,
-    },
-
     // Template picker
     templateList: {
       flex: 1,

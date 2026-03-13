@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Switch,
   ScrollView,
   Keyboard,
 } from 'react-native';
@@ -64,9 +63,6 @@ export default function OnboardingFeaturesScreen() {
   const habits = useMemo(() => parseJsonParam<PendingHabit>(params.habits), [params.habits]);
   const identities = useMemo(() => parseJsonParam<OnboardingIdentity>(params.identities), [params.identities]);
 
-  const [top3TodosEnabled, setTop3TodosEnabled] = useState(false);
-  const [journalEnabled, setJournalEnabled] = useState(false);
-  const [eveningCallEnabled, setEveningCallEnabled] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [saving, setSaving] = useState(false);
   const [phoneInputFocused, setPhoneInputFocused] = useState(false);
@@ -77,7 +73,9 @@ export default function OnboardingFeaturesScreen() {
     captureEvent(EVENTS.ONBOARDING_STEP_VIEWED, { step_name: 'features', step_number: 5 });
   }, []);
 
-  const handleCompleteOnboarding = async () => {
+  const hasPhoneNumber = phoneNumber.trim().length > 0;
+
+  const completeOnboarding = async (enableCalls: boolean) => {
     if (!user) return;
     if (habits.length === 0) {
       Alert.alert('Missing Habits', 'Please add at least one habit to continue.');
@@ -85,7 +83,7 @@ export default function OnboardingFeaturesScreen() {
       return;
     }
 
-    if (eveningCallEnabled && phoneNumber.trim()) {
+    if (enableCalls && hasPhoneNumber) {
       const normalized = normalizePhoneNumber(phoneNumber.trim());
       if (!normalized) {
         Alert.alert(
@@ -99,11 +97,11 @@ export default function OnboardingFeaturesScreen() {
     setSaving(true);
     try {
       await updateSettings({
-        top3_todos_enabled: top3TodosEnabled,
-        journal_enabled: journalEnabled,
+        top3_todos_enabled: true,
+        journal_enabled: true,
       });
 
-      if (eveningCallEnabled && phoneNumber.trim()) {
+      if (enableCalls && hasPhoneNumber) {
         const normalized = normalizePhoneNumber(phoneNumber.trim())!;
         await updateEveningCallPreferences(user.id, {
           phone_number: normalized,
@@ -113,7 +111,6 @@ export default function OnboardingFeaturesScreen() {
         });
       }
 
-      // Create identity statements and build a lookup for linking habits
       const identityLookup = new Map<string, string>();
       if (identities.length > 0) {
         const created = await createIdentityStatements(
@@ -155,9 +152,9 @@ export default function OnboardingFeaturesScreen() {
       });
       captureEvent(EVENTS.ONBOARDING_COMPLETED, {
         habits_count: habits.length,
-        top3_todos_enabled: top3TodosEnabled,
-        journal_enabled: journalEnabled,
-        evening_call_enabled: eveningCallEnabled,
+        top3_todos_enabled: true,
+        journal_enabled: true,
+        evening_call_enabled: enableCalls && hasPhoneNumber,
       });
       router.replace('/(tabs)');
     } catch (error) {
@@ -171,14 +168,6 @@ export default function OnboardingFeaturesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <OnboardingProgress current={5} total={5} />
-      <View style={styles.header}>
-        <Text style={styles.emoji}>✨</Text>
-        <Text style={styles.title}>Choose Extra Features</Text>
-        <Text style={styles.subtitle}>
-          Turn on optional tools to help you focus and reflect. You can change these any time in
-          Profile.
-        </Text>
-      </View>
 
       <ScrollView
         style={styles.content}
@@ -187,120 +176,66 @@ export default function OnboardingFeaturesScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <View style={styles.featureCard}>
-          <View style={styles.featureTopRow}>
-            <View style={styles.featureTitleRow}>
-              <View style={styles.featureIcon}>
-                <FontAwesome name="list-ol" size={18} color={colors.primary} />
-              </View>
-              <Text style={styles.featureTitle}>Daily Intentions</Text>
-            </View>
-            <Switch
-              value={top3TodosEnabled}
-              onValueChange={setTop3TodosEnabled}
-              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
-              thumbColor="#f4f3f4"
-            />
+        <View style={styles.header}>
+          <View style={styles.iconCircle}>
+            <FontAwesome name="phone" size={28} color={colors.primary} />
           </View>
-          <Text style={styles.featureDescription}>
-            Start each morning by choosing the three things that matter most. Your intentions appear
-            on your home screen — a daily practice of living with purpose.
+          <Text style={styles.title}>Stay Accountable{'\n'}Every Night</Text>
+          <Text style={styles.subtitle}>
+            Get a nightly call from Thrive to reflect on your day.{'\n'}It updates your journal, habits, and intentions{'\n'}automatically — so you never fall off track.
           </Text>
         </View>
 
-        <View style={styles.featureCard}>
-          <View style={styles.featureTopRow}>
-            <View style={styles.featureTitleRow}>
-              <View style={styles.featureIcon}>
-                <FontAwesome name="book" size={18} color={colors.primary} />
-              </View>
-              <Text style={styles.featureTitle}>Daily Journal</Text>
-            </View>
-            <Switch
-              value={journalEnabled}
-              onValueChange={setJournalEnabled}
-              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
-              thumbColor="#f4f3f4"
+        <View style={styles.phoneSection}>
+          <Text style={styles.phoneLabel}>Your Phone Number</Text>
+          <View style={styles.phoneInputRow}>
+            <TextInput
+              ref={phoneInputRef}
+              style={[styles.phoneInput, styles.phoneInputFlex]}
+              placeholder="(555) 123-4567"
+              placeholderTextColor={colors.textMuted}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              onFocus={() => setPhoneInputFocused(true)}
+              onBlur={() => setPhoneInputFocused(false)}
             />
+            {phoneInputFocused && (
+              <TouchableOpacity
+                style={styles.doneButton}
+                onPress={() => Keyboard.dismiss()}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          <Text style={styles.featureDescription}>
-            End your day with a quick reflection: one win, one tension, and one gratitude. This
-            simple practice helps you notice progress and patterns over time.
-          </Text>
-        </View>
-
-        <View style={styles.featureCard}>
-          <View style={styles.featureTopRow}>
-            <View style={styles.featureTitleRow}>
-              <View style={styles.featureIcon}>
-                <FontAwesome name="phone" size={18} color={colors.primary} />
-              </View>
-              <Text style={styles.featureTitle}>Evening Check-In Call</Text>
-            </View>
-            <Switch
-              value={eveningCallEnabled}
-              onValueChange={setEveningCallEnabled}
-              trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
-              thumbColor="#f4f3f4"
-            />
-          </View>
-          <Text style={styles.featureDescription}>
-            Get a nightly call from Thrive to reflect on your day. It automatically updates your
-            journal, habits, and todos in the app for you.
-          </Text>
-          {eveningCallEnabled && (
-            <View style={styles.phoneField}>
-              <Text style={styles.phoneLabel}>Phone Number</Text>
-              <View style={styles.phoneInputRow}>
-                <TextInput
-                  ref={phoneInputRef}
-                  style={[styles.phoneInput, styles.phoneInputFlex]}
-                  placeholder="(555) 123-4567"
-                  placeholderTextColor={colors.textMuted}
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  keyboardType="phone-pad"
-                  autoComplete="tel"
-                  onFocus={() => setPhoneInputFocused(true)}
-                  onBlur={() => setPhoneInputFocused(false)}
-                />
-                {phoneInputFocused && (
-                  <TouchableOpacity
-                    style={styles.doneButton}
-                    onPress={() => Keyboard.dismiss()}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.doneButtonText}>Done</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              <SaveContactButton compact />
-            </View>
-          )}
+          <SaveContactButton compact />
         </View>
       </ScrollView>
 
       <View style={styles.actions}>
         <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          disabled={saving}
-        >
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.continueButton, saving && styles.buttonDisabled]}
-          onPress={handleCompleteOnboarding}
-          disabled={saving}
+          style={[styles.enableButton, saving && styles.buttonDisabled]}
+          onPress={() => completeOnboarding(true)}
+          disabled={saving || !hasPhoneNumber}
           activeOpacity={0.8}
         >
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.continueButtonText}>Continue</Text>
+            <Text style={styles.enableButtonText}>Enable Calls</Text>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={() => completeOnboarding(false)}
+          disabled={saving}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.skipButtonText}>Skip for Now</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -313,20 +248,31 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: theme.spacing.lg,
   },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: theme.spacing.sm,
+  },
   header: {
     alignItems: 'center',
     paddingTop: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xxl,
   },
-  emoji: {
-    fontSize: 44,
-    marginBottom: theme.spacing.md,
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primaryLightOverlay30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.lg,
   },
   title: {
     fontSize: theme.fontSize.xxl,
     fontWeight: theme.fontWeight.bold,
     color: colors.textPrimary,
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
@@ -335,55 +281,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    gap: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-  },
-  featureCard: {
-    backgroundColor: colors.surface,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: theme.spacing.md,
+  phoneSection: {
     gap: theme.spacing.sm,
-  },
-  featureTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.sm,
-  },
-  featureTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: theme.spacing.sm,
-  },
-  featureIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: theme.borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryLightOverlay30,
-  },
-  featureTitle: {
-    flex: 1,
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-    color: colors.textPrimary,
-  },
-  featureDescription: {
-    fontSize: theme.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  phoneField: {
-    gap: theme.spacing.xs,
-    paddingTop: theme.spacing.xs,
   },
   phoneLabel: {
     fontSize: theme.fontSize.sm,
@@ -396,12 +295,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: theme.spacing.sm,
   },
   phoneInput: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: theme.borderRadius.md,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: theme.fontSize.md,
     color: colors.textPrimary,
   },
@@ -412,7 +311,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.md,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   doneButtonText: {
     color: '#fff',
@@ -420,39 +319,32 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: theme.fontWeight.semibold,
   },
   actions: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
     paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
   },
-  backButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-  },
-  backButtonText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-    color: colors.textSecondary,
-  },
-  continueButton: {
-    flex: 2,
+  enableButton: {
     backgroundColor: colors.primary,
     borderRadius: theme.borderRadius.md,
-    paddingVertical: 16,
+    paddingVertical: 18,
     alignItems: 'center',
     ...theme.shadow.md,
   },
-  continueButtonText: {
+  enableButtonText: {
     color: '#fff',
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.semibold,
   },
+  skipButton: {
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: colors.textSecondary,
+  },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.5,
   },
 });

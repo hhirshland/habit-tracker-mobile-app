@@ -1,0 +1,73 @@
+---
+description: Enforce the shared AppHeader component for all screen and modal navigation headers
+globs: components/**/*Modal*.tsx,components/**/*Sheet*.tsx,components/**/*Detail*.tsx,components/**/*Section*.tsx,app/**/*.tsx
+alwaysApply: false
+---
+
+# App Header Standard
+
+Every screen and modal in the app uses **one consistent header pattern** via `AppHeader`. Never implement inline headers.
+
+## Layout (always the same)
+
+```
+[ < chevron ]     Title (centered)     [ action or empty ]
+```
+
+- **Left:** chevron-left icon — always dismisses or navigates back
+- **Center:** title, always centered; optional subtitle below
+- **Right:** optional action — text label ("Save", "Done") or icon ("+", trash), or empty
+
+## Usage
+
+```tsx
+import AppHeader from '@/components/AppHeader';
+
+// Minimal — back defaults to router.back()
+<AppHeader title="Define Your Identity" showBorder={false} />
+
+// With a right icon action
+<AppHeader title="My Habits" rightAction={{ icon: 'plus', onPress: handleAdd }} />
+
+// Inside a Modal — pass onBack to dismiss
+<AppHeader title="Goal Detail" onBack={onClose} />
+
+// With a right text action (Save / Done)
+<AppHeader
+  title="Edit Metrics"
+  onBack={handleCancel}
+  rightAction={{ label: 'Done', onPress: handleSave }}
+/>
+
+// Disabled right action
+<AppHeader
+  title="Daily Journal"
+  onBack={handleClose}
+  rightAction={{ label: 'Save', onPress: handleSubmit, disabled: !canSave }}
+/>
+
+// With subtitle
+<AppHeader title="Weekly Recap" subtitle="Mar 3 – Mar 9" onBack={handleClose} />
+
+// With a colored icon action
+<AppHeader
+  title={goal.title}
+  onBack={onClose}
+  rightAction={{ icon: 'trash-o', onPress: handleDelete, color: colors.danger }}
+/>
+```
+
+## Props
+
+- `title` (string, required) — centered title text
+- `subtitle` (string) — smaller text below the title
+- `onBack` (() => void) — left chevron handler; defaults to `router.back()`
+- `rightAction` ({ icon?, label?, onPress, disabled?, color? }) — optional right slot
+- `showBorder` (boolean, default false) — bottom border; leave off unless a specific screen needs it
+
+## Common mistakes
+
+- Writing a custom header View with inline styles instead of using `AppHeader`
+- Using an X icon, "Close" text, or "Cancel" text to dismiss — always use the chevron via `onBack`
+- Forgetting to pass `onBack` inside a React Native `Modal` (it won't default correctly to `router.back()`)
+- Adding `showBorder={true}` without a clear reason — the default is borderless for a clean, modern look

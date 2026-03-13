@@ -34,18 +34,18 @@ export default function WelcomeScreen() {
 
           <View style={styles.messaging}>
             <Text style={styles.headline}>
-              Become your best self,{'\n'}one habit at a time
+              Become your best self
             </Text>
             <Text style={styles.subtext}>
-              Track habits, set goals, and reflect daily.{'\n'}Small actions compound into big results.
+              Connect your daily actions to the{'\n'}person you want to be.
             </Text>
           </View>
 
           <View style={styles.features}>
             {[
-              { icon: '✓', text: 'Build lasting habits with streaks & reminders' },
-              { icon: '✓', text: 'Track goals with Apple Health integration' },
-              { icon: '✓', text: 'Reflect & grow with daily journaling' },
+              { icon: '✓', text: 'Define your identity' },
+              { icon: '✓', text: 'Build daily habits that align' },
+              { icon: '✓', text: 'Watch yourself grow, week over week' },
             ].map((item, i) => (
               <View key={i} style={styles.featureRow}>
                 <View style={styles.checkCircle}>
@@ -59,7 +59,7 @@ export default function WelcomeScreen() {
           <View style={styles.socialProof}>
             <FontAwesome name="star" size={14} color={colors.warning} />
             <Text style={styles.socialProofText}>
-              Join thousands building better habits with Thrive
+              Join thousands thriving every day
             </Text>
           </View>
         </View>
