@@ -14,6 +14,7 @@ const REMINDER_CHANNEL_ID = 'daily-reminders';
 const HABIT_REMINDER_ID = 'habit-reminder';
 const TODO_REMINDER_ID = 'todo-reminder';
 export const WEEKLY_RECAP_REMINDER_ID = 'weekly-recap';
+export const TRIAL_ENDING_REMINDER_ID = 'trial-ending';
 
 async function ensureNotificationChannel() {
   if (Platform.OS !== 'android') return;
@@ -194,5 +195,39 @@ export async function rescheduleNotifications() {
     weekday: 1, // Sunday
     hour: 8,
     minute: 0,
+  });
+}
+
+/**
+ * Schedule a one-time notification 2 days before the trial expires at 10 AM local.
+ * Must be called AFTER rescheduleNotifications (which cancels all existing notifications).
+ */
+export async function scheduleTrialReminder(expirationDate: string) {
+  await ensureNotificationChannel();
+
+  const { notificationsEnabled } = await getSettings();
+  if (!notificationsEnabled) return;
+
+  const permissions = await Notifications.getPermissionsAsync();
+  if (!permissions.granted) return;
+
+  const reminderDate = new Date(expirationDate);
+  reminderDate.setDate(reminderDate.getDate() - 2);
+  reminderDate.setHours(10, 0, 0, 0);
+
+  if (reminderDate.getTime() <= Date.now()) return;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Your free trial ends soon',
+      body: 'Your Thrive Pro trial ends in 2 days. Keep your streak going!',
+      sound: 'default',
+      data: { reminder_id: TRIAL_ENDING_REMINDER_ID },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: reminderDate,
+      ...(Platform.OS === 'android' ? { channelId: REMINDER_CHANNEL_ID } : {}),
+    },
   });
 }

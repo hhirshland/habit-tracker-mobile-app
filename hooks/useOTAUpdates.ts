@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { AppState, AppStateStatus } from "react-native";
+import { Alert, AppState, AppStateStatus } from "react-native";
 
 export function useOTAUpdates() {
   useEffect(() => {
@@ -17,10 +17,25 @@ export function useOTAUpdates() {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
           await Updates.fetchUpdateAsync();
+          promptReload(Updates);
         }
       } catch (e) {
         console.warn("OTA update check failed:", e);
       }
+    }
+
+    function promptReload(updates: typeof Updates) {
+      Alert.alert(
+        "Update Available",
+        "A new version has been downloaded. Restart now to apply it.",
+        [
+          { text: "Later", style: "cancel" },
+          {
+            text: "Restart",
+            onPress: () => updates.reloadAsync(),
+          },
+        ],
+      );
     }
 
     checkAndFetch();

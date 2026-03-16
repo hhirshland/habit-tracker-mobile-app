@@ -17,8 +17,8 @@ import { UserSettingsProvider, useUserSettings } from '@/contexts/UserSettingsCo
 import * as Notifications from 'expo-notifications';
 import { captureEvent, EVENTS, setSuperProperties, trackScreen } from '@/lib/analytics';
 import { getAuthRedirectTarget } from '@/lib/authRouting';
-import { rescheduleNotifications, WEEKLY_RECAP_REMINDER_ID } from '@/lib/notifications';
-import { configureRevenueCat } from '@/lib/revenueCat';
+import { rescheduleNotifications, scheduleTrialReminder, WEEKLY_RECAP_REMINDER_ID } from '@/lib/notifications';
+import { configureRevenueCat, getCustomerInfo, isTrialing, getExpirationDate } from '@/lib/revenueCat';
 import { posthogClient } from '@/lib/posthog';
 import { queryClient } from '@/lib/queryClient';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -26,6 +26,14 @@ import { useOTAUpdates } from '@/hooks/useOTAUpdates';
 import { initSentry, captureError, Sentry } from '@/lib/sentry';
 
 initSentry();
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
   Sentry.captureException(error);
@@ -172,22 +180,42 @@ function RootLayoutNav() {
   useEffect(() => {
     if (!hasHydratedAuth) return;
 
-    rescheduleNotifications().catch((error) => {
-      console.error('Error rescheduling notifications on app launch:', error);
-      captureError(error, { tag: 'notifications.reschedule' });
-    });
+    rescheduleNotifications()
+      .then(async () => {
+        try {
+          const info = await getCustomerInfo();
+          if (isTrialing(info)) {
+            const expDate = getExpirationDate(info);
+            if (expDate) await scheduleTrialReminder(expDate);
+          }
+        } catch {
+          // RevenueCat may not be available; trial reminder is best-effort
+        }
+      })
+      .catch((error) => {
+        console.error('Error rescheduling notifications on app launch:', error);
+        captureError(error, { tag: 'notifications.reschedule' });
+      });
   }, [hasHydratedAuth]);
 
-  useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const reminderId =
-        (response.notification.request.content.data?.reminder_id as string) ?? 'unknown';
-      captureEvent(EVENTS.NOTIFICATION_OPENED, { reminder_id: reminderId });
+  function handleNotificationResponse(response: Notifications.NotificationResponse) {
+    const reminderId =
+      (response.notification.request.content.data?.reminder_id as string) ?? 'unknown';
+    captureEvent(EVENTS.NOTIFICATION_OPENED, { reminder_id: reminderId });
 
-      if (reminderId === WEEKLY_RECAP_REMINDER_ID) {
-        router.navigate('/(tabs)/progress' as Href);
-      }
+    if (reminderId === WEEKLY_RECAP_REMINDER_ID) {
+      router.navigate('/(tabs)/progress' as Href);
+    }
+  }
+
+  useEffect(() => {
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleNotificationResponse(response);
     });
+  }, []);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
     return () => subscription.remove();
   }, [router]);
 

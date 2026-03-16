@@ -19,6 +19,7 @@ Thrive is a mobile app with users on older versions that cannot be force-upgrade
 
 ## Edge functions
 
+- **Always set `verify_jwt = false`** for every edge function. Add an entry in `supabase/config.toml` and pass `verify_jwt: false` when deploying. The Supabase Edge Runtime's built-in JWT check does not reliably handle the project's asymmetric (ES256) tokens. Every function must perform its own auth via `getUser(token)` instead.
 - Every edge function that reads new data (new tables, new columns) must handle the case where that data does not exist. If a user has no rows in a new table, the function must behave identically to its pre-feature behavior.
 - Never remove or rename fields in a function's JSON response. New fields are fine; removing or renaming existing fields breaks older clients.
 - When augmenting an AI prompt (e.g., weekly recaps), wrap new context sections in a conditional so the prompt is unchanged when the new data is absent.

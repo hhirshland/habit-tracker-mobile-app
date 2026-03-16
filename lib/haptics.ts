@@ -1,9 +1,7 @@
 import * as Haptics from 'expo-haptics';
 
 function safe(fn: () => Promise<void>) {
-  try {
-    fn();
-  } catch {}
+  fn().catch(() => {});
 }
 
 export const hapticSuccess = () =>
