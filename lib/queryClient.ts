@@ -61,4 +61,8 @@ export const queryKeys = {
   identity: {
     all: ['identity'] as const,
   },
+  goals: {
+    all: ['goals'] as const,
+    currentValue: (goalId: string) => ['goals', 'currentValue', goalId] as const,
+  },
 } as const;

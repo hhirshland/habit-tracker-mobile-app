@@ -37,7 +37,12 @@ export function getAuthRedirectTarget({
     return '/(onboarding)/paywall';
   }
 
-  if (onboardingState === true || onboardingState === undefined) {
+  // No profile row yet — treat as needing onboarding.
+  if (onboardingState === undefined) {
+    return inOnboardingGroup ? null : '/(onboarding)';
+  }
+
+  if (onboardingState === true) {
     return inAuthGroup || inOnboardingGroup ? '/(tabs)' : null;
   }
 

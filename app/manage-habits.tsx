@@ -26,6 +26,7 @@ import {
 import HabitItem from '@/components/HabitItem';
 import HabitForm from '@/components/HabitForm';
 import AppHeader from '@/components/AppHeader';
+import { captureError } from '@/lib/sentry';
 
 export default function ManageHabitsScreen() {
   const colors = useThemeColors();
@@ -73,6 +74,7 @@ export default function ManageHabitsScreen() {
       setShowForm(false);
     } catch (error) {
       console.error('Error creating habit:', error);
+      captureError(error, { tag: 'manage-habits.create' });
       Alert.alert('Error', 'Failed to create habit');
     }
   };
@@ -103,6 +105,7 @@ export default function ManageHabitsScreen() {
       setEditingHabit(null);
     } catch (error) {
       console.error('Error updating habit:', error);
+      captureError(error, { tag: 'manage-habits.update' });
       Alert.alert('Error', 'Failed to update habit');
     }
   };
@@ -121,6 +124,7 @@ export default function ManageHabitsScreen() {
             });
           } catch (error) {
             console.error('Error deleting habit:', error);
+            captureError(error, { tag: 'manage-habits.delete' });
             Alert.alert('Error', 'Failed to delete habit');
           }
         },
@@ -164,6 +168,9 @@ export default function ManageHabitsScreen() {
         <FlatList
           data={habits}
           keyExtractor={(item) => item.id}
+          initialNumToRender={10}
+          maxToRenderPerBatch={8}
+          windowSize={5}
           renderItem={({ item }) => (
             <View style={styles.itemWrapper}>
               <HabitItem

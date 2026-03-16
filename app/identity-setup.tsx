@@ -25,13 +25,14 @@ import {
   useCreateIdentityStatements,
   useDeleteIdentityStatement,
 } from '@/hooks/useIdentityQuery';
-import type { IdentityStatement } from '@/lib/types';
+import type { IdentityStatement, FAIconName } from '@/lib/types';
 import {
   IDENTITY_CATEGORIES,
   DEFAULT_CUSTOM_EMOJI,
   type IdentityTemplate,
 } from '@/lib/identityTemplates';
 import CategoryPicker, { CATEGORY_ICONS } from '@/components/CategoryPicker';
+import { hapticSuccess, hapticSelection, hapticWarning } from '@/lib/haptics';
 
 interface SelectedIdentity {
   statement: string;
@@ -44,7 +45,7 @@ export default function IdentitySetupScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
-  const { data: existing = [] } = useIdentityStatements();
+  const { data: existing = [], isLoading: existingLoading } = useIdentityStatements();
   const createMutation = useCreateIdentityStatements();
   const deleteMutation = useDeleteIdentityStatement();
 
@@ -58,6 +59,7 @@ export default function IdentitySetupScreen() {
   );
 
   const toggleTemplate = useCallback((template: IdentityTemplate) => {
+    hapticSelection();
     setSelected((prev) => {
       const match = prev.find((s) => s.statement === template.statement);
       if (match) return prev.filter((s) => s !== match);
@@ -116,6 +118,7 @@ export default function IdentitySetupScreen() {
 
   const confirmDeleteIdentity = useCallback(
     (identity: IdentityStatement) => {
+      hapticWarning();
       Alert.alert(
         'Remove Identity',
         `Are you sure you want to remove "${identity.statement}"?`,
@@ -143,6 +146,7 @@ export default function IdentitySetupScreen() {
           sort_order: existing.length + i,
         })),
       });
+      hapticSuccess();
       const templateCount = selected.filter((s) => !s.isCustom).length;
       captureEvent(EVENTS.IDENTITY_ONBOARDING_COMPLETED, {
         identity_count: selected.length,
@@ -176,7 +180,13 @@ export default function IdentitySetupScreen() {
             </Text>
           </View>
 
-          {existing.length > 0 && (
+          {existingLoading && (
+            <View style={styles.section}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          )}
+
+          {!existingLoading && existing.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Current Identities</Text>
               <View style={styles.tags}>
@@ -249,7 +259,7 @@ export default function IdentitySetupScreen() {
           {IDENTITY_CATEGORIES.map((category) => (
             <View key={category.id} style={styles.categorySection}>
               <View style={styles.categoryHeader}>
-                <FontAwesome name={category.icon as any} size={14} color={colors.textSecondary} />
+                <FontAwesome name={category.icon as FAIconName} size={14} color={colors.textSecondary} />
                 <Text style={styles.categoryLabel}>{category.label}</Text>
               </View>
               <View style={styles.templateGrid}>

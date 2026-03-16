@@ -10,6 +10,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { DailyTodo } from '@/lib/types';
+import { hapticSuccess, hapticHeavy } from '@/lib/haptics';
 
 export interface DailyTodoItemHandle {
   startEditing: () => void;
@@ -111,7 +112,10 @@ const DailyTodoItem = forwardRef<DailyTodoItemHandle, DailyTodoItemProps>(functi
     <View style={styles.row}>
       <TouchableOpacity
         style={[styles.checkbox, todo!.is_completed && styles.checkboxCompleted]}
-        onPress={() => onToggle(todo!)}
+        onPress={() => {
+          if (!todo!.is_completed) hapticSuccess();
+          onToggle(todo!);
+        }}
         activeOpacity={0.7}
       >
         {todo!.is_completed && (
@@ -126,7 +130,10 @@ const DailyTodoItem = forwardRef<DailyTodoItemHandle, DailyTodoItemProps>(functi
             setEditing(true);
           }
         }}
-        onLongPress={() => onDelete(todo!)}
+        onLongPress={() => {
+          hapticHeavy();
+          onDelete(todo!);
+        }}
         activeOpacity={0.7}
       >
         <Text

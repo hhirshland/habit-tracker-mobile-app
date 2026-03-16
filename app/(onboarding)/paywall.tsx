@@ -26,6 +26,7 @@ import {
 } from '@/lib/revenueCat';
 import { captureEvent, EVENTS } from '@/lib/analytics';
 import { captureError } from '@/lib/sentry';
+import { hapticSuccess, hapticSelection } from '@/lib/haptics';
 
 const PRIVACY_POLICY_URL = 'https://thrive.hyperactivestudio.xyz/privacy';
 const TERMS_OF_USE_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
@@ -89,6 +90,7 @@ export default function PaywallScreen() {
     try {
       const info = await purchasePackage(pkg);
       if (hasProEntitlement(info)) {
+        hapticSuccess();
         captureEvent(EVENTS.SUBSCRIPTION_STARTED, {
           plan_type: selectedPlan,
           is_trial: true,
@@ -186,7 +188,10 @@ export default function PaywallScreen() {
               styles.planCard,
               selectedPlan === 'yearly' && styles.planCardSelected,
             ]}
-            onPress={() => setSelectedPlan('yearly')}
+            onPress={() => {
+              hapticSelection();
+              setSelectedPlan('yearly');
+            }}
             activeOpacity={0.7}
           >
             <View style={styles.planBadge}>
@@ -207,7 +212,10 @@ export default function PaywallScreen() {
               styles.planCard,
               selectedPlan === 'monthly' && styles.planCardSelected,
             ]}
-            onPress={() => setSelectedPlan('monthly')}
+            onPress={() => {
+              hapticSelection();
+              setSelectedPlan('monthly');
+            }}
             activeOpacity={0.7}
           >
             <View style={styles.planHeader}>

@@ -26,6 +26,7 @@ import {
 import { useHealth } from '@/contexts/HealthContext';
 import { CATEGORY_ICONS } from '@/components/CategoryPicker';
 import { getCategoryIdForStatement } from '@/lib/identityTemplates';
+import { hapticSelection } from '@/lib/haptics';
 
 interface HabitFormData {
   name: string;
@@ -82,6 +83,7 @@ export default function HabitForm({
   );
 
   const toggleDay = (day: number) => {
+    hapticSelection();
     setSpecificDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
     );
@@ -145,7 +147,10 @@ export default function HabitForm({
                 styles.identityPill,
                 selectedIdentityId === null && styles.identityPillActive,
               ]}
-              onPress={() => setSelectedIdentityId(null)}
+              onPress={() => {
+                hapticSelection();
+                setSelectedIdentityId(null);
+              }}
               activeOpacity={0.7}
             >
               <Text
@@ -164,7 +169,10 @@ export default function HabitForm({
                   styles.identityPill,
                   selectedIdentityId === identity.id && styles.identityPillActive,
                 ]}
-                onPress={() => setSelectedIdentityId(identity.id)}
+                onPress={() => {
+                  hapticSelection();
+                  setSelectedIdentityId(identity.id);
+                }}
                 activeOpacity={0.7}
               >
                 <FontAwesome
@@ -246,7 +254,10 @@ export default function HabitForm({
                   styles.frequencyButton,
                   frequencyPerWeek === num && styles.frequencyButtonActive,
                 ]}
-                onPress={() => setFrequencyPerWeek(num)}
+                onPress={() => {
+                  hapticSelection();
+                  setFrequencyPerWeek(num);
+                }}
                 activeOpacity={0.7}
               >
                 <Text
@@ -302,6 +313,7 @@ export default function HabitForm({
                         metricType === type && styles.metricButtonActive,
                       ]}
                       onPress={() => {
+                        hapticSelection();
                         setMetricType(type);
                         setMetricThreshold(METRIC_TYPE_DEFAULTS[type].toString());
                       }}

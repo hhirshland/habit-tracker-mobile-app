@@ -6,7 +6,7 @@ export async function getJournalForDate(
 ): Promise<DailyJournalEntry | null> {
   const { data, error } = await supabase
     .from('daily_journal_entries')
-    .select('*')
+    .select('id, user_id, journal_date, win, tension, gratitude, created_at, updated_at')
     .eq('journal_date', date)
     .maybeSingle();
 
@@ -20,7 +20,7 @@ export async function getJournalForDateRange(
 ): Promise<DailyJournalEntry[]> {
   const { data, error } = await supabase
     .from('daily_journal_entries')
-    .select('*')
+    .select('id, user_id, journal_date, win, tension, gratitude, created_at, updated_at')
     .gte('journal_date', startDate)
     .lte('journal_date', endDate)
     .order('journal_date', { ascending: false });

@@ -33,6 +33,8 @@ import {
   ProjectionPoint,
 } from '@/lib/goalMath';
 import GoalChart from './GoalChart';
+import { hapticSuccess, hapticSelection, hapticWarning } from '@/lib/haptics';
+import { captureError } from '@/lib/sentry';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -143,6 +145,7 @@ export default function GoalDetailModal({
       setProjectedEndDate(endDate);
     } catch (error) {
       console.error('Error loading goal data:', error);
+      captureError(error, { tag: 'goalDetail.loadData' });
     } finally {
       setLoading(false);
     }
@@ -249,6 +252,7 @@ export default function GoalDetailModal({
   };
 
   const handleDelete = () => {
+    hapticWarning();
     Alert.alert(
       'Delete Goal',
       `Are you sure you want to delete "${goal.title}"?`,
@@ -271,6 +275,7 @@ export default function GoalDetailModal({
     if (isNaN(val)) return;
 
     const dateStr = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}-${String(logDate.getDate()).padStart(2, '0')}`;
+    hapticSuccess();
     onLogEntry(goal.id, val, dateStr);
     setLogValue('');
     setLogDate(new Date());
@@ -391,7 +396,10 @@ export default function GoalDetailModal({
                           styles.timeToggleButton,
                           timeRange === range && styles.timeToggleButtonActive,
                         ]}
-                        onPress={() => setTimeRange(range)}
+                        onPress={() => {
+                          hapticSelection();
+                          setTimeRange(range);
+                        }}
                       >
                         <Text
                           style={[

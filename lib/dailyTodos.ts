@@ -4,7 +4,7 @@ import { DailyTodo } from './types';
 export async function getDailyTodosForDate(date: string): Promise<DailyTodo[]> {
   const { data, error } = await supabase
     .from('daily_todos')
-    .select('*')
+    .select('id, user_id, todo_date, text, is_completed, position, created_at, updated_at')
     .eq('todo_date', date)
     .order('position', { ascending: true });
 
@@ -18,7 +18,7 @@ export async function getDailyTodosForDateRange(
 ): Promise<DailyTodo[]> {
   const { data, error } = await supabase
     .from('daily_todos')
-    .select('*')
+    .select('id, user_id, todo_date, text, is_completed, position, created_at, updated_at')
     .gte('todo_date', startDate)
     .lte('todo_date', endDate)
     .order('todo_date', { ascending: true })

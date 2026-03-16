@@ -13,11 +13,13 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, ThemeColors } from '@/lib/theme';
 import { IDENTITY_CATEGORIES } from '@/lib/identityTemplates';
+import { hapticSelection } from '@/lib/haptics';
+import type { FAIconName } from '@/lib/types';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const DISMISS_THRESHOLD = 100;
 
-const CATEGORY_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
+const CATEGORY_ICONS: Record<string, FAIconName> = {
   health: 'heartbeat',
   mindfulness: 'leaf',
   learning: 'graduation-cap',
@@ -33,9 +35,9 @@ const OPTIONS = [
   ...IDENTITY_CATEGORIES.map((c) => ({
     id: c.id,
     label: c.label,
-    icon: (CATEGORY_ICONS[c.id] ?? 'star') as React.ComponentProps<typeof FontAwesome>['name'],
+    icon: (CATEGORY_ICONS[c.id] ?? 'star') as FAIconName,
   })),
-  { id: 'other', label: 'Other', icon: 'th-large' as React.ComponentProps<typeof FontAwesome>['name'] },
+  { id: 'other', label: 'Other', icon: 'th-large' as FAIconName },
 ];
 
 interface CategoryPickerProps {
@@ -112,7 +114,10 @@ export default function CategoryPicker({
                   <TouchableOpacity
                     key={opt.id}
                     style={styles.card}
-                    onPress={() => onSelectCategory(opt.id)}
+                    onPress={() => {
+                    hapticSelection();
+                    onSelectCategory(opt.id);
+                  }}
                     activeOpacity={0.7}
                   >
                     <View style={styles.iconCircle}>

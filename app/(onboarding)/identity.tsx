@@ -23,6 +23,7 @@ import {
   DEFAULT_CUSTOM_EMOJI,
   type IdentityTemplate,
 } from '@/lib/identityTemplates';
+import { hapticSuccess, hapticSelection } from '@/lib/haptics';
 
 export interface SelectedIdentity {
   statement: string;
@@ -46,6 +47,7 @@ export default function IdentityScreen() {
   }, []);
 
   const toggleTemplate = useCallback((template: IdentityTemplate) => {
+    hapticSelection();
     setSelected((prev) => {
       const existing = prev.find(
         (s) => !s.isCustom && s.statement === template.statement,
@@ -103,6 +105,7 @@ export default function IdentityScreen() {
   }, []);
 
   const handleContinue = () => {
+    hapticSuccess();
     captureEvent(EVENTS.ONBOARDING_STEP_COMPLETED, {
       step_name: 'identity',
       step_number: 3,

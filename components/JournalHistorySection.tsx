@@ -23,7 +23,7 @@ function formatJournalDate(dateStr: string): string {
   });
 }
 
-function JournalEntryCard({ entry, styles, colors }: { entry: DailyJournalEntry; styles: ReturnType<typeof createStyles>; colors: ThemeColors }) {
+const JournalEntryCard = React.memo(function JournalEntryCard({ entry, styles, colors }: { entry: DailyJournalEntry; styles: ReturnType<typeof createStyles>; colors: ThemeColors }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -79,7 +79,7 @@ function JournalEntryCard({ entry, styles, colors }: { entry: DailyJournalEntry;
       )}
     </TouchableOpacity>
   );
-}
+});
 
 const INITIAL_SHOW = 7;
 const LOAD_MORE_COUNT = 14;

@@ -18,6 +18,7 @@ import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { formatWeekLabel } from '@/lib/weeklyRecaps';
 import type { QualifyingWeek } from '@/lib/types';
+import { hapticMedium } from '@/lib/haptics';
 
 interface WeeklyRecapBannerProps {
   week: QualifyingWeek;
@@ -79,7 +80,10 @@ export default function WeeklyRecapBanner({ week, onPress }: WeeklyRecapBannerPr
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)}>
       <AnimatedTouchable
         style={[styles.container, bgStyle]}
-        onPress={onPress}
+        onPress={() => {
+          hapticMedium();
+          onPress();
+        }}
         activeOpacity={0.9}
       >
         {/* Crisp thin shine band */}

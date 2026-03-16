@@ -4,6 +4,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Svg, { Circle } from 'react-native-svg';
 import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
+import { hapticSelection } from '@/lib/haptics';
 
 export interface WeeklyAdherenceSummaryProps {
   weekLabel: string;
@@ -45,13 +46,13 @@ export default function WeeklyAdherenceSummary({
       <View style={styles.headerRow}>
         <Text style={styles.title}>Habits This Week</Text>
         <View style={styles.weekNav}>
-          <TouchableOpacity style={styles.navButton} onPress={onPrevWeek} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.navButton} onPress={() => { hapticSelection(); onPrevWeek(); }} activeOpacity={0.7}>
             <FontAwesome name="chevron-left" size={12} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={styles.weekLabel}>{weekLabel}</Text>
           <TouchableOpacity
             style={[styles.navButton, disableNextWeek && styles.navButtonDisabled]}
-            onPress={onNextWeek}
+            onPress={() => { hapticSelection(); onNextWeek(); }}
             activeOpacity={0.7}
             disabled={disableNextWeek}
           >

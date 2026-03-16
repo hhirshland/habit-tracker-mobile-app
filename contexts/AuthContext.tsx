@@ -112,7 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         setLoading(false);
       }
-    } catch {
+    } catch (err) {
+      captureError(err, { tag: 'auth.refreshSession' });
       setLoading(false);
     }
   };
@@ -218,7 +219,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    hydrateFromCache().catch(() => {
+    hydrateFromCache().catch((err) => {
+      captureError(err, { tag: 'auth.hydrateFromCache' });
       if (mounted) {
         setLoading(false);
       }

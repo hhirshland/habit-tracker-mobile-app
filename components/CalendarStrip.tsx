@@ -12,6 +12,7 @@ import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { formatDate } from '@/lib/habits';
 import { DAY_LABELS, DayOfWeek } from '@/lib/types';
+import { hapticSelection } from '@/lib/haptics';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DAY_ITEM_SIZE = 44;
@@ -174,7 +175,10 @@ export default function CalendarStrip({
                 isSelected && styles.dayContainerSelected,
                 day.isToday && !isSelected && styles.dayContainerToday,
               ]}
-              onPress={() => onSelectDate(day.dateString)}
+              onPress={() => {
+                hapticSelection();
+                onSelectDate(day.dateString);
+              }}
               activeOpacity={0.7}
             >
               <Text

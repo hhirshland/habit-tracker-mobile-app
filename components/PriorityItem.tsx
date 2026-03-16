@@ -5,6 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { Habit } from '@/lib/types';
+import { hapticSuccess, hapticMedium, hapticLight } from '@/lib/haptics';
 
 /**
  * Completed items use the app's purple palette for a cohesive, on-brand
@@ -24,7 +25,7 @@ interface PriorityItemProps {
   identityIcon?: React.ComponentProps<typeof FontAwesome>['name'];
 }
 
-export default function PriorityItem({
+function PriorityItem({
   habit,
   isCompleted,
   isSnoozed,
@@ -53,6 +54,7 @@ export default function PriorityItem({
         <TouchableOpacity
           style={styles.snoozeButton}
           onPress={() => {
+            hapticMedium();
             swipeableRef.current?.close();
             onSnooze?.();
           }}
@@ -71,7 +73,10 @@ export default function PriorityItem({
     return (
       <TouchableOpacity
         style={[styles.container, containerColors, styles.containerSnoozed]}
-        onPress={onUnsnooze}
+        onPress={() => {
+          hapticLight();
+          onUnsnooze?.();
+        }}
         activeOpacity={0.7}
       >
         <View style={styles.snoozeIcon}>
@@ -95,7 +100,10 @@ export default function PriorityItem({
         isRequired && !isCompleted && styles.containerRequired,
         isCompleted && styles.containerCompleted,
       ]}
-      onPress={onToggle}
+      onPress={() => {
+        if (!isCompleted) hapticSuccess();
+        onToggle();
+      }}
       activeOpacity={0.7}
     >
       {isRequired && !isCompleted && <View style={styles.accentBar} />}
@@ -156,6 +164,8 @@ export default function PriorityItem({
 
   return card;
 }
+
+export default React.memo(PriorityItem);
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {

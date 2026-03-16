@@ -18,6 +18,7 @@ import { HealthMetrics } from '@/lib/health';
 import { MetricDefinition } from '@/lib/metricsConfig';
 import { useMetricHistory } from '@/hooks/useHealthQuery';
 import MetricChart from './MetricChart';
+import { hapticSelection } from '@/lib/haptics';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -107,7 +108,10 @@ export default function MetricDetailModal({
                     { backgroundColor: metric.color + '18' },
                   ],
                 ]}
-                onPress={() => setTimeRange(range.key)}
+                onPress={() => {
+                  hapticSelection();
+                  setTimeRange(range.key);
+                }}
                 activeOpacity={0.7}
               >
                 <Text

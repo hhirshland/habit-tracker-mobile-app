@@ -12,7 +12,7 @@ interface GoalCardProps {
   onPress: () => void;
 }
 
-export default function GoalCard({ goal, currentValue, onPress }: GoalCardProps) {
+function GoalCard({ goal, currentValue, onPress }: GoalCardProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const color = GOAL_TYPE_COLORS[goal.goal_type] ?? colors.primary;
@@ -45,7 +45,7 @@ export default function GoalCard({ goal, currentValue, onPress }: GoalCardProps)
     >
       <View style={styles.header}>
         <View style={[styles.iconContainer, { backgroundColor: color + '18' }]}>
-          <FontAwesome name={icon as any} size={14} color={color} />
+          <FontAwesome name={icon} size={14} color={color} />
         </View>
         <View style={styles.progressContainer}>
           <View style={styles.progressTrack}>
@@ -74,6 +74,8 @@ export default function GoalCard({ goal, currentValue, onPress }: GoalCardProps)
     </TouchableOpacity>
   );
 }
+
+export default React.memo(GoalCard);
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({

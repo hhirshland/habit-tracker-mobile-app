@@ -14,6 +14,7 @@ import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import WeeklyAdherenceSummary from '@/components/WeeklyAdherenceSummary';
 import type { HabitWeeklyStats } from '@/lib/habits';
+import { hapticSelection } from '@/lib/haptics';
 
 interface HabitsThisWeekProps {
   weekLabel: string;
@@ -51,7 +52,7 @@ function getStatusLabel(stat: HabitWeeklyStats): string {
   }
 }
 
-function ExpandableHabitRow({
+const ExpandableHabitRow = React.memo(function ExpandableHabitRow({
   stat,
   expanded,
   onToggle,
@@ -143,7 +144,7 @@ function ExpandableHabitRow({
       )}
     </TouchableOpacity>
   );
-}
+});
 
 export default function HabitsThisWeek({
   weekLabel,
@@ -165,6 +166,7 @@ export default function HabitsThisWeek({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const handleToggle = useCallback((habitId: string) => {
+    hapticSelection();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedIds((prev) => {
       const next = new Set(prev);

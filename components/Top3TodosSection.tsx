@@ -4,6 +4,7 @@ import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { DailyTodo } from '@/lib/types';
 import DailyTodoItem, { DailyTodoItemHandle } from './DailyTodoItem';
+import { hapticWarning } from '@/lib/haptics';
 
 interface Top3TodosSectionProps {
   todos: DailyTodo[];
@@ -25,6 +26,7 @@ export default function Top3TodosSection({
   const itemRefs = useRef<(DailyTodoItemHandle | null)[]>([null, null, null]);
 
   const handleDelete = (todo: DailyTodo) => {
+    hapticWarning();
     Alert.alert('Remove Intention', `Remove "${todo.text}"?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => onDelete(todo) },

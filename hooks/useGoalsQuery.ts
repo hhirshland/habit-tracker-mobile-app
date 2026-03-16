@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { EVENTS, captureEvent } from '@/lib/analytics';
+import { queryKeys } from '@/lib/queryClient';
 import {
   getGoals,
   createGoal,
@@ -9,25 +10,16 @@ import {
 } from '@/lib/goals';
 import type { Goal, GoalType } from '@/lib/types';
 
-// ── Stale times ────────────────────────────────
-
 const STALE = {
-  goals: 1000 * 60 * 5, // 5 min – goals rarely change
-  currentValues: 1000 * 60 * 2, // 2 min – health data changes slowly
-} as const;
-
-// ── Query keys ─────────────────────────────────
-
-export const goalKeys = {
-  all: ['goals'] as const,
-  currentValue: (goalId: string) => ['goals', 'currentValue', goalId] as const,
+  goals: 1000 * 60 * 5,
+  currentValues: 1000 * 60 * 2,
 } as const;
 
 // ── Query hooks ────────────────────────────────
 
 export function useGoals() {
   return useQuery({
-    queryKey: goalKeys.all,
+    queryKey: queryKeys.goals.all,
     queryFn: getGoals,
     staleTime: STALE.goals,
   });
@@ -35,7 +27,7 @@ export function useGoals() {
 
 export function useGoalCurrentValue(goal: Goal | null) {
   return useQuery({
-    queryKey: goalKeys.currentValue(goal?.id ?? ''),
+    queryKey: queryKeys.goals.currentValue(goal?.id ?? ''),
     queryFn: () => getGoalCurrentValue(goal!),
     staleTime: STALE.currentValues,
     enabled: !!goal,
@@ -66,7 +58,7 @@ export function useCreateGoal() {
       };
     }) => createGoal(userId, goal),
     onSuccess: (createdGoal) => {
-      qc.invalidateQueries({ queryKey: goalKeys.all });
+      qc.invalidateQueries({ queryKey: queryKeys.goals.all });
       captureEvent(EVENTS.GOAL_CREATED, {
         goal_type: createdGoal.goal_type,
         target_value: createdGoal.target_value,
@@ -84,7 +76,7 @@ export function useDeleteGoal() {
     mutationFn: ({ goalId, goalType }: { goalId: string; goalType?: GoalType }) =>
       deleteGoal(goalId),
     onSuccess: (_result, variables) => {
-      qc.invalidateQueries({ queryKey: goalKeys.all });
+      qc.invalidateQueries({ queryKey: queryKeys.goals.all });
       captureEvent(EVENTS.GOAL_DELETED, {
         goal_id: variables.goalId,
         goal_type: variables.goalType,
@@ -109,7 +101,7 @@ export function useAddGoalEntry() {
       goalType?: GoalType;
     }) => addGoalEntry(goalId, userId, value, date),
     onSuccess: (_result, variables) => {
-      qc.invalidateQueries({ queryKey: ['goals'] });
+      qc.invalidateQueries({ queryKey: queryKeys.goals.all });
       captureEvent(EVENTS.GOAL_ENTRY_ADDED, {
         goal_id: variables.goalId,
         goal_type: variables.goalType,
@@ -123,6 +115,6 @@ export function useAddGoalEntry() {
 export function useRefreshGoals() {
   const qc = useQueryClient();
   return () => {
-    qc.invalidateQueries({ queryKey: ['goals'] });
+    qc.invalidateQueries({ queryKey: queryKeys.goals.all });
   };
 }

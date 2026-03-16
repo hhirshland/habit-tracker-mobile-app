@@ -162,6 +162,11 @@ function RootLayoutNav() {
     if (!pathname || lastTrackedPath.current === pathname) return;
     lastTrackedPath.current = pathname;
     trackScreen(pathname);
+    Sentry.addBreadcrumb({
+      category: 'navigation',
+      message: pathname,
+      level: 'info',
+    });
   }, [pathname]);
 
   useEffect(() => {

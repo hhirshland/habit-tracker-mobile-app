@@ -1,6 +1,6 @@
 # Weekly Recaps v2
 
-> Turn your weekly recap from a summary you read into an insight engine that helps you see patterns, get smarter about your habits, and take clear next steps.
+> Your weekly recap should feel like a coach sitting across from you — showing you who you were this week, what stood out, and the one thing to focus on next.
 
 ---
 
@@ -8,29 +8,29 @@
 
 ### Press Release
 
-**Thrive's Weekly Recaps Now Show You What You Can't See Yourself**
+**Thrive's Weekly Recaps Now Show You Who You Were This Week**
 
-**For habit builders who want more than a pat on the back -- Thrive weekly recaps now surface cross-week trends, visual breakdowns, and personalized next-step suggestions.**
+**For identity-driven habit builders — Thrive weekly recaps now lead with your identity, show your habits at a glance, and give you one clear focus for next week.**
 
-You've been tracking habits for weeks. You know you completed 6 of 7 days for "Morning Run" this week. But did you know your consistency on morning habits has climbed 15% over the last month? Or that every week you journal at least 3 times, your overall habit adherence jumps by 20%? These are the patterns hiding in your data -- patterns you'd never spot on your own.
+You've been tracking habits for weeks. You know you ran 5 out of 7 days. But did you know you lived as an Athlete 86% of the time — up from 72% last week? Or that your Reader identity only got attention on 2 days? These aren't habit stats. They're a mirror.
 
-Thrive's upgraded Weekly Recaps go beyond the summary. Now, when you open your recap, you'll see visual habit adherence breakdowns at a glance, how this week compares to your recent trend, and concrete suggestions for what to try next week based on what's actually working. When the data suggests it, Thrive will gently surface a new habit recommendation -- not a generic tip, but something connected to your real patterns and what you've been writing about in your journal.
+Thrive's upgraded Weekly Recaps cut the noise. Instead of a wall of text, you get a visual snapshot of every habit, your identity scorecard front and center, and one specific suggestion for what to do differently next week. No generic tips. No information overload. Just the clarity you need to keep becoming the person you set out to be.
 
-> "I opened my recap and saw that I'd been nailing my evening routine every week I also meditated. I never connected those two. Now I meditate every morning and my evenings basically run themselves."
-> -- Maya, Thrive user
+> "My recap showed me I lived as an Athlete 6 out of 7 days but my Mindful Person identity was at 30%. I didn't need three paragraphs to tell me that — I just needed to see the number. Now I meditate every morning."
+> — Jake, Thrive user
 
-Open Thrive this Sunday and see what your habits have been trying to tell you.
+Open Thrive this Sunday and see who you were this week.
 
 ### Marketing Angles
 
 **App Store / changelog blurb:**
-Weekly Recaps got a major upgrade. See visual habit breakdowns, cross-week trends, and personalized suggestions for next week. Your habits have patterns -- now you can see them.
+Weekly Recaps got sharper. See your identity scorecard, a visual habit breakdown, and one focused suggestion for next week. Less text, more insight.
 
 **Push notification:**
-Your weekly recap is ready -- this time with trends and tips just for you.
+Your weekly recap is ready — see who you were this week.
 
 **Social post:**
-Your habits know things about you that you don't. Thrive's new Weekly Recaps show you the patterns hiding in your data. What will yours reveal?
+Your habits tell a story about who you're becoming. Thrive's new Weekly Recaps show you that story — identity-first. Who were you this week?
 
 ---
 
@@ -38,81 +38,115 @@ Your habits know things about you that you don't. Thrive's new Weekly Recaps sho
 
 ### Jobs to Be Done
 
-- When I finish a week of tracking, I want to see how my habits performed visually, so I can quickly grasp the week without reading a wall of text.
-- When I look at my weekly recap, I want to see how this week compares to recent weeks, so I can tell whether I'm trending up, plateauing, or slipping.
-- When I see patterns in my data, I want specific suggestions for what to do next week, so I can act on insights instead of just noting them.
-- When my journal entries and habit data reveal an opportunity, I want to be gently suggested a new habit that fits, so I can grow without feeling overwhelmed.
+- When I finish a week, I want to see how well I lived as each identity — not just a habit count — so I can stay connected to who I'm becoming.
+- When I open my recap, I want to see my habits visually at a glance, so I can grasp the week in seconds without reading paragraphs of text.
+- When I see how my week went, I want to know whether I'm trending up or down compared to last week, so I can tell if I'm building momentum or slipping.
+- When I close my recap, I want one clear thing to focus on next week, so I leave with intent rather than just information.
 
 ### Target Users
 
-- **Consistent trackers** (2+ weeks of data, 4+ active days/week) -- these users have enough history to surface meaningful trends.
-- **Self-improvement oriented** -- users who journal, set goals, and care about understanding themselves, not just checking boxes.
-- **Mid-journey users** -- past the initial excitement, potentially at risk of dropping off. Richer recaps give them a reason to stay engaged.
+- **Consistent trackers** (2+ weeks of data, 4+ active days/week) — enough history to surface meaningful patterns.
+- **Identity-adopters** — users who have defined identity statements and want to see them reflected in their weekly rhythm.
+- **Mid-journey users** — past the initial excitement, potentially at risk of dropping off. A sharper recap gives them a reason to stay engaged.
 
 ### Solution Overview
 
-The enhanced weekly recap keeps the existing coach-style narrative and adds three new layers:
+The v2 recap restructures from 6 text-heavy sections to 4 focused sections. Each section earns its place by either strengthening the identity thesis or driving next-week behavior. The existing coach-style tone is preserved, but the format shifts from "report you read" to "mirror you glance at."
 
-1. **Visual habit adherence** -- A clear, at-a-glance visual showing each habit's completion for the week (e.g., a grid/dot matrix or bar chart). Replaces the need to parse adherence percentages from text.
+#### Restructured Sections
 
-2. **Cross-week trends** -- Compare this week to the prior 2-4 weeks. Surface streaks (consecutive weeks of high adherence), improving/declining patterns, and notable correlations between habits. Presented as a short "Trends" section with supporting visuals.
+**1. Your Week** (summary + identity scorecard)
 
-3. **Actionable next-week suggestions** -- 1-3 specific, personalized suggestions based on the week's data. Examples: "Your reading habit dropped mid-week -- try moving it earlier in the day" or "You've hit 90%+ on Morning Run 3 weeks straight -- consider increasing your distance goal."
+Leads with the user's identity adherence — emoji, statement, percentage — so the first thing they see is who they were, not what they did. The AI narrative weaves identity progress into a 2-3 sentence summary. If the user has no identities, falls back to a habit-focused summary (backward-compatible with today's `week_summary`).
 
-4. **Gentle habit recommendations** -- When patterns clearly support it, suggest a new habit. Can be triggered by quantitative data (e.g., "Every week you journal 3+ times, your adherence is 25% higher") or qualitative signals from journal entries (e.g., a user repeatedly writes about wanting to sleep better, stress, or energy -- suggest a relevant habit like a wind-down routine or morning walk). Never forced; easy to dismiss or ignore.
+**2. Habits** (visual grid + callouts)
 
-**User flow:** The entry point remains the same -- animated banner on the Progress tab, tapping into the recap detail modal. The detail view now includes visual sections alongside the narrative text. Suggestions appear at the end, after the reflection/looking-ahead content, with a clear "try this next week" framing.
+Replaces the prose-heavy habit review with a visual dot grid: one row per habit, 7 columns for the days of the week, filled/empty circles. Adherence percentage badge in the header. Below the grid, two optional short callouts: standout habit (trophy) and needs-attention habit (nudge). The visual lets users grasp the full week in seconds.
+
+**3. Insights** (wins + growth area)
+
+Merges the current reflection_themes and goal_progress sections into one focused section. Surfaces 1-2 wins worth celebrating (specific, enthusiastic) and one growth opportunity framed as forward momentum. Goal progress is mentioned inline only when a goal had meaningful movement during the week — not as a separate section. Gratitude highlight is dropped (warm but rarely actionable).
+
+**4. Your Focus for Next Week** (one actionable suggestion)
+
+Replaces the generic "looking ahead" encouragement with one concrete, specific suggestion tied to the user's data. Examples: "Your reading habit dropped every Wednesday and Thursday — try moving it to morning on those days" or "You've hit 90%+ on your Athlete identity 3 weeks running — consider adding a stretching habit to round it out." The suggestion references a specific habit or identity by name and cites the pattern that prompted it. When no meaningful suggestion exists, the section falls back to a brief motivational close (never empty, never forced).
+
+#### Additional Changes
+
+**5. Cross-week context** — The edge function fetches the previous week's overall adherence percentage (one additional query). The AI prompt includes it so the narrative can reference trajectory: "up from 65% last week" or "your 3rd week above 80%." Not a full trends engine — just enough context to give the recap direction.
+
+**6. Pre-generation** — Recaps are generated server-side (scheduled trigger on Saturday night / Sunday early morning) rather than on-demand when the user opens the modal. The Sunday morning push notification can then truthfully say "Your recap is ready" and the modal opens instantly. The existing race-condition handling (`23505` unique constraint) ensures double-generation is safe.
+
+**7. Render identity_review** — The current edge function already generates an `identity_review` section with per-identity adherence and a narrative. The UI currently does not render it. This is the quickest, highest-impact fix: display what we already compute.
+
+#### What's Explicitly Out of Scope
+
+- **Habit recommendations** — suggesting new habits based on journal themes or cross-habit correlations. Adds complexity and requires high AI confidence. Revisit after cross-week trends are solid.
+- **Sharing** — recap highlight cards for social. Nice-to-have but doesn't strengthen the daily loop.
+- **Sparkline charts in history cards** — the horizontal scroll history is the wrong surface for trend visualization. Cross-week context in the recap itself is more impactful.
+- **Compact/expanded visual toggle** — premature optimization. Ship the grid, learn from usage.
 
 ### Acceptance Criteria
 
 #### Must Have
 
-- [ ] Recap detail view displays a visual habit adherence breakdown (each habit's daily completion for the week) alongside the existing narrative
-- [ ] Visual adherence renders correctly for users with 1-15 active habits
-- [ ] Recap includes a "Trends" section comparing this week's overall adherence to the previous 2-4 weeks
-- [ ] Trends section identifies and highlights streaks (3+ consecutive weeks above 80% adherence for any habit)
-- [ ] Recap includes 1-3 actionable next-week suggestions personalized to the user's data
-- [ ] Suggestions reference specific habits by name and cite the pattern that prompted them
-- [ ] Suggestions are absent (not empty/placeholder) when data doesn't support any meaningful recommendation
-- [ ] The AI prompt and response schema are updated to include structured fields for trends, suggestions, and optional habit recommendation
-- [ ] Existing recap content (summary, habit review, goal progress, reflections, looking ahead) is preserved
+- [ ] Identity review renders in the recap detail UI: per-identity emoji + statement + adherence percentage, with AI-generated narrative
+- [ ] Identity review is the first section in the recap (above habits) when the user has identity statements; omitted gracefully when they don't
+- [ ] Recap detail view displays a visual habit adherence grid (dot row per habit, 7 days) replacing the narrative-only habit review
+- [ ] Visual grid renders correctly for users with 1-15 active habits
+- [ ] Adherence percentage badge remains in the Habits section header
+- [ ] Standout habit and needs-attention callouts appear below the grid (short, one line each)
+- [ ] Reflection themes and goal progress are merged into a single "Insights" section with 1-2 wins and 1 growth opportunity
+- [ ] Goal progress appears inline in Insights only when a goal had meaningful movement; otherwise omitted (not empty/placeholder)
+- [ ] "Your Focus for Next Week" section contains one specific, actionable suggestion referencing a habit or identity by name
+- [ ] Focus suggestion cites the data pattern that prompted it
+- [ ] When no meaningful suggestion exists, the section falls back to a brief motivational close
+- [ ] The AI prompt includes the previous week's overall adherence percentage for cross-week context
+- [ ] AI narrative references trajectory when prior-week data is available ("up from X% last week")
+- [ ] First-week recaps (no prior data) work cleanly without trajectory references
+- [ ] `WeeklyRecapContent` type is updated with new optional fields; existing recaps without new fields render gracefully
+- [ ] Existing recap content backward-compatible: older recaps with the v1 schema still display correctly
 
 #### Nice to Have
 
-- [ ] Habit recommendation surfaces when a clear cross-habit correlation exists (e.g., journaling correlates with higher adherence)
-- [ ] Habit recommendation can be triggered by recurring themes in journal entries (e.g., mentions of sleep, stress, energy, focus) in addition to cross-habit correlation data
-- [ ] Journal-sourced recommendations cite the theme detected (e.g., "You've mentioned sleep quality in 3 of your last 4 journal entries...")
-- [ ] Habit recommendation includes a one-tap "Add this habit" action
-- [ ] Visual adherence supports a compact and expanded view (tap to toggle)
-- [ ] Trends section includes a simple spark-line or mini chart for overall adherence over time
-- [ ] Users can share a recap highlight card (image) to social / messages
+- [ ] Recaps are pre-generated server-side (scheduled Saturday night / Sunday morning) so the modal opens instantly
+- [ ] Sunday push notification only fires after the recap is successfully pre-generated
+- [ ] Streak detection: "This is your Nth consecutive week above X% adherence" surfaced in the summary or focus section
+- [ ] Visual grid supports tap on a habit row to highlight that habit's callout (subtle interaction, not a new screen)
+- [ ] History cards in the horizontal scroll show a 1-line summary preview alongside the date and adherence %
 
 ### Success Metrics
 
 **Quantitative:**
 - Recap view rate increases (% of users who open their recap each week)
-- Time spent in recap detail increases (users engage with visuals and suggestions, not just skim)
-- Suggestion follow-through rate -- % of users who take an action suggested in the recap (measured by next-week behavior change)
-- Habit recommendation acceptance rate -- % of suggested habits that get added
+- Time-to-first-scroll decreases (users grasp the recap faster due to visual format)
+- Focus suggestion follow-through: % of users whose next-week behavior changes in the direction suggested (e.g., adherence on the called-out habit improves)
+- Identity review engagement: do users with identity-mapped habits view recaps at a higher rate?
 
 **Qualitative:**
-- Users report feeling more aware of their patterns (survey/feedback)
-- Users reference recaps when explaining behavior changes ("I noticed in my recap that...")
+- Users describe their week in identity terms ("I was 80% Athlete this week") rather than task terms
+- Users reference the focus suggestion when explaining behavior changes
+
+### Decisions Made
+
+- **6 sections → 4.** Week Summary and Identity Review merge into "Your Week." Reflection Themes, Goal Progress merge into "Insights." Looking Ahead becomes "Your Focus for Next Week" with one actionable suggestion instead of generic encouragement. Gratitude highlight is dropped.
+- **Visual grid over charts.** Dot rows (habit × day) are the simplest visual that conveys completion patterns at a glance. No sparklines or bar charts needed for v2.
+- **Cross-week context, not a trends section.** Instead of a dedicated Trends section with its own UI, we pass last week's adherence to the prompt and let the AI weave trajectory into the narrative naturally.
+- **Pre-generation is nice-to-have, not blocking.** The on-demand flow works and is already live. Pre-generation improves UX but requires infrastructure (cron trigger). Ship the content restructure first.
+- **Habit recommendations are out of scope.** They add complexity, require high AI confidence, and aren't necessary for the core recap to be valuable.
+- **One suggestion, not 1-3.** A single focused suggestion is more actionable than a list. If we nail one, we can explore more later.
 
 ### Open Questions
 
-- What visual format for habit adherence works best in a scrollable modal? Dot grid (day x habit), horizontal bars, or something else? May need design variants.
-- How many weeks of cross-week comparison is useful before it becomes noisy? 4 weeks? 8?
-- Should trend data be computed server-side (in the edge function) or client-side from existing data? Server-side is simpler for the AI to reference but adds query complexity.
-- How do we handle the first 1-2 weeks when there's no prior data for trend comparison? Graceful absence, or a "building your trend" placeholder?
-- Should habit recommendations be generated by the AI (as part of the recap prompt) or by a separate rules-based system?
-- How specific should journal-based recommendations get? Surface-level theme detection ("you mention stress a lot") vs. deeper inference ("your stress mentions correlate with weeks you skip your evening routine")?
+- What's the right visual density for the habit dot grid on smaller screens? If a user has 12+ habits, the grid may need a compact mode or scroll within the section.
+- Should the focus suggestion eventually be tappable (e.g., "tap to adjust this habit's schedule")? For v2 it's text-only, but this could be a natural extension.
+- For pre-generation: should we use a Supabase cron (pg_cron), an external scheduler, or a client-triggered background job on the first Sunday app open?
 
 ### Implementation Notes
 
-- **Edge function** (`supabase/functions/generate-weekly-recap/index.ts`): The prompt and response schema need updating. Currently returns `WeeklyRecapContent` with `week_summary`, `habit_review`, `goal_progress`, `reflection_themes`, `looking_ahead`. New fields needed: `trend_comparison` (structured), `suggestions` (array), `habit_recommendation` (optional). The data fetch step already pulls habits, completions, goals, goal entries, and journal entries -- it would also need to pull prior weeks' completions for trend calculation.
-- **Types** (`lib/types.ts`): Extend `WeeklyRecapContent` with new fields. Needs to be backward-compatible with existing recaps that lack these fields.
-- **Recap detail UI** (`components/WeeklyRecapDetail.tsx`): Add visual adherence component, trends section, and suggestions section. The modal is already scrollable. New components needed for the visual grid/chart.
-- **Hooks** (`hooks/useWeeklyRecapsQuery.ts`): May need to pass additional context (prior week data) to the generation mutation, or the edge function fetches it independently.
-- **Journal-based recommendations**: The edge function already passes journal entries to the AI prompt. The prompt update should instruct Claude to look for recurring themes in journal content (sleep, stress, energy, focus, motivation, etc.) and use them as signal for habit recommendations alongside quantitative patterns. No new data fetching needed -- just prompt engineering.
-- **Analytics**: New events for suggestion impressions and follow-through. Existing `recap_viewed` and `recap_generated` events remain.
+- **Edge function** (`supabase/functions/generate-weekly-recap/index.ts`): Update the prompt and response schema. Add one query to fetch the prior week's recap (or just its `overall_adherence_pct`) for cross-week context. The prompt instructions should specify the 4-section structure: Your Week (with identity), Habits (structured data for the visual grid — the client renders it, not the AI), Insights (merged reflections + goals), Focus (one suggestion). The AI returns structured JSON; the visual grid is rendered client-side from `habit_review` data, not from AI prose.
+- **Types** (`lib/types.ts`): Extend `WeeklyRecapContent` with optional fields: `insights` (merged section), `focus_suggestion` (string), `prior_week_adherence_pct` (number | null). New fields are optional for backward compatibility. The existing `reflection_themes`, `goal_progress`, and `looking_ahead` fields remain on the type but may be absent on new recaps.
+- **Recap detail UI** (`components/WeeklyRecapDetail.tsx`): Render identity_review (already on the type, just not displayed). Add `HabitAdherenceGrid` component for the visual dot rows. Restructure the section order: Identity/Your Week → Habits (grid) → Insights → Focus. Handle both v1 and v2 recap schemas gracefully.
+- **Habit adherence data for the grid**: The edge function already computes per-habit completion data (`habitSummaries` with `completed_dates`). Include this structured data in the recap content so the client can render the grid without re-fetching. New field: `habit_adherence` array with `{ name, target_days, completed_days, completed_dates }` per habit.
+- **Pre-generation (nice-to-have)**: A Supabase cron job or external trigger that calls the edge function for all qualifying users on Saturday night. The existing `already_existed` check prevents double-generation if the user opens the modal before the cron runs.
+- **Analytics**: Existing `recap_viewed`, `recap_generated`, `recap_generation_failed` events are sufficient. Consider adding `focus_suggestion` as a property on `recap_viewed` to measure which suggestions correlate with behavior change.

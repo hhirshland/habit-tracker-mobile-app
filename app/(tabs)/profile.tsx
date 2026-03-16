@@ -5,15 +5,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Alert,
   ActivityIndicator,
   ScrollView,
   Switch,
   Linking,
-  Modal,
-  FlatList,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -38,16 +36,10 @@ import { getLinkedIdentities, isAppleAuthAvailable } from '@/lib/socialAuth';
 import { useIdentityStatements } from '@/hooks/useIdentityQuery';
 import { useHabits } from '@/hooks/useHabitsQuery';
 import type { ThemePreference } from '@/lib/userSettings';
-import {
-  updateEveningCallPreferences,
-  triggerEveningCall,
-  formatCallTime,
-  formatTimezoneShort,
-  normalizePhoneNumber,
-  formatPhoneDisplay,
-  CALL_TIME_OPTIONS,
-} from '@/lib/eveningCalls';
-import SaveContactButton from '@/components/SaveContactButton';
+import ProfileDeleteModal from '@/components/ProfileDeleteModal';
+import EveningCallConfig from '@/components/EveningCallConfig';
+import { hapticSuccess, hapticSelection, hapticWarning, hapticError } from '@/lib/haptics';
+import { captureError } from '@/lib/sentry';
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -71,25 +63,13 @@ export default function ProfileScreen() {
   const [connecting, setConnecting] = useState(false);
   const [updatingAppearance, setUpdatingAppearance] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
-  const { data: identityStatements = [] } = useIdentityStatements();
-  const { data: habits = [] } = useHabits();
+  const { data: identityStatements = [], isLoading: identityLoading } = useIdentityStatements();
+  const { data: habits = [], isLoading: habitsLoading } = useHabits();
   const top3TodosEnabled = settings.top3_todos_enabled;
   const journalEnabled = settings.journal_enabled;
   const preference = settings.theme_preference;
 
-  // Evening Check-In state
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [eveningCallEnabled, setEveningCallEnabled] = useState(false);
-  const [eveningCallTime, setEveningCallTime] = useState('20:00:00');
-  const [callTimezone, setCallTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [savingCall, setSavingCall] = useState(false);
-  const [callingNow, setCallingNow] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [deleting, setDeleting] = useState(false);
   const [linkedProviders, setLinkedProviders] = useState<string[]>([]);
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null);
 
@@ -133,118 +113,11 @@ export default function ProfileScreen() {
     );
   }, [fullName, avatarUrl, profile]);
 
-  const callHasChanges = useMemo(() => {
-    if (!profile) return false;
-    const normalizedInput = phoneNumber.trim()
-      ? normalizePhoneNumber(phoneNumber.trim())
-      : null;
-    const savedPhone = profile.phone_number || null;
-    return (
-      normalizedInput !== savedPhone ||
-      eveningCallEnabled !== (profile.evening_call_enabled ?? false) ||
-      eveningCallTime !== (profile.evening_call_time ?? '20:00:00') ||
-      callTimezone !== (profile.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone)
-    );
-  }, [phoneNumber, eveningCallEnabled, eveningCallTime, callTimezone, profile]);
-
-  useEffect(() => {
-    if (profile) {
-      setPhoneNumber(
-        profile.phone_number ? formatPhoneDisplay(profile.phone_number) : '',
-      );
-      setEveningCallEnabled(profile.evening_call_enabled ?? false);
-      setEveningCallTime(profile.evening_call_time ?? '20:00:00');
-      setCallTimezone(
-        profile.timezone ??
-          Intl.DateTimeFormat().resolvedOptions().timeZone,
-      );
-    }
-  }, [profile]);
-
-  const handleSaveCallPreferences = useCallback(async () => {
-    if (!user) return;
-    const normalized = phoneNumber.trim()
-      ? normalizePhoneNumber(phoneNumber.trim())
-      : null;
-
-    if (eveningCallEnabled && !phoneNumber.trim()) {
-      Alert.alert(
-        'Phone Number Required',
-        'Please enter your phone number to enable evening calls.',
-      );
-      return;
-    }
-
-    if (phoneNumber.trim() && !normalized) {
-      Alert.alert(
-        'Invalid Phone Number',
-        'Please enter a valid US phone number (e.g. 555-123-4567).',
-      );
-      return;
-    }
-
-    setSavingCall(true);
-    try {
-      await updateEveningCallPreferences(user.id, {
-        phone_number: normalized,
-        evening_call_enabled: eveningCallEnabled,
-        evening_call_time: eveningCallTime,
-        timezone: callTimezone,
-      });
-      await refreshProfile();
-
-      if (eveningCallEnabled && !profile?.evening_call_enabled) {
-        captureEvent(EVENTS.EVENING_CALL_ENABLED, {
-          call_time: eveningCallTime,
-          timezone: callTimezone,
-        });
-      } else if (!eveningCallEnabled && profile?.evening_call_enabled) {
-        captureEvent(EVENTS.EVENING_CALL_DISABLED);
-      }
-
-      Alert.alert('Saved', 'Evening check-in preferences updated.');
-    } catch (err) {
-      console.error('Error saving call preferences:', err);
-      Alert.alert('Error', 'Failed to save preferences.');
-    } finally {
-      setSavingCall(false);
-    }
-  }, [user, phoneNumber, eveningCallEnabled, eveningCallTime, callTimezone, refreshProfile, profile]);
-
-  const handleCallMeNow = useCallback(async () => {
-    if (!user) return;
-    if (!profile?.phone_number) {
-      Alert.alert(
-        'Phone Number Required',
-        'Please save a phone number first.',
-      );
-      return;
-    }
-    setCallingNow(true);
-    captureEvent(EVENTS.EVENING_CALL_TRIGGERED);
-    try {
-      const result = await triggerEveningCall(user.id);
-      if (result.success) {
-        Alert.alert('Calling!', 'You should receive a call in a moment.');
-      } else {
-        Alert.alert('Error', result.error || 'Failed to initiate call.');
-      }
-    } catch (err) {
-      console.error('Error triggering call:', err);
-      Alert.alert('Error', 'Something went wrong.');
-    } finally {
-      setCallingNow(false);
-    }
-  }, [user, profile?.phone_number]);
-
-  const handleToggleEveningCall = useCallback((value: boolean) => {
-    setEveningCallEnabled(value);
-  }, []);
-
   const handleConnectHealth = async () => {
     setConnecting(true);
     try {
       await connect();
+      hapticSuccess();
     } finally {
       setConnecting(false);
     }
@@ -274,6 +147,7 @@ export default function ProfileScreen() {
       Alert.alert('Saved', 'Your profile has been updated.');
     } catch (error) {
       console.error('Error saving profile:', error);
+      captureError(error, { tag: 'profile.save' });
       Alert.alert('Error', 'Failed to save profile.');
     } finally {
       setSaving(false);
@@ -322,6 +196,7 @@ export default function ProfileScreen() {
       setAvatarUrl(urlData.publicUrl);
     } catch (error) {
       console.error('Error uploading image:', error);
+      captureError(error, { tag: 'profile.uploadImage' });
       Alert.alert('Error', 'Failed to upload image. You can save your profile and try again later.');
     } finally {
       setUploading(false);
@@ -329,6 +204,7 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = () => {
+    hapticWarning();
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -339,29 +215,16 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleDeleteAccount = useCallback(async () => {
-    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') return;
-    setDeleting(true);
-    try {
-      captureEvent(EVENTS.ACCOUNT_DELETED);
-      await deleteAccount();
-    } catch (err) {
-      console.error('Error deleting account:', err);
-      Alert.alert('Error', 'Failed to delete your account. Please try again.');
-      setDeleting(false);
-      setShowDeleteModal(false);
-      setDeleteConfirmText('');
-    }
-  }, [deleteConfirmText, deleteAccount]);
-
   const handleAppearanceChange = async (nextPreference: ThemePreference) => {
     if (nextPreference === preference || updatingAppearance) return;
+    hapticSelection();
     setUpdatingAppearance(true);
     try {
       await setThemePreference(nextPreference);
       captureEvent(EVENTS.PROFILE_UPDATED);
     } catch (error) {
       console.error('Error updating appearance:', error);
+      captureError(error, { tag: 'profile.appearance' });
       Alert.alert('Error', 'Failed to update appearance setting.');
     } finally {
       setUpdatingAppearance(false);
@@ -369,12 +232,14 @@ export default function ProfileScreen() {
   };
 
   const handleToggleTop3Todos = async () => {
+    hapticSelection();
     const nextEnabled = !top3TodosEnabled;
     await updateSettings({ top3_todos_enabled: nextEnabled });
     captureEvent(EVENTS.TOP3_TODOS_TOGGLED, { enabled: nextEnabled });
   };
 
   const handleToggleJournal = async () => {
+    hapticSelection();
     const nextEnabled = !journalEnabled;
     await updateSettings({ journal_enabled: nextEnabled });
     captureEvent(EVENTS.JOURNAL_TOGGLED, { enabled: nextEnabled });
@@ -432,7 +297,7 @@ export default function ProfileScreen() {
         <View style={styles.avatarSection}>
           <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
             {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              <Image source={avatarUrl} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarInitials}>{getInitials()}</Text>
@@ -501,9 +366,11 @@ export default function ProfileScreen() {
               <View style={styles.healthInfo}>
                 <Text style={styles.healthTitle}>My Identity</Text>
                 <Text style={styles.healthStatus}>
-                  {identityStatements.length > 0
-                    ? `${identityStatements.length} active identit${identityStatements.length === 1 ? 'y' : 'ies'}`
-                    : 'Set up your identity'}
+                  {identityLoading
+                    ? 'Loading…'
+                    : identityStatements.length > 0
+                      ? `${identityStatements.length} active identit${identityStatements.length === 1 ? 'y' : 'ies'}`
+                      : 'Set up your identity'}
                 </Text>
               </View>
             </View>
@@ -522,9 +389,11 @@ export default function ProfileScreen() {
               <View style={styles.healthInfo}>
                 <Text style={styles.healthTitle}>My Habits</Text>
                 <Text style={styles.healthStatus}>
-                  {habits.length > 0
-                    ? `${habits.length} active habit${habits.length === 1 ? '' : 's'}`
-                    : 'Set up your habits'}
+                  {habitsLoading
+                    ? 'Loading…'
+                    : habits.length > 0
+                      ? `${habits.length} active habit${habits.length === 1 ? '' : 's'}`
+                      : 'Set up your habits'}
                 </Text>
               </View>
             </View>
@@ -597,102 +466,7 @@ export default function ProfileScreen() {
               thumbColor="#f4f3f4"
             />
           </View>
-          <View style={[styles.healthCard, styles.eveningCallCard, { marginTop: theme.spacing.sm }]}>
-            <View style={styles.eveningCallHeader}>
-              <View style={styles.healthCardLeft}>
-                <View style={[styles.healthIconContainer, { backgroundColor: colors.primaryLightOverlay30 }]}>
-                  <FontAwesome name="phone" size={18} color={colors.primary} />
-                </View>
-                <View style={styles.healthInfo}>
-                  <Text style={styles.healthTitle}>Evening Check-In Call</Text>
-                  <Text style={styles.healthStatus}>
-                    Keep yourself accountable with a call from Thrive
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                style={styles.healthCardSwitch}
-                value={eveningCallEnabled}
-                onValueChange={handleToggleEveningCall}
-                trackColor={{ false: colors.borderLight, true: colors.primaryLight }}
-                thumbColor="#f4f3f4"
-              />
-            </View>
-            {(eveningCallEnabled || profile?.evening_call_enabled) && (
-              <View style={styles.eveningCallConfig}>
-                <View style={styles.eveningCallConfigDivider} />
-                <Text style={styles.eveningCallDescription}>
-                  Automatically updates your journal, habits, and todos in the app for you.
-                </Text>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Phone Number</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="(555) 123-4567"
-                    placeholderTextColor={colors.textMuted}
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    keyboardType="phone-pad"
-                    autoComplete="tel"
-                  />
-                </View>
-                <View style={[styles.field, { marginTop: theme.spacing.md }]}>
-                  <Text style={styles.label}>Call Time</Text>
-                  <TouchableOpacity
-                    style={[styles.input, styles.pickerTrigger]}
-                    onPress={() => setShowTimePicker(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.pickerTriggerText}>
-                      {formatCallTime(eveningCallTime)}
-                    </Text>
-                    <Text style={styles.pickerTimezone}>
-                      {formatTimezoneShort(callTimezone)}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                {callHasChanges && (
-                  <TouchableOpacity
-                    style={[
-                      styles.saveButton,
-                      { marginTop: theme.spacing.md },
-                      savingCall && styles.buttonDisabled,
-                    ]}
-                    onPress={handleSaveCallPreferences}
-                    disabled={savingCall}
-                    activeOpacity={0.8}
-                  >
-                    {savingCall ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveButtonText}>Save Preferences</Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-                {profile?.phone_number && (
-                  <TouchableOpacity
-                    style={[
-                      styles.callNowButton,
-                      callingNow && styles.buttonDisabled,
-                    ]}
-                    onPress={handleCallMeNow}
-                    disabled={callingNow}
-                    activeOpacity={0.8}
-                  >
-                    {callingNow ? (
-                      <ActivityIndicator color={colors.primary} />
-                    ) : (
-                      <>
-                        <FontAwesome name="phone" size={16} color={colors.primary} />
-                        <Text style={styles.callNowText}>Call Me Now</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-                <SaveContactButton />
-              </View>
-            )}
-          </View>
+          <EveningCallConfig user={user} profile={profile} refreshProfile={refreshProfile} />
         </View>
 
         <View style={styles.divider} />
@@ -819,59 +593,6 @@ export default function ProfileScreen() {
             )}
           </View>
         )}
-
-        {/* Time Picker Modal */}
-        <Modal
-          visible={showTimePicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowTimePicker(false)}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowTimePicker(false)}
-          >
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Call Time</Text>
-              <FlatList
-                data={CALL_TIME_OPTIONS}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.timeOption,
-                      item === eveningCallTime && styles.timeOptionSelected,
-                    ]}
-                    onPress={() => {
-                      setEveningCallTime(item);
-                      setShowTimePicker(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.timeOptionText,
-                        item === eveningCallTime &&
-                          styles.timeOptionTextSelected,
-                      ]}
-                    >
-                      {formatCallTime(item)}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                showsVerticalScrollIndicator={false}
-              />
-              <TouchableOpacity
-                style={styles.modalCancel}
-                onPress={() => setShowTimePicker(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Modal>
 
         <View style={styles.divider} />
 
@@ -1044,107 +765,21 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.deleteAccountButton}
-          onPress={() => setShowDeleteModal(true)}
+          onPress={() => {
+            hapticError();
+            setShowDeleteModal(true);
+          }}
           activeOpacity={0.8}
         >
           <FontAwesome name="trash" size={16} color={colors.textMuted} />
           <Text style={styles.deleteAccountText}>Delete Account</Text>
         </TouchableOpacity>
 
-        {/* Delete Account Confirmation Modal */}
-        <Modal
+        <ProfileDeleteModal
           visible={showDeleteModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => {
-            if (!deleting) {
-              setShowDeleteModal(false);
-              setDeleteConfirmText('');
-            }
-          }}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => {
-              if (!deleting) {
-                setShowDeleteModal(false);
-                setDeleteConfirmText('');
-              }
-            }}
-          >
-            <View
-              style={styles.deleteModalContent}
-              onStartShouldSetResponder={() => true}
-            >
-              <ScrollView
-                bounces={false}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
-                <View style={styles.deleteWarningIcon}>
-                  <FontAwesome name="exclamation-triangle" size={32} color={colors.danger} />
-                </View>
-                <Text style={styles.deleteModalTitle}>Delete Your Account?</Text>
-                <Text style={styles.deleteModalWarning}>
-                  This action is permanent and cannot be undone. All of your data will be
-                  immediately and irreversibly deleted, including:
-                </Text>
-                <View style={styles.deleteDataList}>
-                  <Text style={styles.deleteDataItem}>• All habits and completion history</Text>
-                  <Text style={styles.deleteDataItem}>• Goals and progress entries</Text>
-                  <Text style={styles.deleteDataItem}>• Journal entries and weekly recaps</Text>
-                  <Text style={styles.deleteDataItem}>• Todos, settings, and profile info</Text>
-                </View>
-                <Text style={styles.deleteModalWarning}>
-                  You will not be able to recover your data or sign back in with this account.
-                </Text>
-                <View style={[styles.field, { marginTop: theme.spacing.md }]}>
-                  <Text style={styles.deleteConfirmLabel}>
-                    Type <Text style={{ fontWeight: '800' }}>DELETE</Text> to confirm
-                  </Text>
-                  <TextInput
-                    style={styles.deleteConfirmInput}
-                    placeholder="DELETE"
-                    placeholderTextColor={colors.textMuted}
-                    value={deleteConfirmText}
-                    onChangeText={setDeleteConfirmText}
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    editable={!deleting}
-                  />
-                </View>
-                <TouchableOpacity
-                  style={[
-                    styles.deleteConfirmButton,
-                    deleteConfirmText.trim().toUpperCase() !== 'DELETE' && styles.deleteConfirmButtonDisabled,
-                    deleting && styles.buttonDisabled,
-                  ]}
-                  onPress={handleDeleteAccount}
-                  disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE' || deleting}
-                  activeOpacity={0.8}
-                >
-                  {deleting ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.deleteConfirmButtonText}>Permanently Delete Account</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.deleteCancelButton}
-                  onPress={() => {
-                    setShowDeleteModal(false);
-                    setDeleteConfirmText('');
-                  }}
-                  disabled={deleting}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.deleteCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+          onClose={() => setShowDeleteModal(false)}
+          onDelete={deleteAccount}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -1443,108 +1078,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: colors.textMuted,
   },
-  // Evening Check-In
-  eveningCallCard: {
-    flexDirection: 'column',
-    alignItems: undefined,
-  },
-  eveningCallHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  eveningCallConfig: {
-    paddingTop: 0,
-  },
-  eveningCallConfigDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: theme.spacing.md,
-    marginHorizontal: -theme.spacing.md,
-  },
-  eveningCallDescription: {
-    fontSize: theme.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: theme.spacing.md,
-  },
-  pickerTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pickerTriggerText: {
-    fontSize: theme.fontSize.md,
-    color: colors.textPrimary,
-  },
-  pickerTimezone: {
-    fontSize: theme.fontSize.sm,
-    color: colors.textMuted,
-  },
-  callNowButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    paddingVertical: 14,
-    marginTop: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: theme.borderRadius.md,
-  },
-  callNowText: {
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-    color: colors.primary,
-  },
-  // Time Picker Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    width: '80%',
-    maxHeight: '60%',
-  },
-  modalTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  timeOption: {
-    paddingVertical: 14,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
-  },
-  timeOptionSelected: {
-    backgroundColor: colors.primaryLightOverlay30,
-  },
-  timeOptionText: {
-    fontSize: theme.fontSize.md,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  timeOptionTextSelected: {
-    color: colors.primary,
-    fontWeight: theme.fontWeight.semibold,
-  },
-  modalCancel: {
-    paddingVertical: theme.spacing.md,
-    marginTop: theme.spacing.sm,
-    alignItems: 'center',
-  },
-  modalCancelText: {
-    fontSize: theme.fontSize.md,
-    color: colors.textMuted,
-    fontWeight: theme.fontWeight.medium,
-  },
   deleteAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1557,85 +1090,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   deleteAccountText: {
     fontSize: theme.fontSize.sm,
     color: colors.textMuted,
-  },
-  deleteModalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    width: '88%',
-    maxWidth: 400,
-    maxHeight: '85%',
-  },
-  deleteWarningIcon: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  deleteModalTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
-    color: colors.danger,
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  deleteModalWarning: {
-    fontSize: theme.fontSize.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  deleteDataList: {
-    backgroundColor: colors.borderLight,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    marginVertical: theme.spacing.md,
-  },
-  deleteDataItem: {
-    fontSize: theme.fontSize.sm,
-    color: colors.textPrimary,
-    lineHeight: 22,
-  },
-  deleteConfirmLabel: {
-    fontSize: theme.fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.xs,
-  },
-  deleteConfirmInput: {
-    backgroundColor: colors.background,
-    borderWidth: 2,
-    borderColor: colors.danger,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 14,
-    fontSize: theme.fontSize.lg,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    letterSpacing: 4,
-    fontWeight: theme.fontWeight.bold,
-  },
-  deleteConfirmButton: {
-    backgroundColor: colors.danger,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: theme.spacing.md,
-  },
-  deleteConfirmButtonDisabled: {
-    opacity: 0.4,
-  },
-  deleteConfirmButtonText: {
-    color: '#fff',
-    fontSize: theme.fontSize.md,
-    fontWeight: theme.fontWeight.semibold,
-  },
-  deleteCancelButton: {
-    paddingVertical: theme.spacing.md,
-    marginTop: theme.spacing.xs,
-    alignItems: 'center',
-  },
-  deleteCancelText: {
-    fontSize: theme.fontSize.md,
-    color: colors.textMuted,
-    fontWeight: theme.fontWeight.medium,
   },
 });

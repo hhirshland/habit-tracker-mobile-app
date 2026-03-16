@@ -4,6 +4,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import { Habit, DAY_LABELS, DayOfWeek } from '@/lib/types';
+import { hapticWarning } from '@/lib/haptics';
 
 interface HabitItemProps {
   habit: Habit;
@@ -11,7 +12,7 @@ interface HabitItemProps {
   onDelete: () => void;
 }
 
-export default function HabitItem({ habit, onEdit, onDelete }: HabitItemProps) {
+function HabitItem({ habit, onEdit, onDelete }: HabitItemProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const getDaysLabel = () => {
@@ -53,7 +54,10 @@ export default function HabitItem({ habit, onEdit, onDelete }: HabitItemProps) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={onDelete}
+          onPress={() => {
+            hapticWarning();
+            onDelete();
+          }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <FontAwesome name="trash-o" size={16} color={colors.danger} />
@@ -62,6 +66,8 @@ export default function HabitItem({ habit, onEdit, onDelete }: HabitItemProps) {
     </View>
   );
 }
+
+export default React.memo(HabitItem);
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {

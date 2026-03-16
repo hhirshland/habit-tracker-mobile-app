@@ -18,7 +18,7 @@ export interface HabitWeeklyStats {
 export async function getHabits(): Promise<Habit[]> {
   const { data, error } = await supabase
     .from('habits')
-    .select('*')
+    .select('id, user_id, name, description, frequency_per_week, specific_days, is_active, metric_type, metric_threshold, auto_complete, identity_statement_id, created_at, updated_at')
     .eq('is_active', true)
     .order('created_at', { ascending: true });
 
@@ -43,7 +43,7 @@ export function getHabitsForDay(habits: Habit[], dayOfWeek: number): Habit[] {
 export async function getCompletionsForDate(date: string): Promise<HabitCompletion[]> {
   const { data, error } = await supabase
     .from('habit_completions')
-    .select('*')
+    .select('id, habit_id, user_id, completed_date, created_at')
     .eq('completed_date', date);
 
   if (error) throw error;
@@ -57,7 +57,7 @@ export async function getCompletionsForWeek(
 ): Promise<HabitCompletion[]> {
   const { data, error } = await supabase
     .from('habit_completions')
-    .select('*')
+    .select('id, habit_id, user_id, completed_date, created_at')
     .gte('completed_date', weekStart)
     .lte('completed_date', weekEnd);
 
@@ -194,7 +194,7 @@ export async function deleteHabit(habitId: string): Promise<void> {
 export async function getSnoozesForDate(date: string): Promise<HabitSnooze[]> {
   const { data, error } = await supabase
     .from('habit_snoozes')
-    .select('*')
+    .select('id, habit_id, user_id, snoozed_date, created_at')
     .eq('snoozed_date', date);
 
   if (error) throw error;
@@ -235,9 +235,14 @@ export async function unsnoozeHabit(
 export async function getStreak(): Promise<{ streakCount: number; earnedToday: boolean }> {
   const today = getTodayDate();
 
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 365);
+  const cutoffDate = formatDate(cutoff);
+
   const { data, error } = await supabase
     .from('habit_completions')
     .select('created_at')
+    .gte('completed_date', cutoffDate)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -278,7 +283,7 @@ export async function getCompletionsForDateRange(
 ): Promise<HabitCompletion[]> {
   const { data, error } = await supabase
     .from('habit_completions')
-    .select('*')
+    .select('id, habit_id, user_id, completed_date, created_at')
     .gte('completed_date', startDate)
     .lte('completed_date', endDate);
 
@@ -293,7 +298,7 @@ export async function getSnoozesForDateRange(
 ): Promise<HabitSnooze[]> {
   const { data, error } = await supabase
     .from('habit_snoozes')
-    .select('*')
+    .select('id, habit_id, user_id, snoozed_date, created_at')
     .gte('snoozed_date', startDate)
     .lte('snoozed_date', endDate);
 

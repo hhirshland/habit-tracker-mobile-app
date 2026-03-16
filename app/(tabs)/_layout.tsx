@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import {
@@ -6,14 +6,42 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Platform,
-  Image,
+  type LayoutChangeEvent,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../contexts/AuthContext';
-import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
+import { Sentry } from '@/lib/sentry';
+import { hapticSelection } from '@/lib/haptics';
+
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  Sentry.captureException(error);
+  return (
+    <View style={ebStyles.container}>
+      <Text style={ebStyles.title}>Something went wrong</Text>
+      <Text style={ebStyles.message}>We hit a snag loading this section. Please try again.</Text>
+      <TouchableOpacity style={ebStyles.button} onPress={retry}>
+        <Text style={ebStyles.buttonText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const ebStyles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  title: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  message: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 24 },
+  button: { backgroundColor: '#4A90E2', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+});
 
 const TAB_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
   index: 'home',
@@ -21,11 +49,42 @@ const TAB_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']
   profile: 'user-circle-o',
 };
 
+const TIMING_CONFIG = { duration: 250, easing: Easing.out(Easing.cubic) };
+const PILL_PADDING_H = 6;
+const HIGHLIGHT_INSET = 1;
+
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { profile } = useAuth();
+
+  const [pillWidth, setPillWidth] = useState(0);
+  const numTabs = state.routes.length;
+  const tabWidth = pillWidth > 0 ? (pillWidth - PILL_PADDING_H * 2) / numTabs : 0;
+
+  const indicatorX = useSharedValue(0);
+  const hasPlaced = useRef(false);
+
+  useEffect(() => {
+    if (tabWidth <= 0) return;
+    const target = PILL_PADDING_H + HIGHLIGHT_INSET + state.index * tabWidth;
+    if (!hasPlaced.current) {
+      indicatorX.value = target;
+      hasPlaced.current = true;
+    } else {
+      indicatorX.value = withTiming(target, TIMING_CONFIG);
+    }
+  }, [state.index, tabWidth]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+    width: tabWidth > 0 ? tabWidth - HIGHLIGHT_INSET * 2 : 0,
+  }));
+
+  const onPillLayout = useCallback((e: LayoutChangeEvent) => {
+    setPillWidth(e.nativeEvent.layout.width);
+  }, []);
 
   return (
     <View
@@ -34,7 +93,10 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         { paddingBottom: Math.max(insets.bottom - 8, 4) },
       ]}
     >
-      <View style={styles.tabBarPill}>
+      <View style={styles.tabBarPill} onLayout={onPillLayout}>
+        {pillWidth > 0 && (
+          <Animated.View style={[styles.activeHighlight, indicatorStyle]} />
+        )}
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const label = options.title ?? route.name;
@@ -47,6 +109,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               canPreventDefault: true,
             });
             if (!isFocused && !event.defaultPrevented) {
+              hapticSelection();
               navigation.navigate(route.name, route.params);
             }
           };
@@ -72,10 +135,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               activeOpacity={0.7}
               style={styles.tabItem}
             >
-              {isFocused && <View style={styles.activeHighlight} />}
               {route.name === 'profile' && profile?.avatar_url ? (
                 <Image
-                  source={{ uri: profile.avatar_url }}
+                  source={profile.avatar_url}
                   style={[
                     styles.profilePic,
                     { borderColor: isFocused ? colors.textPrimary : colors.textMuted },
@@ -151,10 +213,9 @@ function createStyles(colors: import('@/lib/theme').ThemeColors) {
     },
     activeHighlight: {
       position: 'absolute',
-      top: -2,
-      bottom: -2,
-      left: 1,
-      right: 1,
+      top: 6,
+      bottom: 6,
+      left: 0,
       backgroundColor: colors.borderLight,
       borderRadius: 24,
     },

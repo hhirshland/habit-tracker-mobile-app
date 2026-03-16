@@ -70,11 +70,12 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
   // Prevent concurrent loads
   const loadingRef = useRef(false);
 
-  // Check authorization on mount (iOS only)
   useEffect(() => {
     if (!isAvailable) return;
+    let cancelled = false;
 
     checkHealthAuthorization().then((authorized) => {
+      if (cancelled) return;
       console.log('[HealthContext] Initial authorization check:', authorized);
       setIsAuthorized(authorized);
       setSuperProperties({ has_health_connected: authorized });
@@ -82,6 +83,8 @@ export function HealthProvider({ children }: { children: React.ReactNode }) {
         loadMetrics();
       }
     });
+
+    return () => { cancelled = true; };
   }, [isAvailable]);
 
   const loadMetrics = useCallback(async () => {

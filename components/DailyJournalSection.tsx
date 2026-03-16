@@ -15,6 +15,7 @@ import { theme } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import AppHeader from '@/components/AppHeader';
 import { DailyJournalEntry } from '@/lib/types';
+import { hapticSuccess } from '@/lib/haptics';
 
 interface DailyJournalSectionProps {
   date: string;
@@ -111,6 +112,7 @@ export default function DailyJournalSection({
 
   const handleSubmit = () => {
     if (!canSave) return;
+    hapticSuccess();
     pendingDrafts.delete(date);
     onSubmit(win.trim(), tension.trim(), gratitude.trim());
     setModalVisible(false);

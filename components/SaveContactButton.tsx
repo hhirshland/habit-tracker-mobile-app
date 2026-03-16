@@ -21,7 +21,11 @@ export default function SaveContactButton({ compact }: Props) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    hasSavedThriveContact().then((saved) => setHidden(saved));
+    let cancelled = false;
+    hasSavedThriveContact().then((saved) => {
+      if (!cancelled) setHidden(saved);
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   if (hidden) return null;

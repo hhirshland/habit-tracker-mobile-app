@@ -16,6 +16,7 @@ import { useThemeColors } from '@/hooks/useTheme';
 import type { ThemeColors } from '@/lib/theme';
 import AppHeader from '@/components/AppHeader';
 import { GoalType, GOAL_TYPE_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_COLORS } from '@/lib/types';
+import { hapticSuccess, hapticSelection } from '@/lib/haptics';
 
 // ──────────────────────────────────────────────
 // Goal template definitions
@@ -317,6 +318,7 @@ export default function AddGoalSheet({
       goalData.rate_unit = 'lbs/week';
     }
 
+    hapticSuccess();
     onSubmit(goalData);
     handleClose();
   };
@@ -380,6 +382,7 @@ export default function AddGoalSheet({
                         selectedDistance === d.value && styles.chipSelected,
                       ]}
                       onPress={() => {
+                        hapticSelection();
                         setSelectedDistance(d.value);
                         setTitle(`${d.value} PR`);
                       }}
@@ -509,7 +512,10 @@ export default function AddGoalSheet({
                         styles.chip,
                         selectedRate === r.value && styles.chipSelected,
                       ]}
-                      onPress={() => setSelectedRate(r.value)}
+                      onPress={() => {
+                        hapticSelection();
+                        setSelectedRate(r.value);
+                      }}
                     >
                       <Text
                         style={[
@@ -537,6 +543,7 @@ export default function AddGoalSheet({
                       startDatePreset === preset.id && styles.chipSelected,
                     ]}
                     onPress={() => {
+                      hapticSelection();
                       setStartDatePreset(preset.id);
                       setStartDate(preset.getDate());
                       setCustomDateText('');

@@ -67,6 +67,7 @@ import {
   useQualifyingWeeks,
   useRefreshRecaps,
 } from '@/hooks/useWeeklyRecapsQuery';
+import { captureError } from '@/lib/sentry';
 
 const METRIC_PREFS_KEY = '@metric_preferences';
 
@@ -90,7 +91,7 @@ function MetricCard({ title, value, subtitle, icon, color, sparklineData, onPres
   const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
 
   return (
-    <Wrapper style={styles.metricCard} {...(wrapperProps as any)}>
+    <Wrapper style={styles.metricCard} {...(wrapperProps as Record<string, unknown>)}>
       <View style={styles.metricCardHeader}>
         <View style={[styles.metricIconContainer, { backgroundColor: color + '18' }]}>
           <FontAwesome name={icon} size={16} color={color} />
@@ -301,8 +302,20 @@ export default function ProgressScreen() {
     };
   }, [top3Enabled, weekTodos, weekRange.end]);
 
+  const combinedAdherence = useMemo(() => {
+    const completed = (weeklyAdherence?.completedTotal ?? 0) + (top3TodoWeeklyStat?.completedDays ?? 0);
+    const target = (weeklyAdherence?.targetTotal ?? 0) + (top3TodoWeeklyStat?.targetDays ?? 0);
+    const percent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
+    return { completed, target, percent };
+  }, [weeklyAdherence, top3TodoWeeklyStat]);
+
+  const handlePrevWeek = useCallback(() => setWeekOffset((prev) => prev - 1), []);
+  const handleNextWeek = useCallback(() => setWeekOffset((prev) => Math.min(prev + 1, 0)), []);
+  const handleJumpToCurrentWeek = useCallback(() => setWeekOffset(0), []);
+
   // Current values for each goal (loaded in parallel)
   const [goalCurrentValues, setGoalCurrentValues] = useState<Record<string, number | null>>({});
+  const [goalsValuesLoading, setGoalsValuesLoading] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [showAddGoal, setShowAddGoal] = useState(false);
 
@@ -312,18 +325,18 @@ export default function ProgressScreen() {
   const [showEditMetrics, setShowEditMetrics] = useState(false);
   const [showJournalHistory, setShowJournalHistory] = useState(false);
 
-  // Load saved metric preferences on mount
   useEffect(() => {
+    let cancelled = false;
     AsyncStorage.getItem(METRIC_PREFS_KEY).then((saved) => {
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setVisibleMetricKeys(parsed);
-          }
-        } catch {}
-      }
-    });
+      if (cancelled || !saved) return;
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setVisibleMetricKeys(parsed);
+        }
+      } catch {}
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const handleSaveMetricPrefs = useCallback((newKeys: string[]) => {
@@ -334,6 +347,8 @@ export default function ProgressScreen() {
   // Load current values for all goals
   useEffect(() => {
     if (goals.length === 0) return;
+    let cancelled = false;
+    setGoalsValuesLoading(true);
     const loadValues = async () => {
       const entries = await Promise.all(
         goals.map(async (g) => {
@@ -341,9 +356,13 @@ export default function ProgressScreen() {
           return [g.id, val] as [string, number | null];
         })
       );
-      setGoalCurrentValues(Object.fromEntries(entries));
+      if (!cancelled) {
+        setGoalCurrentValues(Object.fromEntries(entries));
+        setGoalsValuesLoading(false);
+      }
     };
     loadValues();
+    return () => { cancelled = true; };
   }, [goals]);
 
   // Refresh HealthContext metrics on focus (lightweight – just today's data)
@@ -386,6 +405,7 @@ export default function ProgressScreen() {
       await createGoalMutation.mutateAsync({ userId: user.id, goal: goalData });
     } catch (error) {
       console.error('Error creating goal:', error);
+      captureError(error, { tag: 'progress.createGoal' });
     }
   };
 
@@ -399,6 +419,7 @@ export default function ProgressScreen() {
       setSelectedGoal(null);
     } catch (error) {
       console.error('Error deleting goal:', error);
+      captureError(error, { tag: 'progress.deleteGoal' });
     }
   };
 
@@ -415,6 +436,7 @@ export default function ProgressScreen() {
       });
     } catch (error) {
       console.error('Error logging goal entry:', error);
+      captureError(error, { tag: 'progress.logGoalEntry' });
     }
   };
 
@@ -495,17 +517,13 @@ export default function ProgressScreen() {
           weekLabel={weekRange.label}
           weekStart={weekRange.start}
           weekOffset={weekOffset}
-          adherencePercent={(() => {
-            const ct = (weeklyAdherence?.completedTotal ?? 0) + (top3TodoWeeklyStat?.completedDays ?? 0);
-            const tt = (weeklyAdherence?.targetTotal ?? 0) + (top3TodoWeeklyStat?.targetDays ?? 0);
-            return tt > 0 ? Math.min(100, Math.round((ct / tt) * 100)) : 0;
-          })()}
-          completedTotal={(weeklyAdherence?.completedTotal ?? 0) + (top3TodoWeeklyStat?.completedDays ?? 0)}
-          targetTotal={(weeklyAdherence?.targetTotal ?? 0) + (top3TodoWeeklyStat?.targetDays ?? 0)}
+          adherencePercent={combinedAdherence.percent}
+          completedTotal={combinedAdherence.completed}
+          targetTotal={combinedAdherence.target}
           disableNextWeek={weekOffset === 0}
-          onPrevWeek={() => setWeekOffset((prev) => prev - 1)}
-          onNextWeek={() => setWeekOffset((prev) => Math.min(prev + 1, 0))}
-          onJumpToCurrentWeek={() => setWeekOffset(0)}
+          onPrevWeek={handlePrevWeek}
+          onNextWeek={handleNextWeek}
+          onJumpToCurrentWeek={handleJumpToCurrentWeek}
           isLoading={weeklyAdherenceLoading}
           stats={weeklyAdherence?.stats ?? []}
           top3TodoWeeklyStat={top3TodoWeeklyStat}
@@ -552,7 +570,7 @@ export default function ProgressScreen() {
               <GoalCard
                 key={goal.id}
                 goal={goal}
-                currentValue={goalCurrentValues[goal.id] ?? null}
+                currentValue={goalsValuesLoading ? null : (goalCurrentValues[goal.id] ?? null)}
                 onPress={() => setSelectedGoal(goal)}
               />
             ))}

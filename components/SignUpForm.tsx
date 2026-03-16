@@ -14,6 +14,7 @@ import { EVENTS, captureEvent } from '@/lib/analytics';
 import { isAppleAuthAvailable } from '@/lib/socialAuth';
 import { theme, ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
+import { hapticError } from '@/lib/haptics';
 
 interface SignUpFormProps {
   onSuccess: () => void;
@@ -59,14 +60,17 @@ export default function SignUpForm({ onSuccess, mode = 'buttons', onEmailPress }
 
   const handleEmailSignUp = async () => {
     if (!fullName || !email || !password) {
+      hapticError();
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
     if (password.length < 8) {
+      hapticError();
       Alert.alert('Error', 'Password must be at least 8 characters');
       return;
     }
     if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      hapticError();
       Alert.alert('Error', 'Password must include at least one uppercase letter and one number');
       return;
     }

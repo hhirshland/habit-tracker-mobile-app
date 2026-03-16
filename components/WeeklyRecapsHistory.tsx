@@ -17,7 +17,7 @@ interface WeeklyRecapsHistoryProps {
   onSelectWeek: (week: QualifyingWeek) => void;
 }
 
-function RecapCard({
+const RecapCard = React.memo(function RecapCard({
   week,
   onPress,
   styles,
@@ -63,7 +63,7 @@ function RecapCard({
       )}
     </TouchableOpacity>
   );
-}
+});
 
 export default function WeeklyRecapsHistory({
   weeks,

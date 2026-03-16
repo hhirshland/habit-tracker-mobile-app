@@ -187,7 +187,7 @@ export default function HomeScreen() {
     }, [user, healthAuthorized, habits, completions, selectedDate, calendarRange])
   );
 
-  const handleToggle = async (habit: Habit) => {
+  const handleToggle = useCallback(async (habit: Habit) => {
     if (!user) return;
     const isCompleted = completions.some((c) => c.habit_id === habit.id);
     toggleMutation.mutate({
@@ -198,9 +198,9 @@ export default function HomeScreen() {
       habitName: habit.name,
       isAutoComplete: habit.auto_complete,
     });
-  };
+  }, [user, completions, selectedDate, toggleMutation]);
 
-  const handleSnooze = async (habit: Habit) => {
+  const handleSnooze = useCallback(async (habit: Habit) => {
     if (!user) return;
     snoozeMutation.mutate({
       habitId: habit.id,
@@ -208,41 +208,41 @@ export default function HomeScreen() {
       date: selectedDate,
       habitName: habit.name,
     });
-  };
+  }, [user, selectedDate, snoozeMutation]);
 
-  const handleUnsnooze = async (habit: Habit) => {
+  const handleUnsnooze = useCallback(async (habit: Habit) => {
     unsnoozeMutation.mutate({
       habitId: habit.id,
       date: selectedDate,
       habitName: habit.name,
     });
-  };
+  }, [selectedDate, unsnoozeMutation]);
 
-  const handleSaveTodo = (position: number, text: string) => {
+  const handleSaveTodo = useCallback((position: number, text: string) => {
     if (!user) return;
     upsertTodoMutation.mutate({ userId: user.id, date: selectedDate, position, text });
-  };
+  }, [user, selectedDate, upsertTodoMutation]);
 
-  const handleToggleTodo = (todo: DailyTodo) => {
+  const handleToggleTodo = useCallback((todo: DailyTodo) => {
     toggleTodoMutation.mutate({ todoId: todo.id, isCompleted: todo.is_completed, date: selectedDate, position: todo.position });
-  };
+  }, [selectedDate, toggleTodoMutation]);
 
-  const handleDeleteTodo = (todo: DailyTodo) => {
+  const handleDeleteTodo = useCallback((todo: DailyTodo) => {
     deleteTodoMutation.mutate({ todoId: todo.id, date: selectedDate });
-  };
+  }, [selectedDate, deleteTodoMutation]);
 
-  const handleSubmitJournal = (win: string, tension: string, gratitude: string) => {
+  const handleSubmitJournal = useCallback((win: string, tension: string, gratitude: string) => {
     if (!user) return;
     upsertJournalMutation.mutate({ userId: user.id, date: selectedDate, win, tension, gratitude });
-  };
+  }, [user, selectedDate, upsertJournalMutation]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     refreshAll();
     queryClient.invalidateQueries({ queryKey: ['dailyTodos'] });
     queryClient.invalidateQueries({ queryKey: ['dailyJournal'] });
     setTimeout(() => setRefreshing(false), 600);
-  };
+  }, [refreshAll, queryClient]);
 
   // Calculate day progress for the calendar strip (habits + todos)
   const dayProgress = useMemo(() => {
@@ -294,53 +294,51 @@ export default function HomeScreen() {
     return progress;
   }, [habits, calendarCompletions, calendarSnoozes, top3Enabled, calendarTodos, journalEnabled, calendarJournals]);
 
-  const selectedDayHabits = getHabitsForDay(habits, selectedDayOfWeek)
-    .filter((h) => h.created_at.slice(0, 10) <= selectedDate);
-  const completedIds = new Set(completions.map((c) => c.habit_id));
-  const snoozedIds = new Set(snoozes.map((s) => s.habit_id));
+  const completedIds = useMemo(() => new Set(completions.map((c) => c.habit_id)), [completions]);
+  const snoozedIds = useMemo(() => new Set(snoozes.map((s) => s.habit_id)), [snoozes]);
 
-  const getWeeklyCompletionCount = (habit: Habit) =>
-    weekCompletions.filter((c) => c.habit_id === habit.id).length;
+  const selectedDayHabits = useMemo(
+    () => getHabitsForDay(habits, selectedDayOfWeek).filter((h) => h.created_at.slice(0, 10) <= selectedDate),
+    [habits, selectedDayOfWeek, selectedDate],
+  );
 
-  const getIsRequired = (habit: Habit) =>
+  const weeklyCompletionCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const h of selectedDayHabits) {
+      map.set(h.id, weekCompletions.filter((c) => c.habit_id === h.id).length);
+    }
+    return map;
+  }, [selectedDayHabits, weekCompletions]);
+
+  const getIsRequired = useCallback((habit: Habit) =>
     isHabitRequiredToday(
       habit,
       selectedDayOfWeek,
-      getWeeklyCompletionCount(habit),
-      completedIds.has(habit.id)
+      weeklyCompletionCounts.get(habit.id) ?? 0,
+      completedIds.has(habit.id),
+    ), [selectedDayOfWeek, weeklyCompletionCounts, completedIds]);
+
+  const { incompleteHabits, completedHabits, snoozedHabits } = useMemo(() => {
+    const incomplete = selectedDayHabits
+      .filter((h) => !completedIds.has(h.id) && !snoozedIds.has(h.id))
+      .sort((a, b) => {
+        const aReq = getIsRequired(a);
+        const bReq = getIsRequired(b);
+        if (aReq && !bReq) return -1;
+        if (!aReq && bReq) return 1;
+        return 0;
+      });
+    const completed = selectedDayHabits.filter((h) => completedIds.has(h.id));
+    const snoozed = selectedDayHabits.filter(
+      (h) => snoozedIds.has(h.id) && !completedIds.has(h.id),
     );
+    return { incompleteHabits: incomplete, completedHabits: completed, snoozedHabits: snoozed };
+  }, [selectedDayHabits, completedIds, snoozedIds, getIsRequired]);
 
-  // Separate into incomplete, completed, and snoozed — with required first in incomplete
-  const incompleteHabits = selectedDayHabits
-    .filter((h) => !completedIds.has(h.id) && !snoozedIds.has(h.id))
-    .sort((a, b) => {
-      const aReq = getIsRequired(a);
-      const bReq = getIsRequired(b);
-      if (aReq && !bReq) return -1;
-      if (!aReq && bReq) return 1;
-      return 0;
-    });
-
-  const completedHabits = selectedDayHabits.filter((h) => completedIds.has(h.id));
-  const snoozedHabits = selectedDayHabits.filter(
-    (h) => snoozedIds.has(h.id) && !completedIds.has(h.id)
-  );
-
-  const getWeeklyProgress = (habit: Habit) => {
-    return {
-      done: getWeeklyCompletionCount(habit),
-      total: habit.frequency_per_week,
-    };
-  };
-
-  // Only show full-screen spinner on very first load (no cached data)
-  if (habitsLoading && habits.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  const getWeeklyProgress = useCallback((habit: Habit) => ({
+    done: weeklyCompletionCounts.get(habit.id) ?? 0,
+    total: habit.frequency_per_week,
+  }), [weeklyCompletionCounts]);
 
   const journalCompleted = journalEnabled && journalEntry !== null &&
     journalEntry.win.trim() !== '' && journalEntry.tension.trim() !== '' && journalEntry.gratitude.trim() !== '';
@@ -359,24 +357,21 @@ export default function HomeScreen() {
     | { type: 'completedJournal' }
     | { type: 'identityCard' };
 
-  const buildListData = (): ListItem[] => {
+  const listData = useMemo((): ListItem[] => {
     const items: ListItem[] = [];
 
-    // Identity card for existing users without identities
     if (identityStatements.length === 0) {
       items.push({ type: 'identityCard' });
     }
 
-    // Top 3 Todos section
     if (top3Enabled) {
       items.push({ type: 'todosSection' });
     }
 
-    // Daily Habits section
     if (incompleteHabits.length > 0) {
       items.push({ type: 'label', label: 'Daily Habits' });
       incompleteHabits.forEach((h) =>
-        items.push({ type: 'habit', habit: h, state: 'incomplete' })
+        items.push({ type: 'habit', habit: h, state: 'incomplete' }),
       );
     } else if (allDone && snoozedHabits.length === 0) {
       items.push({ type: 'label', label: 'All Done! \u{1F389}' });
@@ -384,36 +379,31 @@ export default function HomeScreen() {
       items.push({ type: 'label', label: 'All Done! \u{1F389}' });
     }
 
-    // Daily Journal section (incomplete) — below habits, above completed
     if (journalEnabled && !journalCompleted) {
       items.push({ type: 'journalSection' });
     }
 
-    // Completed section
     if (completedHabits.length > 0 || journalCompleted) {
       items.push({ type: 'label', label: 'Completed' });
       completedHabits.forEach((h) =>
-        items.push({ type: 'habit', habit: h, state: 'completed' })
+        items.push({ type: 'habit', habit: h, state: 'completed' }),
       );
       if (journalCompleted) {
         items.push({ type: 'completedJournal' });
       }
     }
 
-    // Snoozed section
     if (snoozedHabits.length > 0) {
       items.push({ type: 'label', label: 'Snoozed' });
       snoozedHabits.forEach((h) =>
-        items.push({ type: 'habit', habit: h, state: 'snoozed' })
+        items.push({ type: 'habit', habit: h, state: 'snoozed' }),
       );
     }
 
     return items;
-  };
+  }, [identityStatements.length, top3Enabled, journalEnabled, journalCompleted, allDone, incompleteHabits, completedHabits, snoozedHabits]);
 
-  const listData = buildListData();
-
-  const renderItem = ({ item }: { item: ListItem }) => {
+  const renderItem = useCallback(({ item }: { item: ListItem }) => {
     if (item.type === 'identityCard') {
       return (
         <View style={styles.itemWrapper}>
@@ -437,17 +427,7 @@ export default function HomeScreen() {
       );
     }
 
-    if (item.type === 'journalSection') {
-      return (
-        <DailyJournalSection
-          date={selectedDate}
-          entry={journalEntry}
-          onSubmit={handleSubmitJournal}
-        />
-      );
-    }
-
-    if (item.type === 'completedJournal') {
+    if (item.type === 'journalSection' || item.type === 'completedJournal') {
       return (
         <DailyJournalSection
           date={selectedDate}
@@ -476,7 +456,16 @@ export default function HomeScreen() {
         />
       </View>
     );
-  };
+  }, [styles, dailyTodos, handleSaveTodo, handleToggleTodo, handleDeleteTodo, selectedDate, journalEntry, handleSubmitJournal, getIsRequired, getWeeklyProgress, handleToggle, handleSnooze, handleUnsnooze, identityIconMap]);
+
+  // Only show full-screen spinner on very first load (no cached data)
+  if (habitsLoading && habits.length === 0) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -544,6 +533,9 @@ export default function HomeScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={10}
+          maxToRenderPerBatch={8}
+          windowSize={5}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

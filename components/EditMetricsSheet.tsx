@@ -13,6 +13,7 @@ import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import AppHeader from '@/components/AppHeader';
 import { ALL_METRICS, MetricDefinition } from '@/lib/metricsConfig';
+import { hapticSelection, hapticLight } from '@/lib/haptics';
 
 interface EditMetricsSheetProps {
   visible: boolean;
@@ -45,6 +46,7 @@ export default function EditMetricsSheet({
   }, [visible, visibleKeys]);
 
   const toggleVisibility = useCallback((key: string) => {
+    hapticSelection();
     setItems((prev) =>
       prev.map((item) =>
         item.metric.key === key ? { ...item, visible: !item.visible } : item
@@ -54,6 +56,7 @@ export default function EditMetricsSheet({
 
   const moveUp = useCallback((index: number) => {
     if (index <= 0) return;
+    hapticLight();
     setItems((prev) => {
       const next = [...prev];
       [next[index - 1], next[index]] = [next[index], next[index - 1]];
@@ -64,6 +67,7 @@ export default function EditMetricsSheet({
   const moveDown = useCallback((index: number) => {
     setItems((prev) => {
       if (index >= prev.length - 1) return prev;
+      hapticLight();
       const next = [...prev];
       [next[index], next[index + 1]] = [next[index + 1], next[index]];
       return next;

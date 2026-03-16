@@ -14,7 +14,11 @@ export default function DefineIdentityCard() {
   const [dismissed, setDismissed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(DISMISSED_KEY).then((val) => setDismissed(val === 'true'));
+    let cancelled = false;
+    AsyncStorage.getItem(DISMISSED_KEY).then((val) => {
+      if (!cancelled) setDismissed(val === 'true');
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const handleDismiss = async () => {

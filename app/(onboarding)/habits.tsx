@@ -23,6 +23,7 @@ import { CATEGORY_ICONS } from '@/components/CategoryPicker';
 import type { IdentityStatement } from '@/lib/types';
 import type { SelectedIdentity } from './identity';
 import { getSuggestedHabitsForCategory, type SuggestedHabit } from '@/lib/identityTemplates';
+import { hapticSuccess, hapticSelection } from '@/lib/haptics';
 
 interface PendingHabit {
   id: string;
@@ -167,6 +168,7 @@ export default function OnboardingHabitsScreen() {
   };
 
   const navigateToFeatures = () => {
+    hapticSuccess();
     captureEvent(EVENTS.ONBOARDING_STEP_COMPLETED, {
       step_name: 'habits',
       step_number: 4,
@@ -258,6 +260,7 @@ export default function OnboardingHabitsScreen() {
                           isAdded && styles.suggestedChipAdded,
                         ]}
                         onPress={() => {
+                          hapticSelection();
                           if (isAdded) {
                             const match = habits.find((h) => h.name === sh.name);
                             if (match) handleRemoveHabit(match.id);

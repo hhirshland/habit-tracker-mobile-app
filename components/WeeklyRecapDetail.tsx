@@ -89,6 +89,9 @@ export default function WeeklyRecapDetail({
     }
   }, [generateRecap.isSuccess, generateRecap.data, doMarkRead]);
 
+  const displayRecap: WeeklyRecap | null =
+    recap ?? (generateRecap.data?.recap as WeeklyRecap | undefined) ?? null;
+
   const handleClose = useCallback(() => {
     generateRecap.reset();
     onClose();
@@ -116,9 +119,6 @@ export default function WeeklyRecapDetail({
       ],
     );
   }, [displayRecap, deleteRecap, generateRecap, onClose]);
-
-  const displayRecap: WeeklyRecap | null =
-    recap ?? (generateRecap.data?.recap as WeeklyRecap | undefined) ?? null;
 
   if (!week) return null;
 

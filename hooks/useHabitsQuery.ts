@@ -120,20 +120,23 @@ export function useWeeklyAdherence(weekStart: string, weekEnd: string) {
 
 // ── Mutation hooks ─────────────────────────────
 
-/** Invalidate all queries that could be affected by a completion change */
+/** Invalidate completion queries affected by a change on a specific date */
 function useInvalidateOnCompletionChange() {
   const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries({ queryKey: ['completions'] });
+  return (date: string) => {
+    qc.invalidateQueries({ queryKey: queryKeys.completions.forDate(date) });
+    qc.invalidateQueries({ queryKey: ['completions', 'week'] });
+    qc.invalidateQueries({ queryKey: ['completions', 'range'] });
     qc.invalidateQueries({ queryKey: queryKeys.streak });
   };
 }
 
-/** Invalidate snooze-related queries */
+/** Invalidate snooze queries affected by a change on a specific date */
 function useInvalidateOnSnoozeChange() {
   const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries({ queryKey: ['snoozes'] });
+  return (date: string) => {
+    qc.invalidateQueries({ queryKey: queryKeys.snoozes.forDate(date) });
+    qc.invalidateQueries({ queryKey: ['snoozes', 'range'] });
   };
 }
 
@@ -154,7 +157,7 @@ export function useToggleCompletion() {
       isAutoComplete?: boolean;
     }) => toggleHabitCompletion(habitId, userId, date, isCompleted),
     onSuccess: (_, variables) => {
-      invalidate();
+      invalidate(variables.date);
       if (variables.isCompleted) {
         captureEvent(EVENTS.HABIT_UNCOMPLETED, {
           habit_id: variables.habitId,
@@ -187,7 +190,7 @@ export function useSnoozeHabit() {
       habitName?: string;
     }) => snoozeHabit(habitId, userId, date),
     onSuccess: (_, variables) => {
-      invalidate();
+      invalidate(variables.date);
       captureEvent(EVENTS.HABIT_SNOOZED, {
         habit_id: variables.habitId,
         habit_name: variables.habitName,
@@ -202,7 +205,7 @@ export function useUnsnoozeHabit() {
     mutationFn: ({ habitId, date }: { habitId: string; date: string; habitName?: string }) =>
       unsnoozeHabit(habitId, date),
     onSuccess: (_, variables) => {
-      invalidate();
+      invalidate(variables.date);
       captureEvent(EVENTS.HABIT_UNSNOOZED, {
         habit_id: variables.habitId,
         habit_name: variables.habitName,
@@ -296,8 +299,8 @@ export function useRefreshAllHabitData() {
   const qc = useQueryClient();
   return () => {
     qc.invalidateQueries({ queryKey: queryKeys.habits.all });
-    qc.invalidateQueries({ queryKey: ['completions'] });
-    qc.invalidateQueries({ queryKey: ['snoozes'] });
+    qc.invalidateQueries({ queryKey: ['completions'], refetchType: 'active' });
+    qc.invalidateQueries({ queryKey: ['snoozes'], refetchType: 'active' });
     qc.invalidateQueries({ queryKey: queryKeys.streak });
   };
 }

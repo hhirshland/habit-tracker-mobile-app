@@ -1,4 +1,8 @@
+import type React from 'react';
 import type { UserSettings } from '@/lib/userSettings';
+import type FontAwesome from '@expo/vector-icons/FontAwesome';
+
+export type FAIconName = React.ComponentProps<typeof FontAwesome>['name'];
 
 export interface Profile {
   id: string;
@@ -186,7 +190,7 @@ export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   lean_body_mass: 'Lean Body Mass',
 };
 
-export const GOAL_TYPE_ICONS: Record<GoalType, string> = {
+export const GOAL_TYPE_ICONS: Record<GoalType, FAIconName> = {
   weight: 'balance-scale',
   running_pr: 'clock-o',
   resting_hr: 'heartbeat',

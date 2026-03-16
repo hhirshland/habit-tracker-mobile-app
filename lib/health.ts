@@ -39,7 +39,8 @@ const isIOS = Platform.OS === 'ios';
 // Lazy-loaded HealthKit module
 // ──────────────────────────────────────────────
 
-let _mod: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamically loaded native module
+let _mod: Record<string, any> | null = null;
 let _loadFailed = false;
 
 function getModule() {
@@ -135,13 +136,12 @@ async function verifyReadAccess(): Promise<boolean> {
     await mod.getMostRecentQuantitySample(QTI.stepCount);
     console.log('[HealthKit] Read access verified');
     return true;
-  } catch (error: any) {
-    const msg = error?.message ?? '';
+  } catch (error: unknown) {
+    const msg = errorMessage(error);
     if (msg.includes('Code=5') || msg.includes('not determined')) {
       console.warn('[HealthKit] Read access NOT verified — authorization not determined');
       return false;
     }
-    // Other errors (network, no data, etc.) are fine — we have access
     console.log('[HealthKit] Test query threw non-auth error (access likely OK):', msg);
     return true;
   }
@@ -170,12 +170,18 @@ export async function checkHealthAuthorization(): Promise<boolean> {
 // ──────────────────────────────────────────────
 
 /** Returns true if the error is benign (auth denial, protected data, or no data) and should be silently ignored */
-function isBenignHealthKitError(error: any): boolean {
-  const msg = error?.message ?? '';
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null && 'message' in error) return String((error as { message: unknown }).message);
+  return String(error);
+}
+
+function isBenignHealthKitError(error: unknown): boolean {
+  const msg = errorMessage(error);
   return (
-    msg.includes('Code=5') ||           // Authorization not determined / denied
-    msg.includes('Code=6') ||           // Protected health data is inaccessible (device locked)
-    msg.includes('Code=11') ||           // No data available for the predicate
+    msg.includes('Code=5') ||
+    msg.includes('Code=6') ||
+    msg.includes('Code=11') ||
     msg.includes('not determined') ||
     msg.includes('Authorization') ||
     msg.includes('Protected health data') ||
@@ -184,8 +190,8 @@ function isBenignHealthKitError(error: any): boolean {
 }
 
 /** Returns true if the error is specifically an authorization denial (Code=5) */
-function isPermissionDeniedError(error: any): boolean {
-  const msg = error?.message ?? '';
+function isPermissionDeniedError(error: unknown): boolean {
+  const msg = errorMessage(error);
   return msg.includes('Code=5') || msg.includes('not determined') || msg.includes('Authorization');
 }
 
@@ -204,7 +210,7 @@ export function resetDeniedMetrics() {
 }
 
 /** Record a metric as denied (called from catch blocks) */
-function trackIfDenied(metricKey: string, error: any) {
+function trackIfDenied(metricKey: string, error: unknown) {
   if (isPermissionDeniedError(error)) {
     _deniedMetrics.add(metricKey);
   }
@@ -234,7 +240,7 @@ export async function getStepsForDate(date: Date): Promise<number | null> {
     );
 
     return result?.sumQuantity?.quantity ?? null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('steps', error);
     if (!isAuthError(error)) {
       console.error('Error fetching steps:', error);
@@ -262,7 +268,7 @@ export async function getLatestWeight(): Promise<number | null> {
     const sample = await mod.getMostRecentQuantitySample(QTI.bodyMass, 'lb');
     if (!sample) return null;
     return Math.round(sample.quantity * 10) / 10;
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('weight', error);
     if (!isAuthError(error)) {
       console.error('Error fetching weight:', error);
@@ -283,7 +289,7 @@ export async function getTodayRestingHeartRate(): Promise<number | null> {
     const sample = await mod.getMostRecentQuantitySample(QTI.restingHeartRate);
     if (!sample) return null;
     return Math.round(sample.quantity);
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('restingHeartRate', error);
     if (!isAuthError(error)) {
       console.error('Error fetching resting heart rate:', error);
@@ -306,7 +312,7 @@ export async function getLatestBodyFatPercentage(): Promise<number | null> {
     // HealthKit stores body fat as a decimal (0.0–1.0); convert to percentage
     const raw = sample.quantity;
     return Math.round((raw <= 1 ? raw * 100 : raw) * 10) / 10;
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('bodyFatPercentage', error);
     if (!isAuthError(error)) {
       console.error('Error fetching body fat percentage:', error);
@@ -327,7 +333,7 @@ export async function getLatestLeanBodyMass(): Promise<number | null> {
     const sample = await mod.getMostRecentQuantitySample(QTI.leanBodyMass, 'lb');
     if (!sample) return null;
     return Math.round(sample.quantity * 10) / 10;
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('leanBodyMass', error);
     if (!isAuthError(error)) {
       console.error('Error fetching lean body mass:', error);
@@ -348,7 +354,7 @@ export async function getLatestBMI(): Promise<number | null> {
     const sample = await mod.getMostRecentQuantitySample(QTI.bodyMassIndex);
     if (!sample) return null;
     return Math.round(sample.quantity * 10) / 10;
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('bodyMassIndex', error);
     if (!isAuthError(error)) {
       console.error('Error fetching BMI:', error);
@@ -383,7 +389,7 @@ export async function getTodayExerciseMinutes(): Promise<number | null> {
     return result?.sumQuantity?.quantity != null
       ? Math.round(result.sumQuantity.quantity)
       : null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('exerciseMinutes', error);
     if (!isAuthError(error)) {
       console.error('Error fetching exercise minutes:', error);
@@ -418,7 +424,7 @@ export async function getTodayTimeInDaylight(): Promise<number | null> {
     return result?.sumQuantity?.quantity != null
       ? Math.round(result.sumQuantity.quantity)
       : null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('timeInDaylight', error);
     if (!isAuthError(error)) {
       console.error('Error fetching time in daylight:', error);
@@ -439,7 +445,7 @@ export async function getLatestHRV(): Promise<number | null> {
     const sample = await mod.getMostRecentQuantitySample(QTI.heartRateVariabilitySDNN, 'ms');
     if (!sample) return null;
     return Math.round(sample.quantity);
-  } catch (error: any) {
+  } catch (error: unknown) {
     trackIfDenied('hrv', error);
     if (!isAuthError(error)) {
       console.error('Error fetching HRV:', error);
@@ -582,7 +588,7 @@ export async function getRecentWorkouts(days: number = 7): Promise<WorkoutSummar
           ? w.startDate
           : new Date().toISOString(),
     }));
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isAuthError(error)) {
       console.error('Error fetching workouts:', error);
       captureError(error, { tag: 'health.workouts' });
@@ -611,7 +617,7 @@ export async function getTodayWorkoutMinutes(): Promise<number> {
     });
 
     return workouts.reduce((total: number, w: any) => total + getWorkoutDurationMinutes(w), 0);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isAuthError(error)) {
       console.error('Error fetching workout minutes:', error);
       captureError(error, { tag: 'health.workoutMinutes' });
@@ -727,7 +733,7 @@ export async function getWeightHistory(days: number = 90): Promise<MetricDataPoi
         value: Math.round(s.quantity * 10) / 10,
       }))
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isAuthError(error)) {
       console.error('Error fetching weight history:', error);
       captureError(error, { tag: 'health.weightHistory' });
@@ -765,7 +771,7 @@ export async function getRHRHistory(days: number = 30): Promise<MetricDataPoint[
         value: Math.round(s.quantity),
       }))
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isAuthError(error)) {
       console.error('Error fetching RHR history:', error);
       captureError(error, { tag: 'health.rhrHistory' });
@@ -805,7 +811,7 @@ export async function getBodyFatHistory(days: number = 90): Promise<MetricDataPo
         };
       })
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isAuthError(error)) {
       console.error('Error fetching body fat history:', error);
       captureError(error, { tag: 'health.bodyFatHistory' });
@@ -842,7 +848,7 @@ export async function getHRVHistory(days: number = 30): Promise<MetricDataPoint[
         value: Math.round(s.quantity),
       }))
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isAuthError(error)) {
       console.error('Error fetching HRV history:', error);
       captureError(error, { tag: 'health.hrvHistory' });
@@ -947,7 +953,7 @@ export async function getLeanMassHistory(days: number = 90): Promise<MetricDataP
         value: Math.round(s.quantity * 10) / 10,
       }))
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isBenignHealthKitError(error)) {
       console.error('Error fetching lean mass history:', error);
       captureError(error, { tag: 'health.leanMassHistory' });
@@ -980,7 +986,7 @@ export async function getBMIHistory(days: number = 90): Promise<MetricDataPoint[
         value: Math.round(s.quantity * 10) / 10,
       }))
       .sort((a: MetricDataPoint, b: MetricDataPoint) => a.date.localeCompare(b.date));
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (!isBenignHealthKitError(error)) {
       console.error('Error fetching BMI history:', error);
       captureError(error, { tag: 'health.bmiHistory' });
