@@ -34,7 +34,7 @@ describe('getAuthRedirectTarget', () => {
     expect(result).toBe('/(onboarding)');
   });
 
-  it('does not redirect to onboarding when onboarding state is temporarily unknown', () => {
+  it('redirects to onboarding when onboarding state is unknown (no profile row)', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: undefined,
@@ -42,10 +42,10 @@ describe('getAuthRedirectTarget', () => {
       segmentRoot: '(tabs)',
     });
 
-    expect(result).toBeNull();
+    expect(result).toBe('/(onboarding)');
   });
 
-  it('redirects users in onboarding to tabs when onboarding state is temporarily unknown', () => {
+  it('does not redirect users already in onboarding when state is unknown', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: undefined,
@@ -53,10 +53,10 @@ describe('getAuthRedirectTarget', () => {
       segmentRoot: '(onboarding)',
     });
 
-    expect(result).toBe('/(tabs)');
+    expect(result).toBeNull();
   });
 
-  it('redirects users in auth to tabs when onboarding state is temporarily unknown', () => {
+  it('redirects users in auth to onboarding when state is unknown', () => {
     const result = getAuthRedirectTarget({
       hasSession: true,
       onboardingState: undefined,
@@ -64,7 +64,7 @@ describe('getAuthRedirectTarget', () => {
       segmentRoot: '(auth)',
     });
 
-    expect(result).toBe('/(tabs)');
+    expect(result).toBe('/(onboarding)');
   });
 
   it('redirects onboarded users out of auth group to tabs', () => {

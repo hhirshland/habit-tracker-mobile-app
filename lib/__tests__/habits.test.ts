@@ -296,6 +296,7 @@ describe('getStreak', () => {
   it('returns 0 streak and earnedToday=false for empty data', async () => {
     const chain = {
       select: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
       order: jest.fn().mockResolvedValue({ data: [], error: null }),
     };
     mockFrom.mockReturnValue(chain);
@@ -312,6 +313,7 @@ describe('getStreak', () => {
     ];
     const chain = {
       select: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
       order: jest.fn().mockResolvedValue({ data: completions, error: null }),
     };
     mockFrom.mockReturnValue(chain);
@@ -328,6 +330,7 @@ describe('getStreak', () => {
     ];
     const chain = {
       select: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
       order: jest.fn().mockResolvedValue({ data: completions, error: null }),
     };
     mockFrom.mockReturnValue(chain);
@@ -346,6 +349,7 @@ describe('getStreak', () => {
     ];
     const chain = {
       select: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
       order: jest.fn().mockResolvedValue({ data: completions, error: null }),
     };
     mockFrom.mockReturnValue(chain);
@@ -358,6 +362,7 @@ describe('getStreak', () => {
   it('throws on Supabase error', async () => {
     const chain = {
       select: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
       order: jest.fn().mockResolvedValue({ data: null, error: new Error('DB error') }),
     };
     mockFrom.mockReturnValue(chain);
@@ -373,6 +378,7 @@ describe('getStreak', () => {
     ];
     const chain = {
       select: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
       order: jest.fn().mockResolvedValue({ data: completions, error: null }),
     };
     mockFrom.mockReturnValue(chain);
