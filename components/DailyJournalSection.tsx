@@ -120,7 +120,7 @@ export default function DailyJournalSection({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionLabel}>Daily Journal</Text>
+      <Text style={styles.sectionLabel}>Evening Reflection</Text>
       <TouchableOpacity
         style={styles.card}
         onPress={handleOpen}
@@ -143,7 +143,7 @@ export default function DailyJournalSection({
             <Text
               style={[styles.title, isCompleted && styles.titleCompleted]}
             >
-              {isCompleted ? 'Journal completed' : 'Journal entry'}
+              {isCompleted ? 'Reflection completed' : 'Evening reflection'}
             </Text>
             <Text style={styles.subtitle}>
               {isCompleted
@@ -170,7 +170,7 @@ export default function DailyJournalSection({
           behavior={Platform.OS === 'android' ? 'height' : undefined}
         >
           <AppHeader
-            title="Daily Journal"
+            title="Evening Reflection"
             onBack={() => setModalVisible(false)}
             rightAction={{ label: 'Save', onPress: handleSubmit, disabled: !canSave }}
           />

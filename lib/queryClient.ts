@@ -65,4 +65,7 @@ export const queryKeys = {
     all: ['goals'] as const,
     currentValue: (goalId: string) => ['goals', 'currentValue', goalId] as const,
   },
+  coachConversation: ['coach', 'conversation'] as const,
+  coachConversations: ['coach', 'conversations'] as const,
+  coachMessages: (conversationId: string) => ['coach', 'messages', conversationId] as const,
 } as const;

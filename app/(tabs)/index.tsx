@@ -59,9 +59,6 @@ import Top3TodosSection from '@/components/Top3TodosSection';
 import DailyJournalSection from '@/components/DailyJournalSection';
 import DefineIdentityCard from '@/components/DefineIdentityCard';
 import { useIdentityStatements } from '@/hooks/useIdentityQuery';
-import { CATEGORY_ICONS } from '@/components/CategoryPicker';
-import { getCategoryIdForStatement } from '@/lib/identityTemplates';
-
 const CALENDAR_BUFFER = 30; // days in each direction
 
 export default function HomeScreen() {
@@ -111,14 +108,6 @@ export default function HomeScreen() {
 
   // ── Identity statements ──
   const { data: identityStatements = [] } = useIdentityStatements();
-  const identityIconMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const identity of identityStatements) {
-      const catId = getCategoryIdForStatement(identity.statement);
-      map.set(identity.id, CATEGORY_ICONS[catId] ?? 'star');
-    }
-    return map;
-  }, [identityStatements]);
 
   // ── Queries (cached, stale-while-revalidate) ──
   const { data: habits = [], isLoading: habitsLoading } = useHabits();
@@ -452,11 +441,10 @@ export default function HomeScreen() {
           onToggle={() => handleToggle(habit)}
           onSnooze={() => handleSnooze(habit)}
           onUnsnooze={() => handleUnsnooze(habit)}
-          identityIcon={habit.identity_statement_id ? (identityIconMap.get(habit.identity_statement_id) as any) : undefined}
         />
       </View>
     );
-  }, [styles, dailyTodos, handleSaveTodo, handleToggleTodo, handleDeleteTodo, selectedDate, journalEntry, handleSubmitJournal, getIsRequired, getWeeklyProgress, handleToggle, handleSnooze, handleUnsnooze, identityIconMap]);
+  }, [styles, dailyTodos, handleSaveTodo, handleToggleTodo, handleDeleteTodo, selectedDate, journalEntry, handleSubmitJournal, getIsRequired, getWeeklyProgress, handleToggle, handleSnooze, handleUnsnooze]);
 
   // Only show full-screen spinner on very first load (no cached data)
   if (habitsLoading && habits.length === 0) {

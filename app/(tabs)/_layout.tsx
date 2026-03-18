@@ -46,6 +46,7 @@ const ebStyles = StyleSheet.create({
 const TAB_ICONS: Record<string, React.ComponentProps<typeof FontAwesome>['name']> = {
   index: 'home',
   progress: 'bar-chart',
+  coach: 'commenting',
   profile: 'user-circle-o',
 };
 
@@ -175,6 +176,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="progress" options={{ title: 'Progress' }} />
+      <Tabs.Screen name="coach" options={{ title: 'Coach' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );

@@ -26,7 +26,7 @@ We collect data about how you use the app to improve the product:
 
 - **Habits and completions** — the habits you create, track, and complete
 - **Goals** — personal goals you set within the app
-- **Daily journal entries** — text you enter in the daily journal feature
+- **Evening reflection entries** — text you enter in the evening reflection feature
 - **Daily todo items** — tasks you create and complete
 - **Onboarding preferences** — experience level, challenges, and goal selections
 

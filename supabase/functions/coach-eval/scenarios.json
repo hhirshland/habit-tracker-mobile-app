@@ -1,0 +1,72 @@
+[
+  {
+    "id": "missed_streak_reader",
+    "description": "User missed 3 days of reading habit, identifies as Reader",
+    "userContext": "### Identity Statements\n- 📚 \"I am a Reader\" → Habits: Read for 20 minutes\n\n### Habit Performance\nOverall adherence: 43% (7-day) / 70% (30-day)\n- **Read for 20 minutes** (📚 I am a Reader) | Last 7 days: 3/7 | Streak: 0 days | Today: Not yet\n\n### Today\nHabits: 0 done, 1 remaining",
+    "userMessage": "I've been too tired to read lately.",
+    "expectedQualities": ["references_identity", "challenges_avoidance", "suggests_action", "uses_data", "empathetic_but_firm"]
+  },
+  {
+    "id": "perfect_week",
+    "description": "User completed all habits 7/7 days",
+    "userContext": "### Identity Statements\n- 💪 \"I am an Athlete\" → Habits: Morning workout, Stretch\n- 📚 \"I am a Reader\" → Habits: Read for 20 minutes\n\n### Habit Performance\nOverall adherence: 100% (7-day) / 85% (30-day)\n- **Morning workout** (💪 I am an Athlete) | Last 7 days: 7/7 | Streak: 12 days | Today: Done ✓\n- **Stretch** (💪 I am an Athlete) | Last 7 days: 7/7 | Streak: 7 days | Today: Done ✓\n- **Read for 20 minutes** (📚 I am a Reader) | Last 7 days: 7/7 | Streak: 7 days | Today: Done ✓\n\n### Today\nHabits: 3 done, 0 remaining",
+    "userMessage": "I crushed it this week!",
+    "expectedQualities": ["celebrates_genuinely", "references_identity", "pushes_next_level", "uses_data", "quote_fits"]
+  },
+  {
+    "id": "work_stress_declining",
+    "description": "Adherence dropped significantly, journal shows work stress",
+    "userContext": "### Identity Statements\n- 🧘 \"I am Mindful\" → Habits: Meditate, Journal\n\n### Habit Performance\nOverall adherence: 30% (7-day) / 75% (30-day)\n- **Meditate** (🧘 I am Mindful) | Last 7 days: 1/7 | Streak: 0 days | Today: Not yet\n- **Journal** (🧘 I am Mindful) | Last 7 days: 3/7 | Streak: 0 days | Today: Not yet\n\n### Today\nHabits: 0 done, 2 remaining\n\n### Recent Journal Entries\n- **2026-03-15**: Win: \"Survived the presentation\" | Tension: \"Boss piling on more deadlines, barely sleeping\" | Gratitude: \"My partner being patient with me\"",
+    "userMessage": "Work is destroying me right now. I can barely function.",
+    "expectedQualities": ["leads_with_empathy", "reframes_habits_as_armor", "pick_one_habit", "references_journal", "not_dismissive"]
+  },
+  {
+    "id": "new_user_first_week",
+    "description": "Brand new user, first week, partial completion",
+    "userContext": "### Habit Performance\nOverall adherence: 57% (7-day) / 57% (30-day)\n- **Drink 8 glasses of water** | Last 7 days: 4/7 | Streak: 2 days | Today: Done ✓\n- **Walk 30 minutes** | Last 7 days: 4/7 | Streak: 1 days | Today: Not yet\n\n### Today\nHabits: 1 done, 1 remaining",
+    "userMessage": "Am I doing enough? I feel like I should be doing more.",
+    "expectedQualities": ["validates_effort", "celebrates_starting", "no_overwhelm", "progressive_challenge", "warm_tone"]
+  },
+  {
+    "id": "coasting_user",
+    "description": "User hitting 70% consistently but not pushing higher",
+    "userContext": "### Identity Statements\n- 💪 \"I am an Athlete\" → Habits: Morning run, Gym session, Stretch\n\n### Habit Performance\nOverall adherence: 71% (7-day) / 72% (30-day)\n- **Morning run** (💪 I am an Athlete) | Last 7 days: 5/7 | Streak: 3 days | Today: Done ✓\n- **Gym session** (💪 I am an Athlete) | Last 7 days: 5/7 | Streak: 2 days | Today: Done ✓\n- **Stretch** (💪 I am an Athlete) | Last 7 days: 5/7 | Streak: 1 days | Today: Not yet\n\n### Today\nHabits: 2 done, 1 remaining",
+    "userMessage": "Pretty good week I think.",
+    "expectedQualities": ["challenges_coasting", "pushes_comfort_zone", "references_identity", "specific_challenge", "not_satisfied_with_good_enough"]
+  },
+  {
+    "id": "bouncing_back",
+    "description": "User returning after a bad week, showing effort",
+    "userContext": "### Identity Statements\n- 🧠 \"I am a Learner\" → Habits: Study Spanish, Read\n\n### Habit Performance\nOverall adherence: 43% (7-day) / 50% (30-day)\n- **Study Spanish** (🧠 I am a Learner) | Last 7 days: 3/7 | Streak: 3 days | Today: Done ✓\n- **Read** (🧠 I am a Learner) | Last 7 days: 3/7 | Streak: 3 days | Today: Done ✓\n\n### Today\nHabits: 2 done, 0 remaining\n\n### Recent Journal Entries\n- **2026-03-17**: Win: \"Got back on track with both habits\" | Tension: \"Still feel behind\" | Gratitude: \"Having a routine to come back to\"",
+    "userMessage": "I'm trying to get back on track after a rough couple weeks.",
+    "expectedQualities": ["celebrates_comeback", "references_streak", "arena_mentality", "forward_looking", "acknowledges_past_without_dwelling"]
+  },
+  {
+    "id": "evening_call_skip",
+    "description": "User has been dodging evening calls",
+    "userContext": "### Identity Statements\n- 🧘 \"I am Mindful\" → Habits: Meditate, Evening reflection\n\n### Habit Performance\nOverall adherence: 60% (7-day) / 65% (30-day)\n- **Meditate** (🧘 I am Mindful) | Last 7 days: 4/7 | Streak: 1 days | Today: Done ✓\n- **Evening reflection** (🧘 I am Mindful) | Last 7 days: 4/7 | Streak: 0 days | Today: Not yet\n\n### Today\nHabits: 1 done, 1 remaining\n\n### Evening Call Activity (last 7 days)\n1 completed, 4 missed out of 5 total",
+    "userMessage": "I keep meaning to pick up the evening calls but I just don't.",
+    "expectedQualities": ["names_avoidance", "connects_to_identity", "reframes_call_as_tool", "specific_suggestion", "not_guilt_tripping"]
+  },
+  {
+    "id": "goal_milestone",
+    "description": "User hit 75% on a weight loss goal",
+    "userContext": "### Identity Statements\n- 💪 \"I am an Athlete\" → Habits: Morning workout, Meal prep\n\n### Habit Performance\nOverall adherence: 85% (7-day) / 80% (30-day)\n- **Morning workout** (💪 I am an Athlete) | Last 7 days: 6/7 | Streak: 6 days | Today: Done ✓\n- **Meal prep** (💪 I am an Athlete) | Last 7 days: 6/7 | Streak: 4 days | Today: Done ✓\n\n### Goals\n- **Lose 20 lbs**: 75% complete (on_track)\n\n### Today\nHabits: 2 done, 0 remaining",
+    "userMessage": "I just checked and I'm 75% to my weight goal!",
+    "expectedQualities": ["celebrates_milestone", "connects_habits_to_goal", "references_identity", "pushes_toward_finish", "specific_numbers"]
+  },
+  {
+    "id": "emotional_struggle",
+    "description": "User sharing deep emotional difficulty",
+    "userContext": "### Identity Statements\n- 🧘 \"I am Present\" → Habits: Meditate, Gratitude journal\n\n### Habit Performance\nOverall adherence: 28% (7-day) / 60% (30-day)\n- **Meditate** (🧘 I am Present) | Last 7 days: 2/7 | Streak: 0 days | Today: Not yet\n- **Gratitude journal** (🧘 I am Present) | Last 7 days: 2/7 | Streak: 0 days | Today: Not yet\n\n### Today\nHabits: 0 done, 2 remaining\n\n### Recent Journal Entries\n- **2026-03-16**: Win: \"Got out of bed\" | Tension: \"Everything feels heavy, struggling with anxiety\" | Gratitude: \"My dog\"",
+    "userMessage": "Honestly I'm just not in a good place right now. Everything feels really hard.",
+    "expectedQualities": ["empathy_first", "no_toxic_positivity", "gentle_action", "acknowledges_pain", "references_journal_with_care"]
+  },
+  {
+    "id": "nudge_missed_days",
+    "description": "Nudge scenario — 2 consecutive missed days on a key habit",
+    "userContext": "### Identity Statements\n- 💪 \"I am an Athlete\" → Habits: Morning run\n\n### Habit Performance\nOverall adherence: 57% (7-day)\n- **Morning run** (💪 I am an Athlete) | Last 7 days: 4/7 | Streak: 0 days | Today: Not yet",
+    "userMessage": "[NUDGE_TRIGGER: missed_streak, habit: Morning run, days_missed: 2]",
+    "expectedQualities": ["short_punchy", "references_identity", "specific_habit", "drives_action", "under_280_chars"]
+  }
+]

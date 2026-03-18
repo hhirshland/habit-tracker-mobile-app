@@ -315,3 +315,44 @@ export const DAY_LABELS_FULL: Record<DayOfWeek, string> = {
   5: 'Friday',
   6: 'Saturday',
 };
+
+// ──────────────────────────────────────────────
+// Coach
+// ──────────────────────────────────────────────
+
+export interface CoachConversation {
+  id: string;
+  user_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CoachMessageRole = 'user' | 'assistant' | 'system';
+
+export interface CoachMessage {
+  id: string;
+  conversation_id: string;
+  role: CoachMessageRole;
+  content: string;
+  created_at: string;
+}
+
+export interface PushToken {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: 'ios' | 'android';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CoachNudge {
+  id: string;
+  user_id: string;
+  trigger_type: string;
+  message: string;
+  conversation_id: string | null;
+  sent_at: string;
+  opened_at: string | null;
+}

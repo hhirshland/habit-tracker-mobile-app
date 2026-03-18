@@ -1,42 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-async function capturePosthogEvent(
-  apiKey: string,
-  distinctId: string,
-  event: string,
-  properties?: Record<string, unknown>,
-) {
-  if (!apiKey) return;
-  try {
-    await fetch("https://us.i.posthog.com/capture/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: apiKey,
-        event,
-        distinct_id: distinctId,
-        properties: { ...properties, $lib: "supabase-edge" },
-      }),
-    });
-  } catch (e) {
-    console.warn("PostHog capture failed:", e);
-  }
-}
-
-function corsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-  };
-}
-
-function jsonResponse(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders(), "Content-Type": "application/json" },
-  });
-}
+import { corsHeaders, jsonResponse, capturePosthogEvent } from "../_shared/utils.ts";
+import { buildEveningCallCoachPrompt } from "../_shared/coach-persona.ts";
+import { assembleCoachContext } from "../_shared/coach-context.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -458,7 +423,8 @@ async function handleAssistantRequest(
     return m[d] ?? new Date().getDay();
   })();
 
-  const [habitsResult, todosResult, completionsResult] = await Promise.all([
+  // Fetch today's data AND full coach context in parallel
+  const [habitsResult, todosResult, completionsResult, snoozesResult, coachContext] = await Promise.all([
     supabase
       .from("habits")
       .select("id, name, specific_days")
@@ -475,6 +441,12 @@ async function handleAssistantRequest(
       .select("habit_id")
       .eq("user_id", user.user_id)
       .eq("completed_date", today),
+    supabase
+      .from("habit_snoozes")
+      .select("habit_id")
+      .eq("user_id", user.user_id)
+      .eq("snoozed_date", today),
+    assembleCoachContext(supabase, user.user_id, tz),
   ]);
 
   const allHabits = habitsResult.data ?? [];
@@ -487,80 +459,30 @@ async function handleAssistantRequest(
   const completedIds = new Set(
     (completionsResult.data ?? []).map((c: any) => c.habit_id),
   );
+  const snoozedIds = new Set(
+    (snoozesResult.data ?? []).map((s: any) => s.habit_id),
+  );
   const uncompletedHabits = todaysHabits.filter(
-    (h: any) => !completedIds.has(h.id),
+    (h: any) => !completedIds.has(h.id) && !snoozedIds.has(h.id),
   );
   const uncompletedTodos = (todosResult.data ?? []).filter(
     (t: any) => !t.is_completed,
   );
 
   const serverUrl = `${supabaseUrl}/functions/v1/vapi-server`;
-
-  const todosSection =
-    uncompletedTodos.length > 0
-      ? `### Daily Intentions
-Remaining intentions:
-${uncompletedTodos.map((t: any) => `- ${t.text} (id: ${t.id}, position: ${t.position})`).join("\n")}
-
-Ask about each. For completed ones, call complete_todo.`
-      : "### Daily Intentions\nAll intentions completed today — acknowledge their follow-through and move on.";
-
-  const habitsSection =
-    uncompletedHabits.length > 0
-      ? `### Habits
-Today's remaining habits:
-${uncompletedHabits.map((h: any) => `- ${h.name} (id: ${h.id})`).join("\n")}
-
-Go through each habit. For completed ones, call complete_habit.
-If the user wants to skip a habit for today, call snooze_habit.
-If they simply didn't do it, acknowledge warmly and move on.`
-      : "### Habits\nAll habits done today — skip or congratulate them.";
-
   const top3Enabled = (user as any).settings?.top3_todos_enabled === true;
 
-  const tomorrowIntentionsSection = top3Enabled
-    ? `### Tomorrow's Intentions
-After finishing the habit check-in, ask if they'd like to set their top 3 intentions for tomorrow.
-If yes, ask what their 3 most important things for tomorrow are.
-Once you have them, call set_tomorrow_intentions with the intentions.
-If they don't want to, that's totally fine — move to wrap up.`
-    : "";
-
-  const topicsList = top3Enabled
-    ? `Walk through these topics in order:
-1. Daily Journal (win, tension, gratitude)
-2. Daily intentions
-3. Habit check-in
-4. Tomorrow's intentions (optional)`
-    : `Walk through three topics in order:
-1. Daily Journal (win, tension, gratitude)
-2. Daily intentions
-3. Habit check-in`;
-
-  const firstName = user.full_name?.split(" ")[0] || "The user";
-  const systemPrompt = `You are a friendly evening check-in assistant for Thrive. ${firstName} is calling in for their nightly reflection.
-
-${topicsList}
-
-### Journal
-Ask conversationally about their win, then tension, then gratitude.
-After getting all three, call save_journal with concise 1-3 sentence summaries. This will overwrite any existing journal entry for today.
-
-${todosSection}
-
-${habitsSection}
-
-${tomorrowIntentionsSection}
-
-### Wrap Up
-End with brief encouragement. Keep the call to 3-5 minutes.
-
-## Guidelines
-- Warm and conversational, not robotic.
-- Short answers are fine — don't push.
-- Respect requests to skip sections.
-- Call tool functions as you go.
-- NEVER fabricate habit or todo names.`;
+  const systemPrompt = buildEveningCallCoachPrompt({
+    userName: user.full_name || "",
+    userContext: coachContext.formatted,
+    habits: uncompletedHabits.map((h: any) => ({ id: h.id, name: h.name })),
+    todos: uncompletedTodos.map((t: any) => ({
+      id: t.id,
+      text: t.text,
+      position: t.position,
+    })),
+    top3Enabled,
+  });
 
   const tools = [
     {
@@ -579,6 +501,7 @@ End with brief encouragement. Keep the call to 3-5 minutes.
         },
       },
       server: { url: serverUrl },
+      messages: [],
     },
     {
       type: "function",
@@ -594,6 +517,7 @@ End with brief encouragement. Keep the call to 3-5 minutes.
         },
       },
       server: { url: serverUrl },
+      messages: [],
     },
     {
       type: "function",
@@ -609,6 +533,7 @@ End with brief encouragement. Keep the call to 3-5 minutes.
         },
       },
       server: { url: serverUrl },
+      messages: [],
     },
     {
       type: "function",
@@ -624,6 +549,7 @@ End with brief encouragement. Keep the call to 3-5 minutes.
         },
       },
       server: { url: serverUrl },
+      messages: [],
     },
   ];
 
@@ -644,6 +570,7 @@ End with brief encouragement. Keep the call to 3-5 minutes.
         },
       },
       server: { url: serverUrl },
+      messages: [],
     });
   }
 
@@ -655,6 +582,8 @@ End with brief encouragement. Keep the call to 3-5 minutes.
     status: "in_progress",
     direction: "inbound",
   });
+
+  const firstName = user.full_name?.split(" ")[0] || "there";
 
   // Note: Vapi's assistant-request response does not support a top-level
   // `metadata` field. For inbound calls, resolveCallUser falls back to
@@ -670,10 +599,13 @@ End with brief encouragement. Keep the call to 3-5 minutes.
       voice: {
         provider: "11labs",
         voiceId: "pVnrL6sighQX7hVz89cp",
+        model: "eleven_turbo_v2_5",
+        stability: 0.5,
+        similarityBoost: 0.75,
       },
       backgroundSound: "off",
       backgroundDenoisingEnabled: true,
-      firstMessage: `Hey ${user.full_name?.split(" ")[0] || "there"}! Thanks for calling in. Ready for your evening check-in?`,
+      firstMessage: `Hey ${firstName}! It's your Thrive Coach. Thanks for calling in — let's do this. How was your day?`,
       transcriber: {
         provider: "deepgram",
         model: "nova-3",
@@ -700,6 +632,9 @@ function buildFallbackAssistant(firstMessage: string) {
     voice: {
       provider: "11labs",
       voiceId: "pVnrL6sighQX7hVz89cp",
+      model: "eleven_turbo_v2_5",
+      stability: 0.5,
+      similarityBoost: 0.75,
     },
     backgroundSound: "off",
     backgroundDenoisingEnabled: true,

@@ -9,3 +9,9 @@ verify_jwt = false
 
 [functions.vapi-server]
 verify_jwt = false
+
+[functions.coach-chat]
+verify_jwt = false
+
+[functions.coach-nudge]
+verify_jwt = false

@@ -1,45 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-async function capturePosthogEvent(
-  apiKey: string,
-  distinctId: string,
-  event: string,
-  properties?: Record<string, unknown>,
-) {
-  if (!apiKey) return;
-  try {
-    await fetch("https://us.i.posthog.com/capture/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: apiKey,
-        event,
-        distinct_id: distinctId,
-        properties: { ...properties, $lib: "supabase-edge" },
-      }),
-    });
-  } catch (e) {
-    console.warn("PostHog capture failed:", e);
-  }
-}
+import { corsHeaders, jsonResponse, capturePosthogEvent } from "../_shared/utils.ts";
+import { buildEveningCallCoachPrompt } from "../_shared/coach-persona.ts";
+import { assembleCoachContext } from "../_shared/coach-context.ts";
 
 interface ScheduleRequest {
   user_id?: string;
-}
-
-function corsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-  };
-}
-
-function jsonResponse(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders(), "Content-Type": "application/json" },
-  });
 }
 
 function getTodayInTimezone(tz: string): string {
@@ -85,88 +50,6 @@ function isWithinCallWindow(
   return current >= call && current < call + windowMinutes;
 }
 
-function buildSystemPrompt(
-  userName: string,
-  habits: Array<{ id: string; name: string }>,
-  todos: Array<{ id: string; text: string; position: number }>,
-  top3Enabled = false,
-): string {
-  const todosSection =
-    todos.length > 0
-      ? `### Daily Intentions
-Today's remaining intentions:
-${todos.map((t) => `- ${t.text} (id: ${t.id}, position: ${t.position})`).join("\n")}
-
-Ask about each one. For each completed intention, call the complete_todo function with the todo_id.
-If they didn't finish an intention, acknowledge and move on.`
-      : "### Daily Intentions\nAll intentions completed today — acknowledge their follow-through and move on.";
-
-  const habitsSection =
-    habits.length > 0
-      ? `### Habits
-Today's remaining habits:
-${habits.map((h) => `- ${h.name} (id: ${h.id})`).join("\n")}
-
-Go through each habit naturally. Example: "How about your ${habits[0].name} — did you get that done today?"
-For each completed habit, call the complete_habit function with the habit_id.
-If the user says they didn't do a habit but want to skip it for today, call snooze_habit with the habit_id.
-If they simply didn't do it and don't mention skipping, just acknowledge warmly and move on without calling any function.`
-      : "### Habits\nAll habits are done for today — skip this section or congratulate them.";
-
-  const tomorrowIntentionsSection = top3Enabled
-    ? `### Tomorrow's Intentions
-After finishing the habit check-in, ask if they'd like to set their top 3 intentions for tomorrow.
-If yes, ask what their 3 most important things for tomorrow are.
-Once you have them, call set_tomorrow_intentions with the intentions.
-If they don't want to, that's totally fine — move to wrap up.`
-    : "";
-
-  const topicsList = top3Enabled
-    ? `Your job is to have a warm, natural conversation covering these topics in order:
-1. Daily Journal (win, tension, gratitude)
-2. Daily intentions
-3. Habit check-in
-4. Tomorrow's intentions (optional)`
-    : `Your job is to have a warm, natural conversation covering three topics in order:
-1. Daily Journal (win, tension, gratitude)
-2. Daily intentions
-3. Habit check-in`;
-
-  const firstName = userName?.split(" ")[0] || "the user";
-  return `You are a friendly evening check-in assistant for Thrive, a habit tracking app. You're calling ${firstName} for their nightly reflection.
-
-${topicsList}
-
-## Conversation Flow
-
-Start with a brief, warm greeting using their name, then transition naturally through each section.
-
-### Journal
-Ask conversationally:
-- First, their win — what went well today, what they're proud of.
-- Then tensions — anything challenging or stressful.
-- Then gratitude — what they're thankful for.
-
-After getting all three, call save_journal with concise but faithful 1-3 sentence summaries of each. This will overwrite any existing journal entry for today.
-
-${todosSection}
-
-${habitsSection}
-
-${tomorrowIntentionsSection}
-
-### Wrap Up
-End with brief, genuine encouragement. Keep the whole call to 3-5 minutes.
-
-## Guidelines
-- Be conversational and warm, not robotic or scripted.
-- If the user gives a short answer, don't push for more.
-- If they want to skip a section, respect that immediately.
-- Don't repeat back exactly what they said — paraphrase naturally.
-- Call tool functions as you go through the conversation, not all at the end.
-- NEVER fabricate habit names or intention items beyond the specific ones listed above.`;
-}
-
 function buildTools(serverUrl: string, top3Enabled = false) {
   const tools = [
     {
@@ -195,6 +78,7 @@ function buildTools(serverUrl: string, top3Enabled = false) {
         },
       },
       server: { url: serverUrl },
+      messages: [],
     },
     {
       type: "function",
@@ -213,6 +97,7 @@ function buildTools(serverUrl: string, top3Enabled = false) {
         },
       },
       server: { url: serverUrl },
+      messages: [],
     },
     {
       type: "function",
@@ -231,6 +116,7 @@ function buildTools(serverUrl: string, top3Enabled = false) {
         },
       },
       server: { url: serverUrl },
+      messages: [],
     },
     {
       type: "function",
@@ -250,6 +136,7 @@ function buildTools(serverUrl: string, top3Enabled = false) {
         },
       },
       server: { url: serverUrl },
+      messages: [],
     },
   ];
 
@@ -279,6 +166,7 @@ function buildTools(serverUrl: string, top3Enabled = false) {
         },
       },
       server: { url: serverUrl },
+      messages: [],
     });
   }
 
@@ -304,7 +192,8 @@ async function initiateCall(
   const today = getTodayInTimezone(user.timezone);
   const dayOfWeek = getDayOfWeekInTimezone(user.timezone);
 
-  const [habitsResult, todosResult, completionsResult] = await Promise.all([
+  // Fetch today's uncompleted habits/todos AND full coach context in parallel
+  const [habitsResult, todosResult, completionsResult, snoozesResult, coachContext] = await Promise.all([
     supabase
       .from("habits")
       .select("id, name, specific_days")
@@ -321,6 +210,12 @@ async function initiateCall(
       .select("habit_id")
       .eq("user_id", user.user_id)
       .eq("completed_date", today),
+    supabase
+      .from("habit_snoozes")
+      .select("habit_id")
+      .eq("user_id", user.user_id)
+      .eq("snoozed_date", today),
+    assembleCoachContext(supabase, user.user_id, user.timezone),
   ]);
 
   const allHabits = habitsResult.data ?? [];
@@ -334,8 +229,11 @@ async function initiateCall(
   const completedIds = new Set(
     (completionsResult.data ?? []).map((c: any) => c.habit_id),
   );
+  const snoozedIds = new Set(
+    (snoozesResult.data ?? []).map((s: any) => s.habit_id),
+  );
   const uncompletedHabits = todaysHabits.filter(
-    (h: any) => !completedIds.has(h.id),
+    (h: any) => !completedIds.has(h.id) && !snoozedIds.has(h.id),
   );
   const uncompletedTodos = (todosResult.data ?? []).filter(
     (t: any) => !t.is_completed,
@@ -343,18 +241,20 @@ async function initiateCall(
 
   const top3Enabled = user.settings?.top3_todos_enabled === true;
 
-  const systemPrompt = buildSystemPrompt(
-    user.full_name || "",
-    uncompletedHabits.map((h: any) => ({ id: h.id, name: h.name })),
-    uncompletedTodos.map((t: any) => ({
+  const systemPrompt = buildEveningCallCoachPrompt({
+    userName: user.full_name || "",
+    userContext: coachContext.formatted,
+    habits: uncompletedHabits.map((h: any) => ({ id: h.id, name: h.name })),
+    todos: uncompletedTodos.map((t: any) => ({
       id: t.id,
       text: t.text,
       position: t.position,
     })),
     top3Enabled,
-  );
+  });
 
   const tools = buildTools(serverUrl, top3Enabled);
+  const firstName = user.full_name?.split(" ")[0] || "there";
 
   const vapiResponse = await fetch("https://api.vapi.ai/call", {
     method: "POST",
@@ -375,10 +275,13 @@ async function initiateCall(
         voice: {
           provider: "11labs",
           voiceId: "pVnrL6sighQX7hVz89cp",
+          model: "eleven_turbo_v2_5",
+          stability: 0.5,
+          similarityBoost: 0.75,
         },
         backgroundSound: "off",
         backgroundDenoisingEnabled: true,
-        firstMessage: `Hey ${user.full_name?.split(" ")[0] || "there"}, it's your evening check-in from Thrive. How was your day?`,
+        firstMessage: `Hey ${firstName}! It's your Thrive Coach. Let's close out your day strong — how'd it go today?`,
         transcriber: {
           provider: "deepgram",
           model: "nova-3",

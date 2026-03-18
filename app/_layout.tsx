@@ -24,6 +24,7 @@ import { queryClient } from '@/lib/queryClient';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useOTAUpdates } from '@/hooks/useOTAUpdates';
 import { initSentry, captureError, Sentry } from '@/lib/sentry';
+import { registerPushToken } from '@/lib/pushTokens';
 
 initSentry();
 
@@ -196,14 +197,25 @@ function RootLayoutNav() {
         console.error('Error rescheduling notifications on app launch:', error);
         captureError(error, { tag: 'notifications.reschedule' });
       });
-  }, [hasHydratedAuth]);
+
+    // Register push token for remote notifications (coach nudges)
+    if (session) {
+      registerPushToken().catch((error) => {
+        captureError(error, { tag: 'pushTokens.register' });
+      });
+    }
+  }, [hasHydratedAuth, session]);
 
   function handleNotificationResponse(response: Notifications.NotificationResponse) {
-    const reminderId =
-      (response.notification.request.content.data?.reminder_id as string) ?? 'unknown';
+    const data = response.notification.request.content.data ?? {};
+    const reminderId = (data.reminder_id as string) ?? 'unknown';
+    const route = data.route as string | undefined;
+
     captureEvent(EVENTS.NOTIFICATION_OPENED, { reminder_id: reminderId });
 
-    if (reminderId === WEEKLY_RECAP_REMINDER_ID) {
+    if (route === 'coach-chat') {
+      router.navigate('/(tabs)/coach' as Href);
+    } else if (reminderId === WEEKLY_RECAP_REMINDER_ID) {
       router.navigate('/(tabs)/progress' as Href);
     }
   }

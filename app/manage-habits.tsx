@@ -26,6 +26,7 @@ import {
 import HabitItem from '@/components/HabitItem';
 import HabitForm from '@/components/HabitForm';
 import AppHeader from '@/components/AppHeader';
+import { useIdentityStatements } from '@/hooks/useIdentityQuery';
 import { captureError } from '@/lib/sentry';
 
 export default function ManageHabitsScreen() {
@@ -38,6 +39,7 @@ export default function ManageHabitsScreen() {
 
   // ── Queries & mutations (cached) ──
   const { data: habits = [], isLoading: loading, refetch } = useHabits();
+  const { data: identityStatements = [] } = useIdentityStatements();
   const createMutation = useCreateHabit();
   const updateMutation = useUpdateHabit();
   const deleteMutation = useDeleteHabit();
@@ -56,6 +58,7 @@ export default function ManageHabitsScreen() {
     metric_type: HealthMetricType | null;
     metric_threshold: number | null;
     auto_complete: boolean;
+    identity_statement_id: string | null;
   }) => {
     if (!user) return;
     try {
@@ -69,6 +72,7 @@ export default function ManageHabitsScreen() {
           metric_type: data.metric_type,
           metric_threshold: data.metric_threshold,
           auto_complete: data.auto_complete,
+          identity_statement_id: data.identity_statement_id,
         },
       });
       setShowForm(false);
@@ -87,6 +91,7 @@ export default function ManageHabitsScreen() {
     metric_type: HealthMetricType | null;
     metric_threshold: number | null;
     auto_complete: boolean;
+    identity_statement_id: string | null;
   }) => {
     if (!editingHabit) return;
     try {
@@ -100,6 +105,7 @@ export default function ManageHabitsScreen() {
           metric_type: data.metric_type,
           metric_threshold: data.metric_threshold,
           auto_complete: data.auto_complete,
+          identity_statement_id: data.identity_statement_id,
         },
       });
       setEditingHabit(null);
@@ -209,13 +215,14 @@ export default function ManageHabitsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowForm(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <AppHeader title="New Habit" onBack={() => setShowForm(false)} />
           <View style={styles.modalContent}>
             <HabitForm
               onSubmit={handleCreate}
               onCancel={() => setShowForm(false)}
               submitLabel="Create Habit"
+              identityStatements={identityStatements}
             />
           </View>
         </SafeAreaView>
@@ -228,7 +235,7 @@ export default function ManageHabitsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setEditingHabit(null)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <AppHeader title="Edit Habit" onBack={() => setEditingHabit(null)} />
           <View style={styles.modalContent}>
             {editingHabit && (
@@ -241,10 +248,12 @@ export default function ManageHabitsScreen() {
                   metric_type: editingHabit.metric_type,
                   metric_threshold: editingHabit.metric_threshold,
                   auto_complete: editingHabit.auto_complete,
+                  identity_statement_id: editingHabit.identity_statement_id ?? null,
                 }}
                 onSubmit={handleUpdate}
                 onCancel={() => setEditingHabit(null)}
                 submitLabel="Update Habit"
+                identityStatements={identityStatements}
               />
             )}
           </View>

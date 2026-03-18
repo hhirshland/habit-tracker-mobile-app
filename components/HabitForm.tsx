@@ -7,11 +7,8 @@ import {
   StyleSheet,
   ScrollView,
   Switch,
-  Keyboard,
-  Pressable,
 } from 'react-native';
 
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import {
@@ -24,8 +21,6 @@ import {
   METRIC_TYPE_DEFAULTS,
 } from '@/lib/types';
 import { useHealth } from '@/contexts/HealthContext';
-import { CATEGORY_ICONS } from '@/components/CategoryPicker';
-import { getCategoryIdForStatement } from '@/lib/identityTemplates';
 import { hapticSelection } from '@/lib/haptics';
 
 interface HabitFormData {
@@ -108,8 +103,7 @@ export default function HabitForm({
   };
 
   return (
-    <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <View style={styles.field}>
         <Text style={styles.label}>Habit Name</Text>
         <TextInput
@@ -175,11 +169,6 @@ export default function HabitForm({
                 }}
                 activeOpacity={0.7}
               >
-                <FontAwesome
-                  name={(CATEGORY_ICONS[getCategoryIdForStatement(identity.statement)] ?? 'star') as any}
-                  size={14}
-                  color={selectedIdentityId === identity.id ? '#fff' : colors.primary}
-                />
                 <Text
                   style={[
                     styles.identityPillText,
@@ -372,7 +361,6 @@ export default function HabitForm({
         )}
       </View>
     </ScrollView>
-    </Pressable>
   );
 }
 
@@ -380,6 +368,9 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
       flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 80,
     },
     field: {
       marginBottom: theme.spacing.lg,
@@ -478,7 +469,6 @@ function createStyles(colors: ThemeColors) {
     },
     actions: {
       gap: theme.spacing.sm,
-      marginBottom: theme.spacing.xxl,
     },
     submitButton: {
       backgroundColor: colors.primary,

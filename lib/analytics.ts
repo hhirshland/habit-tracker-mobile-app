@@ -55,6 +55,10 @@ export const EVENTS = {
   ONBOARDING_STEP_VIEWED: 'onboarding_step_viewed',
   ONBOARDING_STEP_COMPLETED: 'onboarding_step_completed',
   ONBOARDING_ABANDONED: 'onboarding_abandoned',
+  COACH_CHAT_OPENED: 'coach_chat_opened',
+  COACH_MESSAGE_SENT: 'coach_message_sent',
+  COACH_NUDGE_OPENED: 'coach_nudge_opened',
+  COACH_CONVERSATION_STARTED: 'coach_conversation_started',
 } as const;
 
 type EventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -248,6 +252,20 @@ type EventPropertiesMap = {
   onboarding_abandoned: {
     last_step_name: string;
     last_step_number: number;
+  };
+  coach_chat_opened: {
+    source: 'tab' | 'nudge';
+  };
+  coach_message_sent: {
+    conversation_id: string;
+    is_quick_action: boolean;
+  };
+  coach_nudge_opened: {
+    nudge_id: string;
+    trigger_type: string;
+  };
+  coach_conversation_started: {
+    source: 'user_initiated' | 'coach_greeting' | 'nudge';
   };
 };
 

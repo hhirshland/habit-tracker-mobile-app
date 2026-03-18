@@ -54,7 +54,7 @@ What if your habit tracker called you instead of the other way around? Thrive's 
 
 The Evening Check-In Call is a voice AI feature that calls users at a scheduled time each evening (or lets them call in) for a guided 3-5 minute conversation. The call covers three sections in order:
 
-1. **Daily Journal** — The AI asks about the user's win, tension, and gratitude for the day. After gathering all three, it saves a concise journal entry.
+1. **Evening Reflection** — The AI asks about the user's win, tension, and gratitude for the day. After gathering all three, it saves a concise journal entry.
 2. **Top 3 Priorities** — The AI reviews the user's remaining daily todos and asks which ones were completed. Completed items are marked done in real time.
 3. **Habit Check-In** — The AI goes through each uncompleted habit for the day. Users can confirm completion, snooze a habit for the day, or simply acknowledge they didn't do it.
 
@@ -100,7 +100,7 @@ The call is conversational and warm — it paraphrases rather than repeating, re
 **Quantitative:**
 - **Daily call completion rate**: % of scheduled calls that reach `completed` status (target: >60%)
 - **Habit logging via call**: % of users with evening calls enabled who log ≥1 habit per call (target: >70%)
-- **Journal completion uplift**: % increase in daily journal entries for users with calls enabled vs. disabled
+- **Journal completion uplift**: % increase in evening reflection entries for users with calls enabled vs. disabled
 - **Retention impact**: 30-day retention for call-enabled users vs. non-call users
 - **Missed call rate**: % of calls with `missed` status — indicator of call time optimization
 

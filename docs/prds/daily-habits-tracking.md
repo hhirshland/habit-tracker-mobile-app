@@ -129,7 +129,7 @@ Users tap a habit to mark it complete (or uncomplete). Swiping right on an incom
 
 ### Implementation Notes
 
-- **Home screen**: `app/(tabs)/index.tsx` — renders the daily view with `CalendarStrip`, habit sections (incomplete/completed/snoozed), Top 3 Todos, and Daily Journal.
+- **Home screen**: `app/(tabs)/index.tsx` — renders the daily view with `CalendarStrip`, habit sections (incomplete/completed/snoozed), Top 3 Todos, and Evening Reflection.
 - **Habit components**: `components/PriorityItem.tsx` (daily tracking row with checkbox, weekly dots, swipe-to-snooze), `components/HabitItem.tsx` (management card in My Habits tab), `components/HabitForm.tsx` (create/edit form).
 - **Hooks**: `hooks/useHabitsQuery.ts` — provides `useHabits`, `useCompletionsForDate`, `useCompletionsForWeek`, `useStreak`, `useToggleCompletion`, `useSnoozeHabit`, `useCreateHabit`, `useUpdateHabit`, `useDeleteHabit`, and related queries.
 - **Data layer**: Supabase tables `habits` (with `frequency_per_week`, `specific_days` jsonb, `metric_type`, `metric_threshold`, `auto_complete`), `habit_completions` (unique on `habit_id, completed_date`), `habit_snoozes` (unique on `habit_id, snoozed_date`).

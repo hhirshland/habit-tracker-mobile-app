@@ -53,7 +53,7 @@ The best habit tracker is the one you actually open. Thrive's daily reminders ma
 Daily Reminders is a local-notification system with a single on/off master toggle. When enabled, Thrive schedules three recurring notifications:
 
 1. **Morning priorities (Mon–Sat, 8:00 AM):** "Set your Top 3 todos" — prompts users to plan their day. Only scheduled when Top 3 Todos is enabled in settings.
-2. **Evening habit check-in (Daily, 8:00 PM):** "Time to check off your daily habits" — the core daily nudge. If the user has Daily Journal enabled, the body also mentions journaling.
+2. **Evening habit check-in (Daily, 8:00 PM):** "Time to check off your daily habits" — the core daily nudge. If the user has Evening Reflection enabled, the body also mentions journaling.
 3. **Weekly recap (Sunday, 8:00 AM):** "Your weekly recap is ready" — lets users know their recap is available to view.
 
 **User flow:** From the Profile screen, the user sees a "Daily Reminders" card with a toggle switch. Toggling on requests notification permissions (if not already granted), then schedules all applicable notifications. Toggling off cancels all scheduled notifications. The reminders re-schedule automatically on every app launch.
@@ -69,7 +69,7 @@ When a user taps a notification, the app opens. Tapping the weekly recap notific
 - [ ] When enabled, a daily notification is scheduled at 8:00 PM with title "Daily habits check-in" and body "Time to check off your daily habits."
 - [ ] When enabled and Top 3 Todos is active, a Mon–Sat notification is scheduled at 8:00 AM with title "Set your Top 3 todos"
 - [ ] When enabled, a Sunday notification is scheduled at 8:00 AM with title "Your weekly recap is ready"
-- [ ] If Daily Journal is enabled, the 8pm habit reminder body includes "and write in your journal"
+- [ ] If Evening Reflection is enabled, the 8pm habit reminder body includes "and write in your journal"
 - [ ] Toggling off cancels all scheduled notifications
 - [ ] Notifications re-schedule on every app launch (ensuring they survive app updates and device restarts)
 - [ ] Tapping the weekly recap notification navigates the user to the Progress tab
@@ -98,7 +98,7 @@ When a user taps a notification, the app opens. Tapping the weekly recap notific
 ### Open Questions
 
 - Notification delivery is local-only; if the user doesn't open the app for an extended period, scheduled notifications may not fire reliably on some Android OEMs with aggressive battery optimization. No server-side fallback exists.
-- Changes to Top 3 Todos or Daily Journal settings don't immediately update scheduled notification content — updates only take effect on next app launch or next toggle of the master reminder switch.
+- Changes to Top 3 Todos or Evening Reflection settings don't immediately update scheduled notification content — updates only take effect on next app launch or next toggle of the master reminder switch.
 - All times are hardcoded (8 AM / 8 PM). No data yet on whether these times are optimal for the user base.
 
 ### Implementation Notes

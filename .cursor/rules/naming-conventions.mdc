@@ -31,3 +31,4 @@ Database tables, column names, settings keys, analytics event names, component f
 | Internal key | User-facing name |
 |---|---|
 | `top3_todos_enabled`, `daily_todos`, `Top3TodosSection.tsx` | "Daily Intentions" |
+| `journal_enabled`, `daily_journal_entries`, `DailyJournalSection.tsx` | "Evening Reflection" |

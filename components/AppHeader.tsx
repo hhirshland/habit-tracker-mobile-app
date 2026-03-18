@@ -17,6 +17,7 @@ interface AppHeaderProps {
   title: string;
   subtitle?: string;
   onBack?: () => void;
+  showBack?: boolean;
   rightAction?: RightAction;
   showBorder?: boolean;
 }
@@ -25,6 +26,7 @@ export default function AppHeader({
   title,
   subtitle,
   onBack,
+  showBack = true,
   rightAction,
   showBorder = false,
 }: AppHeaderProps) {
@@ -37,13 +39,17 @@ export default function AppHeader({
         showBorder && { borderBottomWidth: 1, borderBottomColor: colors.border },
       ]}
     >
-      <TouchableOpacity
-        onPress={onBack ?? (() => router.back())}
-        hitSlop={12}
-        style={styles.leftSlot}
-      >
-        <FontAwesome name="chevron-left" size={18} color={colors.textPrimary} />
-      </TouchableOpacity>
+      {showBack ? (
+        <TouchableOpacity
+          onPress={onBack ?? (() => router.back())}
+          hitSlop={12}
+          style={styles.leftSlot}
+        >
+          <FontAwesome name="chevron-left" size={18} color={colors.textPrimary} />
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.leftSlot} />
+      )}
 
       <View style={styles.center}>
         <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>

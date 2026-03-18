@@ -95,11 +95,11 @@ export default function JournalHistorySection({ entries }: JournalHistorySection
   if (entries.length === 0) {
     return (
       <>
-        <Text style={styles.sectionLabel}>Journal</Text>
+        <Text style={styles.sectionLabel}>Reflections</Text>
         <View style={styles.emptyCard}>
           <FontAwesome name="book" size={20} color={colors.textMuted} />
           <Text style={styles.emptyText}>
-            No journal entries yet. Enable the Daily Journal in your profile and start reflecting each day.
+            No reflections yet. Enable Evening Reflection in your profile and start reflecting each day.
           </Text>
         </View>
       </>
@@ -108,7 +108,7 @@ export default function JournalHistorySection({ entries }: JournalHistorySection
 
   return (
     <>
-      <Text style={styles.sectionLabel}>Journal</Text>
+      <Text style={styles.sectionLabel}>Reflections</Text>
       <View style={styles.entriesList}>
         {visibleEntries.map((entry) => (
           <JournalEntryCard key={entry.id} entry={entry} styles={styles} colors={colors} />

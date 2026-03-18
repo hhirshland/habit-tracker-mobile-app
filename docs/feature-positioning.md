@@ -16,7 +16,7 @@ Features that don't strengthen one of these moments or the connections between t
 |---|---|---|---|---|---|
 | Daily Intentions | Morning intention-setting ritual; builds self-trust through daily follow-through | Morning | `top3_todos_enabled`, `daily_todos` table, `Top3TodosSection.tsx` | "Daily Intentions" | `docs/prds/top-3-todos.md` |
 | Habits | Core identity-aligned actions; the primary vehicle for becoming who you want to be | Daytime | `habits` table, `useHabitsQuery` | "My Habits" | `docs/prds/daily-habits-tracking.md` |
-| Journal | Evening reflection; captures wins, tensions, and gratitude to close the daily loop | Evening | `journal_enabled`, `daily_journal_entries` table | "Journal" | `docs/prds/daily-journal.md` |
+| Journal | Evening reflection; captures wins, tensions, and gratitude to close the daily loop | Evening | `journal_enabled`, `daily_journal_entries` table | "Evening Reflection" | `docs/prds/daily-journal.md` |
 | Evening Check-In Call | AI-guided reflection + accountability; walks through journal, intentions, and habits | Evening | `evening_call_enabled`, `vapi-server` edge function | "Evening Check-In" | `docs/prds/evening-check-in-call.md` |
 | Identity Statements | The foundation — who the user is becoming; habits and intentions flow from this | Always | `identity_statements` table, `useIdentityQuery` | "My Identity" | `docs/prds/identity-first-habits.md` |
 | Goals | Short-term motivation targets; secondary to identity but provides tangible milestones | Ongoing | `goals` table, `goal_entries` table | "Goals" | `docs/prds/goals.md` |

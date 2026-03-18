@@ -432,7 +432,7 @@ export default function ProfileScreen() {
                 <FontAwesome name="book" size={18} color={colors.primary} />
               </View>
               <View style={styles.healthInfo}>
-                <Text style={styles.healthTitle}>Daily Journal</Text>
+                <Text style={styles.healthTitle}>Evening Reflection</Text>
                 <Text style={styles.healthStatus}>
                   Reflect on wins, tensions & gratitude
                 </Text>
@@ -452,7 +452,7 @@ export default function ProfileScreen() {
                 <FontAwesome name="bell" size={18} color={colors.primary} />
               </View>
               <View style={styles.healthInfo}>
-                <Text style={styles.healthTitle}>Daily Reminders</Text>
+                <Text style={styles.healthTitle}>Reminders</Text>
                 <Text style={styles.healthStatus}>
                   8am intentions and 8pm habits check-in
                 </Text>
