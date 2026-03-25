@@ -202,7 +202,7 @@ Today's remaining intentions:
 ${todos.map((t) => `- ${t.text} (id: ${t.id}, position: ${t.position})`).join("\n")}
 
 Ask about each one. For each completed intention, call the complete_todo function with the todo_id.
-If they didn't finish an intention, acknowledge and move on.`
+If they didn't finish an intention, ask a simple, non-judgmental reflection question to help them probe what held them back — e.g. "What stopped you from getting to that today?" or "What got in the way of that one?" Keep it curious, not critical. One question is enough — listen to their answer, acknowledge it briefly, and move on.`
       : "### Daily Intentions\nAll intentions completed today — acknowledge their follow-through and move on.";
 
   const habitsSection =
