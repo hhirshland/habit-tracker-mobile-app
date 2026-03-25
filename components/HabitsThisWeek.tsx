@@ -13,7 +13,10 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { theme, type ThemeColors } from '@/lib/theme';
 import { useThemeColors } from '@/hooks/useTheme';
 import WeeklyAdherenceSummary from '@/components/WeeklyAdherenceSummary';
+import IdentityGroupHeader from '@/components/IdentityGroupHeader';
 import type { HabitWeeklyStats } from '@/lib/habits';
+import type { IdentityStatement } from '@/lib/types';
+import { groupStatsByIdentity } from '@/lib/identityAdherence';
 import { hapticSelection } from '@/lib/haptics';
 
 interface HabitsThisWeekProps {
@@ -30,6 +33,8 @@ interface HabitsThisWeekProps {
   isLoading: boolean;
   stats: HabitWeeklyStats[];
   top3TodoWeeklyStat: HabitWeeklyStats | null;
+  journalWeeklyStat: HabitWeeklyStats | null;
+  identities: IdentityStatement[];
 }
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -160,6 +165,8 @@ export default function HabitsThisWeek({
   isLoading,
   stats,
   top3TodoWeeklyStat,
+  journalWeeklyStat,
+  identities,
 }: HabitsThisWeekProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -179,13 +186,21 @@ export default function HabitsThisWeek({
   const allStats = useMemo(() => {
     const result = [...stats];
     if (top3TodoWeeklyStat) result.push(top3TodoWeeklyStat);
+    if (journalWeeklyStat) result.push(journalWeeklyStat);
     return result;
-  }, [stats, top3TodoWeeklyStat]);
+  }, [stats, top3TodoWeeklyStat, journalWeeklyStat]);
 
   const isOnPace = useMemo(
     () => allStats.length === 0 || allStats.every((s) => s.status === 'on_track' || s.status === 'met'),
     [allStats],
   );
+
+  const groups = useMemo(
+    () => groupStatsByIdentity(allStats, identities),
+    [allStats, identities],
+  );
+
+  const hasIdentities = identities.length > 0;
 
   return (
     <>
@@ -207,16 +222,34 @@ export default function HabitsThisWeek({
           <ActivityIndicator size="small" color={colors.primary} />
         </View>
       ) : allStats.length > 0 ? (
-        <View style={styles.habitRows}>
-          {allStats.map((stat) => (
-            <ExpandableHabitRow
-              key={stat.habit.id}
-              stat={stat}
-              expanded={expandedIds.has(stat.habit.id)}
-              onToggle={() => handleToggle(stat.habit.id)}
-            />
-          ))}
-        </View>
+        hasIdentities ? (
+          <View style={styles.habitRows}>
+            {groups.map((group) => (
+              <View key={group.identity?.id ?? 'ungrouped'} style={styles.groupSection}>
+                <IdentityGroupHeader group={group} />
+                {group.stats.map((stat) => (
+                  <ExpandableHabitRow
+                    key={stat.habit.id}
+                    stat={stat}
+                    expanded={expandedIds.has(stat.habit.id)}
+                    onToggle={() => handleToggle(stat.habit.id)}
+                  />
+                ))}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.habitRows}>
+            {allStats.map((stat) => (
+              <ExpandableHabitRow
+                key={stat.habit.id}
+                stat={stat}
+                expanded={expandedIds.has(stat.habit.id)}
+                onToggle={() => handleToggle(stat.habit.id)}
+              />
+            ))}
+          </View>
+        )
       ) : (
         <View style={styles.emptyCard}>
           <FontAwesome name="check-square-o" size={20} color={colors.textMuted} />
@@ -346,6 +379,9 @@ function createStyles(colors: ThemeColors) {
     habitRows: {
       gap: theme.spacing.sm,
       marginTop: theme.spacing.sm,
+    },
+    groupSection: {
+      gap: theme.spacing.sm,
     },
     emptyCard: {
       backgroundColor: colors.surface,

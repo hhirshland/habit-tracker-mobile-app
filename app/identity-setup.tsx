@@ -144,6 +144,7 @@ export default function IdentitySetupScreen() {
           statement: s.statement,
           emoji: s.emoji,
           sort_order: existing.length + i,
+          category_id: s.categoryId,
         })),
       });
       hapticSuccess();

@@ -14,7 +14,7 @@ export async function getIdentityStatements(): Promise<IdentityStatement[]> {
 
 export async function createIdentityStatement(
   userId: string,
-  statement: { statement: string; emoji: string; sort_order: number },
+  statement: { statement: string; emoji: string; sort_order: number; category_id?: string | null },
 ): Promise<IdentityStatement> {
   const { data, error } = await supabase
     .from('identity_statements')
@@ -23,6 +23,7 @@ export async function createIdentityStatement(
       statement: statement.statement,
       emoji: statement.emoji,
       sort_order: statement.sort_order,
+      category_id: statement.category_id ?? null,
     })
     .select()
     .single();
@@ -33,13 +34,14 @@ export async function createIdentityStatement(
 
 export async function createIdentityStatements(
   userId: string,
-  statements: Array<{ statement: string; emoji: string; sort_order: number }>,
+  statements: Array<{ statement: string; emoji: string; sort_order: number; category_id?: string | null }>,
 ): Promise<IdentityStatement[]> {
   const rows = statements.map((s) => ({
     user_id: userId,
     statement: s.statement,
     emoji: s.emoji,
     sort_order: s.sort_order,
+    category_id: s.category_id ?? null,
   }));
 
   const { data, error } = await supabase
