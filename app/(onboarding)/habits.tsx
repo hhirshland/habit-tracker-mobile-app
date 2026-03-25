@@ -67,6 +67,7 @@ export default function OnboardingHabitsScreen() {
         user_id: '',
         statement: identity.statement,
         emoji: identity.emoji,
+        category_id: identity.categoryId ?? null,
         sort_order: i,
         is_active: true,
         created_at: '',

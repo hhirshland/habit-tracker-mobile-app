@@ -148,7 +148,7 @@ export default function WeeklyRecapDetail({
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Generating your recap...</Text>
             <Text style={styles.loadingSubtext}>
-              Analysing your habits, goals, and reflections
+              Analyzing your habits, goals, and reflections
             </Text>
           </View>
         )}
@@ -248,6 +248,27 @@ function RecapContent({
           </View>
         )}
       </View>
+
+      {/* Identity Review */}
+      {content.identity_review && content.identity_review.identities.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <FontAwesome name="id-badge" size={14} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Identity</Text>
+          </View>
+          <Text style={styles.narrativeText}>
+            {content.identity_review.narrative}
+          </Text>
+          {content.identity_review.identities.map((id, i) => (
+            <View key={i} style={styles.highlightRow}>
+              <Text style={{ fontSize: 14 }}>{id.emoji}</Text>
+              <Text style={styles.highlightText}>
+                {id.statement} - {id.adherence_pct}% ({id.mapped_habit_count} {id.mapped_habit_count === 1 ? 'habit' : 'habits'})
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Goal Progress */}
       {content.goal_progress.length > 0 && (

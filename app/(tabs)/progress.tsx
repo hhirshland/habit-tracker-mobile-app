@@ -67,6 +67,7 @@ import {
   useQualifyingWeeks,
   useRefreshRecaps,
 } from '@/hooks/useWeeklyRecapsQuery';
+import { useIdentityStatements } from '@/hooks/useIdentityQuery';
 import { captureError } from '@/lib/sentry';
 
 const METRIC_PREFS_KEY = '@metric_preferences';
@@ -229,6 +230,7 @@ export default function ProgressScreen() {
   const addGoalEntryMutation = useAddGoalEntry();
   const refreshGoals = useRefreshGoals();
   const refreshHabitData = useRefreshAllHabitData();
+  const { data: identities = [] } = useIdentityStatements();
   const weekRange = getWeekRange(weekOffset);
   const {
     data: weeklyAdherence,
@@ -254,6 +256,41 @@ export default function ProgressScreen() {
     journalHistoryRange.start,
     journalHistoryRange.end
   );
+
+  // Journal entries for weekly adherence
+  const { data: weekJournals = [] } = useDailyJournalForRange(weekRange.start, weekRange.end);
+
+  const journalWeeklyStat = React.useMemo((): HabitWeeklyStats | null => {
+    if (!journalEnabled) return null;
+
+    const uniqueDates = new Set(weekJournals.map((j) => j.journal_date));
+    const daysCompleted = uniqueDates.size;
+    const datesCompleted = [...uniqueDates];
+    const targetDays = 7;
+    const today = new Date().toISOString().slice(0, 10);
+    const weekEnded = weekRange.end < today;
+
+    let status: HabitWeeklyStats['status'];
+    if (weekEnded) {
+      status = daysCompleted >= targetDays ? 'met' : 'missed';
+    } else {
+      const d1 = new Date(`${today}T12:00:00`);
+      const d2 = new Date(`${weekRange.end}T12:00:00`);
+      const remainingDays = Math.max(Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1, 0);
+      const remaining = targetDays - daysCompleted;
+      if (remaining > remainingDays) status = 'behind';
+      else status = 'on_track';
+    }
+
+    return {
+      habit: { id: '__journal__', name: 'Evening reflection' } as Habit,
+      completedDays: daysCompleted,
+      targetDays,
+      adherencePercent: Math.min(100, Math.round((daysCompleted / targetDays) * 100)),
+      status,
+      completedDates: datesCompleted,
+    };
+  }, [journalEnabled, weekJournals, weekRange.end]);
 
   const top3TodoWeeklyStat = React.useMemo((): HabitWeeklyStats | null => {
     if (!top3Enabled || weekTodos.length === 0) return null;
@@ -303,11 +340,15 @@ export default function ProgressScreen() {
   }, [top3Enabled, weekTodos, weekRange.end]);
 
   const combinedAdherence = useMemo(() => {
-    const completed = (weeklyAdherence?.completedTotal ?? 0) + (top3TodoWeeklyStat?.completedDays ?? 0);
-    const target = (weeklyAdherence?.targetTotal ?? 0) + (top3TodoWeeklyStat?.targetDays ?? 0);
+    const completed = (weeklyAdherence?.completedTotal ?? 0)
+      + (top3TodoWeeklyStat?.completedDays ?? 0)
+      + (journalWeeklyStat?.completedDays ?? 0);
+    const target = (weeklyAdherence?.targetTotal ?? 0)
+      + (top3TodoWeeklyStat?.targetDays ?? 0)
+      + (journalWeeklyStat?.targetDays ?? 0);
     const percent = target > 0 ? Math.min(100, Math.round((completed / target) * 100)) : 0;
     return { completed, target, percent };
-  }, [weeklyAdherence, top3TodoWeeklyStat]);
+  }, [weeklyAdherence, top3TodoWeeklyStat, journalWeeklyStat]);
 
   const handlePrevWeek = useCallback(() => setWeekOffset((prev) => prev - 1), []);
   const handleNextWeek = useCallback(() => setWeekOffset((prev) => Math.min(prev + 1, 0)), []);
@@ -527,6 +568,8 @@ export default function ProgressScreen() {
           isLoading={weeklyAdherenceLoading}
           stats={weeklyAdherence?.stats ?? []}
           top3TodoWeeklyStat={top3TodoWeeklyStat}
+          journalWeeklyStat={journalWeeklyStat}
+          identities={identities}
         />
 
         {/* Weekly Recaps History (viewed only) */}

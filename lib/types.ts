@@ -84,6 +84,7 @@ export interface IdentityStatement {
   user_id: string;
   statement: string;
   emoji: string;
+  category_id: string | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;

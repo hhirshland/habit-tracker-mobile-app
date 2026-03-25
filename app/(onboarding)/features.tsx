@@ -119,6 +119,7 @@ export default function OnboardingFeaturesScreen() {
             statement: identity.statement,
             emoji: identity.emoji,
             sort_order: index,
+            category_id: identity.categoryId,
           })),
         );
         for (const record of created) {

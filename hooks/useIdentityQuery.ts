@@ -29,7 +29,7 @@ export function useCreateIdentityStatement() {
       statement,
     }: {
       userId: string;
-      statement: { statement: string; emoji: string; sort_order: number };
+      statement: { statement: string; emoji: string; sort_order: number; category_id?: string | null };
     }) => createIdentityStatement(userId, statement),
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: queryKeys.identity.all });
@@ -51,7 +51,7 @@ export function useCreateIdentityStatements() {
       statements,
     }: {
       userId: string;
-      statements: Array<{ statement: string; emoji: string; sort_order: number }>;
+      statements: Array<{ statement: string; emoji: string; sort_order: number; category_id?: string | null }>;
     }) => createIdentityStatements(userId, statements),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.identity.all });
