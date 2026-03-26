@@ -84,6 +84,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Thrive accesses your photo library so you can choose a profile picture. For example, you can select an existing photo to set as your account avatar on the Profile screen.",
+      },
+    ],
+    [
       "expo-splash-screen",
       {
         image: "./assets/images/splash-icon.png",
